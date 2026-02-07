@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { User } from "@shared/schema";
+import { queryClient, getQueryFn } from "@/lib/queryClient";
 
 interface AuthContextType {
   user: User | null;
@@ -28,18 +29,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null;
       })
       .then((data) => {
-        if (data) setUser(data);
+        if (data) {
+          setUser(data);
+          queryClient.removeQueries({ queryKey: ["/api/workouts"] });
+          queryClient.prefetchQuery({ queryKey: ["/api/workouts"], queryFn: getQueryFn({ on401: "throw" }) });
+        }
       })
       .finally(() => setIsLoading(false));
   }, []);
 
   const login = useCallback((user: User) => {
     setUser(user);
+    queryClient.removeQueries({ queryKey: ["/api/workouts"] });
+    queryClient.prefetchQuery({ queryKey: ["/api/workouts"], queryFn: getQueryFn({ on401: "throw" }) });
   }, []);
 
   const logout = useCallback(() => {
     fetch("/api/auth/logout", { method: "POST", credentials: "include" }).then(() => {
       setUser(null);
+      queryClient.removeQueries({ queryKey: ["/api/workouts"] });
     });
   }, []);
 
