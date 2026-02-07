@@ -8,5 +8,16 @@
     ],
     "goals": "Пройти марафон в 3:30",
     "garminConnected": false
+  },
+  {
+    "id": "f9069777-2b8a-4e79-bbc4-f7c7746fe888",
+    "username": "Andrey",
+    "password": "$2b$10$4xyAQ69S35ckMgyU7kZjqeOt6QAzaRAmvlB4JmYbxVS9Y5WSHLZ92",
+    "sportTypes": [
+      "running"
+    ],
+    "goals": "",
+    "garminConnected": true,
+    "garminEmail": "a_knjazev@mail.ru"
   }
 ]

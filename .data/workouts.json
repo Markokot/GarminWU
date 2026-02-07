@@ -1,0 +1,46 @@
+[
+  {
+    "userId": "f9069777-2b8a-4e79-bbc4-f7c7746fe888",
+    "name": "Восстановительный бег 30 мин",
+    "description": "Легкая пробежка для активного восстановления. Темп разговорный, пульс низкий.",
+    "sportType": "running",
+    "steps": [
+      {
+        "stepId": 1,
+        "stepOrder": 1,
+        "stepType": "warmup",
+        "durationType": "time",
+        "durationValue": 600,
+        "targetType": "no.target",
+        "targetValueLow": null,
+        "targetValueHigh": null,
+        "intensity": "active"
+      },
+      {
+        "stepId": 2,
+        "stepOrder": 2,
+        "stepType": "interval",
+        "durationType": "time",
+        "durationValue": 1800,
+        "targetType": "heart.rate.zone",
+        "targetValueLow": 130,
+        "targetValueHigh": 145,
+        "intensity": "active"
+      },
+      {
+        "stepId": 3,
+        "stepOrder": 3,
+        "stepType": "cooldown",
+        "durationType": "time",
+        "durationValue": 600,
+        "targetType": "no.target",
+        "targetValueLow": null,
+        "targetValueHigh": null,
+        "intensity": "active"
+      }
+    ],
+    "id": "76c48587-2deb-4bdf-832d-fe5e2a21601e",
+    "createdAt": "2026-02-07T11:01:33.406Z",
+    "sentToGarmin": false
+  }
+]

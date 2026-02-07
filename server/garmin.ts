@@ -14,9 +14,10 @@ export async function connectGarmin(userId: string, email: string, password: str
     await client.login();
     garminSessions.set(userId, client);
     garminCredentials.set(userId, { email, password });
+    console.log(`[Garmin] Connected successfully for user ${userId}`);
     return true;
   } catch (error: any) {
-    console.error("Garmin connect error:", error.message);
+    console.error("[Garmin] Connect error:", error.message);
     throw new Error("Не удалось подключиться к Garmin Connect. Проверьте логин и пароль.");
   }
 }
@@ -24,6 +25,7 @@ export async function connectGarmin(userId: string, email: string, password: str
 export function disconnectGarmin(userId: string) {
   garminSessions.delete(userId);
   garminCredentials.delete(userId);
+  console.log(`[Garmin] Disconnected user ${userId}`);
 }
 
 export function isGarminConnected(userId: string): boolean {
@@ -33,14 +35,18 @@ export function isGarminConnected(userId: string): boolean {
 export async function ensureGarminSession(userId: string, user: User): Promise<void> {
   if (garminSessions.has(userId)) return;
 
-  if (user.garminEmail) {
-    const creds = garminCredentials.get(userId);
-    if (creds) {
-      try {
-        await connectGarmin(userId, creds.email, creds.password);
-        return;
-      } catch {}
+  const creds = garminCredentials.get(userId);
+  if (creds) {
+    console.log(`[Garmin] Re-authenticating from cached credentials for user ${userId}`);
+    try {
+      await connectGarmin(userId, creds.email, creds.password);
+      return;
+    } catch (err: any) {
+      console.error(`[Garmin] Re-auth from cache failed: ${err.message}`);
     }
+  }
+
+  if (user.garminEmail) {
     throw new Error("Сессия Garmin истекла. Переподключите аккаунт в настройках.");
   }
   throw new Error("Garmin не подключён");
@@ -68,7 +74,7 @@ export async function getGarminActivities(userId: string, count: number = 10) {
       averagePace: a.averageSpeed ? (1000 / a.averageSpeed) : null,
     }));
   } catch (error: any) {
-    console.error("Error fetching activities:", error.message);
+    console.error("[Garmin] Error fetching activities:", error.message);
     throw new Error("Ошибка получения данных из Garmin");
   }
 }
@@ -94,64 +100,134 @@ function convertSportType(sportType: string): { sportTypeId: number; sportTypeKe
   return map[sportType] || { sportTypeId: 1, sportTypeKey: "running" };
 }
 
+function buildEndCondition(step: WorkoutStep) {
+  if (step.durationType === "time") {
+    return {
+      conditionTypeId: 2,
+      conditionTypeKey: "time",
+      displayOrder: 2,
+      displayable: true,
+    };
+  } else if (step.durationType === "distance") {
+    return {
+      conditionTypeId: 3,
+      conditionTypeKey: "distance",
+      displayOrder: 3,
+      displayable: true,
+    };
+  }
+  return {
+    conditionTypeId: 1,
+    conditionTypeKey: "lap.button",
+    displayOrder: 1,
+    displayable: true,
+  };
+}
+
+function buildTargetType(step: WorkoutStep) {
+  const targetMap: Record<string, { workoutTargetTypeId: number; displayOrder: number }> = {
+    "no.target": { workoutTargetTypeId: 1, displayOrder: 1 },
+    "pace.zone": { workoutTargetTypeId: 6, displayOrder: 6 },
+    "heart.rate.zone": { workoutTargetTypeId: 4, displayOrder: 4 },
+    "power.zone": { workoutTargetTypeId: 2, displayOrder: 2 },
+    "cadence": { workoutTargetTypeId: 3, displayOrder: 3 },
+  };
+  const target = targetMap[step.targetType] || targetMap["no.target"];
+  return {
+    workoutTargetTypeId: target.workoutTargetTypeId,
+    workoutTargetTypeKey: step.targetType,
+    displayOrder: target.displayOrder,
+  };
+}
+
 function buildGarminSteps(steps: WorkoutStep[]): any[] {
   return steps.map((step, i) => {
     const { stepTypeId, stepTypeKey } = convertStepType(step);
-    const base: any = {
+
+    if (step.stepType === "repeat" && step.childSteps && step.childSteps.length > 0) {
+      return {
+        type: "RepeatGroupDTO",
+        stepId: null,
+        stepOrder: i + 1,
+        stepType: {
+          stepTypeId: 6,
+          stepTypeKey: "repeat",
+          displayOrder: 6,
+        },
+        numberOfIterations: step.repeatCount || 2,
+        smartRepeat: false,
+        childStepId: null,
+        workoutSteps: buildGarminSteps(step.childSteps),
+      };
+    }
+
+    const endCondition = buildEndCondition(step);
+
+    let endConditionValue = step.durationValue;
+    if (step.durationType === "time" && endConditionValue) {
+      endConditionValue = endConditionValue;
+    }
+    if (step.durationType === "distance" && endConditionValue) {
+      endConditionValue = endConditionValue;
+    }
+
+    const targetType = buildTargetType(step);
+    const hasTarget = step.targetType !== "no.target";
+
+    const garminStep: any = {
       type: "ExecutableStepDTO",
       stepId: null,
       stepOrder: i + 1,
-      stepType: { stepTypeId, stepTypeKey },
-      childStepId: null,
-      endCondition: {
-        conditionTypeId: step.durationType === "time" ? 2 : step.durationType === "distance" ? 3 : 1,
-        conditionTypeKey: step.durationType === "time" ? "time" : step.durationType === "distance" ? "distance" : "lap.button",
+      stepType: {
+        stepTypeId,
+        stepTypeKey,
+        displayOrder: stepTypeId,
       },
+      childStepId: null,
+      description: null,
+      endCondition,
+      endConditionValue: endConditionValue,
       preferredEndConditionUnit: null,
-      endConditionValue: step.durationValue,
       endConditionCompare: null,
       endConditionZone: null,
+      targetType,
+      targetValueOne: hasTarget ? step.targetValueLow : null,
+      targetValueTwo: hasTarget ? step.targetValueHigh : null,
+      targetValueUnit: null,
+      zoneNumber: null,
+      secondaryTargetType: null,
+      secondaryTargetValueOne: null,
+      secondaryTargetValueTwo: null,
+      secondaryTargetValueUnit: null,
+      secondaryZoneNumber: null,
+      strokeType: {
+        strokeTypeId: 0,
+        strokeTypeKey: null,
+        displayOrder: 0,
+      },
+      equipmentType: {
+        equipmentTypeId: 0,
+        equipmentTypeKey: null,
+        displayOrder: 0,
+      },
+      category: null,
+      exerciseName: null,
+      workoutProvider: null,
+      providerExerciseSourceId: null,
+      weightValue: null,
+      weightUnit: null,
     };
 
-    if (step.targetType === "no.target") {
-      base.targetType = { workoutTargetTypeId: 1, workoutTargetTypeKey: "no.target" };
-      base.targetValueOne = null;
-      base.targetValueTwo = null;
-    } else if (step.targetType === "heart.rate.zone") {
-      base.targetType = { workoutTargetTypeId: 4, workoutTargetTypeKey: "heart.rate.zone" };
-      base.targetValueOne = step.targetValueLow;
-      base.targetValueTwo = step.targetValueHigh;
-    } else if (step.targetType === "pace.zone") {
-      base.targetType = { workoutTargetTypeId: 6, workoutTargetTypeKey: "pace.zone" };
-      base.targetValueOne = step.targetValueLow;
-      base.targetValueTwo = step.targetValueHigh;
-    } else if (step.targetType === "power.zone") {
-      base.targetType = { workoutTargetTypeId: 2, workoutTargetTypeKey: "power.zone" };
-      base.targetValueOne = step.targetValueLow;
-      base.targetValueTwo = step.targetValueHigh;
-    } else if (step.targetType === "cadence") {
-      base.targetType = { workoutTargetTypeId: 3, workoutTargetTypeKey: "cadence" };
-      base.targetValueOne = step.targetValueLow;
-      base.targetValueTwo = step.targetValueHigh;
-    }
-
-    if (step.stepType === "repeat" && step.childSteps && step.childSteps.length > 0) {
-      base.type = "RepeatGroupDTO";
-      base.numberOfIterations = step.repeatCount || 2;
-      base.workoutSteps = buildGarminSteps(step.childSteps);
-      base.smartRepeat = false;
-    }
-
-    return base;
+    return garminStep;
   });
 }
 
-export function convertToGarminWorkout(workout: Workout): any {
+export function convertToGarminWorkout(workout: { name: string; description?: string; sportType: string; steps: WorkoutStep[] }): any {
   const { sportTypeId, sportTypeKey } = convertSportType(workout.sportType);
 
   return {
     workoutName: workout.name,
-    description: workout.description || "",
+    description: workout.description || "Created by GarminCoach AI",
     sportType: { sportTypeId, sportTypeKey },
     workoutSegments: [
       {
@@ -163,20 +239,30 @@ export function convertToGarminWorkout(workout: Workout): any {
   };
 }
 
-export async function pushWorkoutToGarmin(userId: string, workout: Workout): Promise<number | null> {
+export async function pushWorkoutToGarmin(userId: string, workout: { name: string; description?: string; sportType: string; steps: WorkoutStep[] }): Promise<number | null> {
   const client = garminSessions.get(userId);
   if (!client) throw new Error("Garmin не подключён. Подключите аккаунт в настройках.");
 
   const garminWorkout = convertToGarminWorkout(workout);
 
+  console.log("[Garmin] Pushing workout:", JSON.stringify(garminWorkout, null, 2));
+
   try {
-    const result = await client.post(
-      "https://connect.garmin.com/workout-service/workout",
-      garminWorkout
-    );
+    const result = await client.addWorkout(garminWorkout);
+    console.log("[Garmin] Push workout result:", JSON.stringify(result, null, 2));
     return result?.workoutId || null;
   } catch (error: any) {
-    console.error("Push workout error:", error.message);
-    throw new Error("Ошибка при отправке тренировки в Garmin Connect. " + (error.message || ""));
+    console.error("[Garmin] Push workout error:", error.message);
+    if (error.response) {
+      console.error("[Garmin] Response status:", error.response?.status);
+      try {
+        const body = typeof error.response?.data === "string" ? error.response.data : JSON.stringify(error.response?.data);
+        console.error("[Garmin] Response body:", body?.substring(0, 1000));
+      } catch {}
+    }
+    if (error.data) {
+      console.error("[Garmin] Error data:", typeof error.data === "string" ? error.data.substring(0, 500) : JSON.stringify(error.data));
+    }
+    throw new Error("Ошибка при отправке тренировки в Garmin Connect: " + (error.message || "Unknown error"));
   }
 }
