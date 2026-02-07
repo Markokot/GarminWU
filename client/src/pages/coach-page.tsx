@@ -19,6 +19,7 @@ import {
   Watch,
   Loader2,
   Sparkles,
+  CalendarDays,
 } from "lucide-react";
 
 function formatTime(ts: string) {
@@ -45,7 +46,19 @@ function WorkoutPreview({ workout, onSave, onPushToGarmin, saving, pushing }: {
           </Badge>
         </div>
         {workout.description && (
-          <p className="text-xs text-muted-foreground mb-3">{workout.description}</p>
+          <p className="text-xs text-muted-foreground mb-2">{workout.description}</p>
+        )}
+        {workout.scheduledDate && (
+          <div className="flex items-center gap-1.5 mb-3 text-xs text-muted-foreground">
+            <CalendarDays className="w-3 h-3" />
+            <span>
+              {new Date(workout.scheduledDate + "T12:00:00").toLocaleDateString("ru-RU", {
+                day: "numeric",
+                month: "long",
+                weekday: "long",
+              })}
+            </span>
+          </div>
         )}
         <div className="space-y-1.5 mb-4">
           {workout.steps.map((step, i) => (
@@ -142,12 +155,21 @@ export default function CoachPage() {
   });
 
   const pushMutation = useMutation({
-    mutationFn: async (workout: Workout) => {
+    mutationFn: async (workout: Workout & { scheduledDate?: string | null }) => {
       const res = await apiRequest("POST", "/api/garmin/push-workout", workout);
       return res.json();
     },
-    onSuccess: () => {
-      toast({ title: "Тренировка отправлена на Garmin" });
+    onSuccess: (data: any) => {
+      if (data.scheduled && data.scheduledDate) {
+        const dateStr = new Date(data.scheduledDate + "T12:00:00").toLocaleDateString("ru-RU", {
+          day: "numeric",
+          month: "long",
+          weekday: "long",
+        });
+        toast({ title: "Тренировка отправлена на Garmin", description: `Запланирована на ${dateStr}` });
+      } else {
+        toast({ title: "Тренировка отправлена на Garmin" });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/workouts"] });
     },
     onError: (error: Error) => {

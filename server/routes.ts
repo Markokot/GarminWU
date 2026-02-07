@@ -164,7 +164,9 @@ export async function registerRoutes(
 
   app.post("/api/garmin/push-workout", requireAuth, async (req, res) => {
     try {
-      const pushSchema = createWorkoutSchema.extend({ id: z.string().optional() });
+      const pushSchema = createWorkoutSchema.extend({
+        id: z.string().optional(),
+      });
       const workout = pushSchema.parse(req.body);
 
       const user = await storage.getUser(req.session.userId!);
@@ -173,16 +175,21 @@ export async function registerRoutes(
       }
       await ensureGarminSession(req.session.userId!, user);
 
-      const garminWorkoutId = await pushWorkoutToGarmin(req.session.userId!, workout);
+      const result = await pushWorkoutToGarmin(req.session.userId!, workout);
 
       if (workout.id) {
         await storage.updateWorkout(workout.id, {
           sentToGarmin: true,
-          garminWorkoutId: garminWorkoutId || undefined,
+          garminWorkoutId: result.workoutId || undefined,
         });
       }
 
-      res.json({ success: true, garminWorkoutId });
+      res.json({
+        success: true,
+        garminWorkoutId: result.workoutId,
+        scheduled: result.scheduled,
+        scheduledDate: result.scheduledDate,
+      });
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Некорректный формат тренировки: " + error.errors.map((e) => e.message).join(", ") });

@@ -6,6 +6,19 @@ const openai = new OpenAI({
   baseURL: "https://api.deepseek.com",
 });
 
+function getTodayDateString(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function getDayOfWeek(): string {
+  const days = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
+  return days[new Date().getDay()];
+}
+
 const SYSTEM_PROMPT = `Ты — профессиональный тренер по бегу, велосипеду и плаванию. Ты помогаешь спортсменам планировать тренировки и загружать их на часы Garmin.
 
 ВАЖНЫЕ ПРАВИЛА:
@@ -20,6 +33,7 @@ const SYSTEM_PROMPT = `Ты — профессиональный тренер п
   "name": "Название тренировки",
   "description": "Краткое описание",
   "sportType": "running" | "cycling" | "swimming",
+  "scheduledDate": "YYYY-MM-DD или null",
   "steps": [
     {
       "stepId": 1,
@@ -36,6 +50,14 @@ const SYSTEM_PROMPT = `Ты — профессиональный тренер п
     }
   ]
 }
+
+ПРАВИЛА ДЛЯ scheduledDate:
+- Если пользователь говорит "сегодня", "сейчас", "на сегодня" — ставь сегодняшнюю дату
+- Если "завтра", "на завтра" — ставь завтрашнюю дату  
+- Если "послезавтра" — ставь послезавтрашнюю дату
+- Если "в понедельник", "во вторник" и т.д. — вычисли ближайшую дату этого дня недели
+- Если конкретная дата не упоминается в разговоре, ставь сегодняшнюю дату (сегодня {TODAY_DATE}, {TODAY_DOW})
+- Формат даты СТРОГО: YYYY-MM-DD
 
 ПРИМЕРЫ ЗНАЧЕНИЙ:
 - pace.zone: targetValueLow и targetValueHigh в секундах на км (например, 300 = 5:00/км, 360 = 6:00/км)
@@ -84,10 +106,10 @@ function buildUserContext(user: User, activities?: GarminActivity[]): string {
 
 export interface AiResponse {
   text: string;
-  workout: Workout | null;
+  workout: (Workout & { scheduledDate?: string }) | null;
 }
 
-function extractWorkoutJson(text: string): Workout | null {
+function extractWorkoutJson(text: string): (Workout & { scheduledDate?: string }) | null {
   const regex = /```workout_json\s*([\s\S]*?)```/;
   const match = text.match(regex);
   if (!match) return null;
@@ -100,6 +122,7 @@ function extractWorkoutJson(text: string): Workout | null {
       name: parsed.name || "Тренировка",
       description: parsed.description || "",
       sportType: parsed.sportType || "running",
+      scheduledDate: parsed.scheduledDate || null,
       steps: (parsed.steps || []).map((s: any, i: number) => ({
         stepId: s.stepId || i + 1,
         stepOrder: s.stepOrder || i + 1,
@@ -143,9 +166,15 @@ export async function chat(
   activities?: GarminActivity[]
 ): Promise<AiResponse> {
   const userContext = buildUserContext(user, activities);
+  const todayDate = getTodayDateString();
+  const todayDow = getDayOfWeek();
+
+  const systemPrompt = SYSTEM_PROMPT
+    .replace("{TODAY_DATE}", todayDate)
+    .replace("{TODAY_DOW}", todayDow);
 
   const messages: OpenAI.ChatCompletionMessageParam[] = [
-    { role: "system", content: SYSTEM_PROMPT + userContext },
+    { role: "system", content: systemPrompt + userContext },
   ];
 
   const recentHistory = history.slice(-10);

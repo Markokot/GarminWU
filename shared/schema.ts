@@ -59,6 +59,7 @@ export interface Workout {
   description: string;
   sportType: SportType;
   steps: WorkoutStep[];
+  scheduledDate?: string | null;
   createdAt: string;
   sentToGarmin: boolean;
   garminWorkoutId?: number;
@@ -132,6 +133,7 @@ export const createWorkoutSchema = z.object({
   name: z.string().min(1, "Введите название тренировки"),
   description: z.string().optional(),
   sportType: z.enum(sportTypes),
+  scheduledDate: z.string().nullable().optional(),
   steps: z.array(workoutStepSchema).min(1, "Добавьте хотя бы один шаг"),
 });
 

@@ -41,6 +41,7 @@
     ],
     "id": "76c48587-2deb-4bdf-832d-fe5e2a21601e",
     "createdAt": "2026-02-07T11:01:33.406Z",
-    "sentToGarmin": false
+    "sentToGarmin": true,
+    "garminWorkoutId": 1466655651
   }
 ]

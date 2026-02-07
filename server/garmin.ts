@@ -239,7 +239,10 @@ export function convertToGarminWorkout(workout: { name: string; description?: st
   };
 }
 
-export async function pushWorkoutToGarmin(userId: string, workout: { name: string; description?: string; sportType: string; steps: WorkoutStep[] }): Promise<number | null> {
+export async function pushWorkoutToGarmin(
+  userId: string,
+  workout: { name: string; description?: string; sportType: string; steps: WorkoutStep[]; scheduledDate?: string | null }
+): Promise<{ workoutId: number | null; scheduled: boolean; scheduledDate?: string }> {
   const client = garminSessions.get(userId);
   if (!client) throw new Error("Garmin не подключён. Подключите аккаунт в настройках.");
 
@@ -249,8 +252,30 @@ export async function pushWorkoutToGarmin(userId: string, workout: { name: strin
 
   try {
     const result = await client.addWorkout(garminWorkout);
-    console.log("[Garmin] Push workout result:", JSON.stringify(result, null, 2));
-    return result?.workoutId || null;
+    const workoutId = result?.workoutId || null;
+    console.log("[Garmin] Push workout result, workoutId:", workoutId);
+
+    let scheduled = false;
+    let scheduledDate: string | undefined;
+
+    if (workoutId && workout.scheduledDate) {
+      try {
+        const dateStr = workout.scheduledDate;
+        const scheduleDate = new Date(dateStr + "T12:00:00");
+        console.log(`[Garmin] Scheduling workout ${workoutId} for ${dateStr}`);
+        await client.scheduleWorkout(
+          { workoutId: String(workoutId) },
+          scheduleDate
+        );
+        scheduled = true;
+        scheduledDate = dateStr;
+        console.log(`[Garmin] Workout ${workoutId} scheduled for ${dateStr}`);
+      } catch (schedErr: any) {
+        console.error("[Garmin] Schedule error:", schedErr.message);
+      }
+    }
+
+    return { workoutId, scheduled, scheduledDate };
   } catch (error: any) {
     console.error("[Garmin] Push workout error:", error.message);
     if (error.response) {
