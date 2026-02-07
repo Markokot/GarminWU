@@ -222,7 +222,7 @@ export async function chat(
     { role: "system", content: systemPrompt + userContext },
   ];
 
-  const recentHistory = history.slice(-10);
+  const recentHistory = history.slice(-30);
   for (const msg of recentHistory) {
     if (msg.role === "user" || msg.role === "assistant") {
       messages.push({ role: msg.role, content: msg.content });
