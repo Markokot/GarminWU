@@ -4,3 +4,13 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Secrets and environment
+.env
+
+# Data files (user data, workouts, chat history)
+.data/
+
+# Deploy script and service config (server-specific)
+deploy.sh
+GarminCoach.service

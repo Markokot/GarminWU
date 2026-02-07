@@ -63,8 +63,19 @@ AI-powered training coach web application with Garmin Connect integration. Users
 - `DELETE /api/chat/messages` - Clear chat history
 
 ## Environment Variables
-- `DEEPSEEK_API_KEY` - DeepSeek API key (secret)
-- `SESSION_SECRET` - Express session secret (secret)
+- `DEEPSEEK_API_KEY` - DeepSeek API key (secret, required)
+- `SESSION_SECRET` - Express session secret (secret, required)
+- `DATA_DIR` - Path to JSON data directory (default: `.data/` in dev, `/home/Garmin/data` on server)
+- `PORT` - Server port (default: 5000)
+- `NODE_ENV` - `development` or `production`
+
+## Deployment (External VPS)
+- `deploy.sh` - Deployment script (git pull, build, systemd restart)
+- `GarminCoach.service` - Systemd unit file (EnvironmentFile=/home/Garmin/.env)
+- `.env.example` - Template for required env vars
+- Secrets stored in `/home/Garmin/.env` (not in git)
+- User data stored in `/home/Garmin/data/` (not in git)
+- Startup validates required env vars, exits with clear error if missing
 
 ## Sports Supported
 - Running (primary)

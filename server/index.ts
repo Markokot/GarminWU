@@ -3,6 +3,14 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
+const requiredEnvVars = ["SESSION_SECRET", "DEEPSEEK_API_KEY"];
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    console.error(`ОШИБКА: Переменная окружения ${envVar} не задана. Приложение не может запуститься.`);
+    process.exit(1);
+  }
+}
+
 const app = express();
 const httpServer = createServer(app);
 

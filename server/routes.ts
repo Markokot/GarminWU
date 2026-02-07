@@ -30,7 +30,7 @@ export async function registerRoutes(
   app.use(
     session({
       store: new MemStore({ checkPeriod: 86400000 }),
-      secret: process.env.SESSION_SECRET || "garmin-coach-secret-key",
+      secret: process.env.SESSION_SECRET!,
       resave: false,
       saveUninitialized: false,
       cookie: {

@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import * as fs from "fs";
 import * as path from "path";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const WORKOUTS_FILE = path.join(DATA_DIR, "workouts.json");
 const MESSAGES_FILE = path.join(DATA_DIR, "messages.json");
