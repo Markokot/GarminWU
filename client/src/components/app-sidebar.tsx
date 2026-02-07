@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
   SidebarFooter,
   SidebarHeader,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,13 @@ const menuItems = [
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { setOpenMobile, isMobile } = useSidebar();
+
+  const handleNavClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
     <Sidebar>
@@ -62,7 +70,7 @@ export function AppSidebar() {
                       isActive={isActive}
                       data-testid={`nav-${item.url.replace("/", "") || "dashboard"}`}
                     >
-                      <Link href={item.url}>
+                      <Link href={item.url} onClick={handleNavClick}>
                         <item.icon className="w-4 h-4" />
                         <span>{item.title}</span>
                       </Link>
