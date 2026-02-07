@@ -5,11 +5,28 @@ import MemoryStore from "memorystore";
 import { storage } from "./storage";
 import { loginSchema, registerSchema, garminConnectSchema, createWorkoutSchema, workoutStepSchema } from "@shared/schema";
 import { z } from "zod";
-import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected, ensureGarminSession } from "./garmin";
+import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected } from "./garmin";
 import { chat } from "./ai";
 import { encrypt, decrypt } from "./crypto";
 
 const MemStore = MemoryStore(session);
+
+async function ensureGarminSessionWithDecrypt(userId: string, user: any): Promise<void> {
+  if (isGarminConnected(userId)) return;
+
+  if (!user.garminEmail || !user.garminPassword) {
+    throw new Error("Garmin не подключён");
+  }
+
+  try {
+    const garminPass = decrypt(user.garminPassword);
+    await connectGarmin(userId, user.garminEmail, garminPass);
+    console.log(`[Garmin] Lazy connect for user ${userId}`);
+  } catch (err: any) {
+    console.error(`[Garmin] Lazy connect failed: ${err.message}`);
+    throw new Error("Сессия Garmin истекла. Переподключите аккаунт в настройках.");
+  }
+}
 
 declare module "express-session" {
   interface SessionData {
@@ -79,17 +96,6 @@ export async function registerRoutes(
       }
       req.session.userId = user.id;
 
-      if (user.garminConnected && user.garminEmail && user.garminPassword) {
-        try {
-          disconnectGarmin(user.id);
-          const garminPass = decrypt(user.garminPassword);
-          await connectGarmin(user.id, user.garminEmail, garminPass);
-          console.log(`[Login] Garmin reconnected for user ${user.id}`);
-        } catch (err: any) {
-          console.error(`[Login] Garmin reconnect failed: ${err.message}`);
-        }
-      }
-
       const { password: _, garminPassword: __, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
@@ -106,19 +112,8 @@ export async function registerRoutes(
       return res.status(401).json({ message: "User not found" });
     }
 
-    if (user.garminConnected && user.garminEmail && user.garminPassword && !isGarminConnected(user.id)) {
-      try {
-        const garminPass = decrypt(user.garminPassword);
-        await connectGarmin(user.id, user.garminEmail, garminPass);
-        console.log(`[Auth/me] Garmin reconnected for user ${user.id}`);
-      } catch (err: any) {
-        console.error(`[Auth/me] Garmin reconnect failed: ${err.message}`);
-      }
-    }
-
-    const garminActive = isGarminConnected(user.id);
     const { password: _, garminPassword: __, ...safeUser } = user;
-    res.json({ ...safeUser, garminConnected: user.garminConnected && garminActive ? true : user.garminConnected });
+    res.json(safeUser);
   });
 
   app.post("/api/auth/logout", (req, res) => {
@@ -190,7 +185,7 @@ export async function registerRoutes(
       if (!user || !user.garminConnected) {
         return res.status(400).json({ message: "Garmin не подключён" });
       }
-      await ensureGarminSession(req.session.userId!, user);
+      await ensureGarminSessionWithDecrypt(req.session.userId!, user);
       const activities = await getGarminActivities(req.session.userId!);
       res.json(activities);
     } catch (error: any) {
@@ -209,7 +204,7 @@ export async function registerRoutes(
       if (!user || !user.garminConnected) {
         return res.status(400).json({ message: "Garmin не подключён. Подключите аккаунт в настройках." });
       }
-      await ensureGarminSession(req.session.userId!, user);
+      await ensureGarminSessionWithDecrypt(req.session.userId!, user);
 
       const result = await pushWorkoutToGarmin(req.session.userId!, workout);
 
@@ -293,7 +288,7 @@ export async function registerRoutes(
       let activities: any[] | undefined;
       try {
         if (user.garminConnected) {
-          await ensureGarminSession(user.id, user);
+          await ensureGarminSessionWithDecrypt(user.id, user);
           activities = await getGarminActivities(user.id, 10);
         }
       } catch {}
