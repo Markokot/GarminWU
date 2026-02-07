@@ -1,0 +1,12 @@
+[
+  {
+    "id": "9057052b-bb43-44ef-b128-7be163101e92",
+    "username": "testuser_WWT8TZ",
+    "password": "$2b$10$W801uxRZdLam7GlZljo3E.ifqlFskMcvA1PKU8ENwBWC7Kv6Wrluq",
+    "sportTypes": [
+      "running"
+    ],
+    "goals": "Пройти марафон в 3:30",
+    "garminConnected": false
+  }
+]
