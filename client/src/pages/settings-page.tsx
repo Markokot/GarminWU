@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
-import { garminConnectSchema, sportTypes, sportTypeLabels } from "@shared/schema";
+import { garminConnectSchema, sportTypes, sportTypeLabels, fitnessLevels, fitnessLevelLabels } from "@shared/schema";
 import type { GarminConnectInput } from "@shared/schema";
 import {
   Watch,
@@ -65,7 +67,7 @@ export default function SettingsPage() {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { sportTypes: string[]; goals: string }) => {
+    mutationFn: async (data: Record<string, any>) => {
       const res = await apiRequest("PATCH", "/api/auth/profile", data);
       return res.json();
     },
@@ -80,6 +82,27 @@ export default function SettingsPage() {
 
   const [selectedSports, setSelectedSports] = useState<string[]>(user?.sportTypes || ["running"]);
   const [goals, setGoals] = useState(user?.goals || "");
+  const [fitnessLevel, setFitnessLevel] = useState(user?.fitnessLevel || "");
+  const [age, setAge] = useState(user?.age?.toString() || "");
+  const [weeklyHours, setWeeklyHours] = useState(user?.weeklyHours?.toString() || "");
+  const [experienceYears, setExperienceYears] = useState(user?.experienceYears?.toString() || "");
+  const [injuries, setInjuries] = useState(user?.injuries || "");
+  const [personalRecords, setPersonalRecords] = useState(user?.personalRecords || "");
+  const [preferences, setPreferences] = useState(user?.preferences || "");
+
+  const handleSaveProfile = () => {
+    updateProfileMutation.mutate({
+      sportTypes: selectedSports,
+      goals,
+      fitnessLevel: fitnessLevel || undefined,
+      age: age ? parseInt(age) : null,
+      weeklyHours: weeklyHours ? parseFloat(weeklyHours) : null,
+      experienceYears: experienceYears ? parseInt(experienceYears) : null,
+      injuries: injuries || undefined,
+      personalRecords: personalRecords || undefined,
+      preferences: preferences || undefined,
+    });
+  };
 
   return (
     <div className="p-6 space-y-6 max-w-2xl mx-auto">
@@ -202,10 +225,10 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader className="pb-4">
-          <h2 className="font-semibold text-sm">Профиль тренировок</h2>
-          <p className="text-xs text-muted-foreground">AI будет учитывать эти данные при создании тренировок</p>
+          <h2 className="font-semibold text-sm">Профиль спортсмена</h2>
+          <p className="text-xs text-muted-foreground">Чем больше тренер знает о вас, тем точнее рекомендации</p>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
           <div>
             <label className="text-sm font-medium mb-2 block">Виды спорта</label>
             <div className="flex flex-wrap gap-4">
@@ -227,18 +250,114 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Уровень подготовки</label>
+              <Select value={fitnessLevel} onValueChange={setFitnessLevel}>
+                <SelectTrigger data-testid="select-fitness-level">
+                  <SelectValue placeholder="Выберите уровень" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fitnessLevels.map((level) => (
+                    <SelectItem key={level} value={level}>
+                      {fitnessLevelLabels[level]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Возраст</label>
+              <Input
+                type="number"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                placeholder="35"
+                min={10}
+                max={100}
+                data-testid="input-age"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Часов тренировок в неделю</label>
+              <Input
+                type="number"
+                value={weeklyHours}
+                onChange={(e) => setWeeklyHours(e.target.value)}
+                placeholder="5"
+                min={0}
+                max={40}
+                step={0.5}
+                data-testid="input-weekly-hours"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Лет в спорте</label>
+              <Input
+                type="number"
+                value={experienceYears}
+                onChange={(e) => setExperienceYears(e.target.value)}
+                placeholder="3"
+                min={0}
+                max={50}
+                data-testid="input-experience-years"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="text-sm font-medium mb-2 block">Цели</label>
             <Input
               value={goals}
               onChange={(e) => setGoals(e.target.value)}
-              placeholder="Например: подготовка к Ironman, марафон за 3:30"
+              placeholder="Марафон за 3:30, Ironman 70.3, выбежать 5 км из 20 мин"
               data-testid="input-goals"
             />
           </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Личные рекорды</label>
+            <Textarea
+              value={personalRecords}
+              onChange={(e) => setPersonalRecords(e.target.value)}
+              placeholder="5 км — 22:30, 10 км — 48:00, полумарафон — 1:50"
+              className="resize-none"
+              rows={2}
+              data-testid="input-personal-records"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Травмы и ограничения</label>
+            <Textarea
+              value={injuries}
+              onChange={(e) => setInjuries(e.target.value)}
+              placeholder="Колено беспокоит после длительных, проблемы с ахиллом..."
+              className="resize-none"
+              rows={2}
+              data-testid="input-injuries"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Предпочтения по тренировкам</label>
+            <Textarea
+              value={preferences}
+              onChange={(e) => setPreferences(e.target.value)}
+              placeholder="Люблю интервалы, не люблю длительные больше 2 часов, тренируюсь утром"
+              className="resize-none"
+              rows={2}
+              data-testid="input-preferences"
+            />
+          </div>
+
           <Button
             variant="outline"
-            onClick={() => updateProfileMutation.mutate({ sportTypes: selectedSports, goals })}
+            onClick={handleSaveProfile}
             disabled={updateProfileMutation.isPending}
             data-testid="button-save-profile"
           >

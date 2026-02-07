@@ -16,8 +16,23 @@ AI-powered training coach web application with Garmin Connect integration. Users
 - AI coach chat - describe workouts in natural language
 - Structured workout generation (running, cycling, swimming)
 - Push workouts directly to Garmin Connect / watches
+- Automatic workout scheduling to Garmin calendar (date extracted from conversation)
 - View recent Garmin activities
 - Dark/light theme toggle
+- Expanded athlete profile (fitness level, age, weekly volume, experience, injuries, PRs, preferences)
+- AI acts as experienced coach: analyzes Garmin data, gives recommendations, can disagree with unsafe requests
+
+## AI Coach Behavior
+- Analyzes last 10 Garmin activities for training load assessment
+- Uses full athlete profile (level, age, injuries, PRs) for personalized recommendations
+- Follows 80/20 rule (80% easy / 20% intense)
+- Will disagree with user on: excessive volume increases, daily intensity, unrealistic goals, ignoring injuries
+- Explains reasoning behind workout recommendations
+
+## Garmin Session Management
+- Sessions are health-checked before operations (getUserProfile ping)
+- Auto-reconnect from cached credentials on expired sessions
+- Retry logic on push/fetch failures with automatic reconnection
 
 ## Project Structure
 - `client/src/pages/` - Page components (auth, dashboard, coach, workouts, settings)
@@ -35,7 +50,7 @@ AI-powered training coach web application with Garmin Connect integration. Users
 - `POST /api/auth/login` - Login
 - `GET /api/auth/me` - Get current user
 - `POST /api/auth/logout` - Logout
-- `PATCH /api/auth/profile` - Update profile (sports, goals)
+- `PATCH /api/auth/profile` - Update profile (sports, goals, fitness level, age, weekly hours, injuries, PRs, preferences)
 - `POST /api/garmin/connect` - Connect Garmin account
 - `POST /api/garmin/disconnect` - Disconnect Garmin
 - `GET /api/garmin/activities` - Get recent Garmin activities

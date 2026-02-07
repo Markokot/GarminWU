@@ -1,4 +1,4 @@
-import type { User, Workout, ChatMessage, SportType } from "@shared/schema";
+import type { User, Workout, ChatMessage, SportType, FitnessLevel } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 import * as fs from "fs";
@@ -32,7 +32,7 @@ function saveJson(filePath: string, data: any) {
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: { username: string; password: string; sportTypes: SportType[]; goals: string }): Promise<User>;
+  createUser(user: { username: string; password: string; sportTypes: SportType[]; goals: string; fitnessLevel?: FitnessLevel }): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
   verifyPassword(user: User, password: string): Promise<boolean>;
 
@@ -81,7 +81,7 @@ export class FileStorage implements IStorage {
     return Array.from(this.users.values()).find((u) => u.username === username);
   }
 
-  async createUser(input: { username: string; password: string; sportTypes: SportType[]; goals: string }): Promise<User> {
+  async createUser(input: { username: string; password: string; sportTypes: SportType[]; goals: string; fitnessLevel?: FitnessLevel }): Promise<User> {
     const id = randomUUID();
     const hashedPassword = await bcrypt.hash(input.password, 10);
     const user: User = {
@@ -90,6 +90,7 @@ export class FileStorage implements IStorage {
       password: hashedPassword,
       sportTypes: input.sportTypes,
       goals: input.goals,
+      fitnessLevel: input.fitnessLevel,
       garminConnected: false,
     };
     this.users.set(id, user);

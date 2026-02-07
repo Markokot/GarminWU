@@ -65,6 +65,16 @@ export interface Workout {
   garminWorkoutId?: number;
 }
 
+export const fitnessLevels = ["beginner", "intermediate", "advanced", "elite"] as const;
+export type FitnessLevel = (typeof fitnessLevels)[number];
+
+export const fitnessLevelLabels: Record<FitnessLevel, string> = {
+  beginner: "Начинающий",
+  intermediate: "Средний",
+  advanced: "Продвинутый",
+  elite: "Элита",
+};
+
 export interface User {
   id: string;
   username: string;
@@ -73,6 +83,13 @@ export interface User {
   garminConnected: boolean;
   sportTypes: SportType[];
   goals: string;
+  fitnessLevel?: FitnessLevel;
+  age?: number;
+  weeklyHours?: number;
+  experienceYears?: number;
+  injuries?: string;
+  personalRecords?: string;
+  preferences?: string;
 }
 
 export interface ChatMessage {
@@ -106,6 +123,19 @@ export const registerSchema = z.object({
   password: z.string().min(4, "Минимум 4 символа"),
   sportTypes: z.array(z.enum(sportTypes)).min(1, "Выберите хотя бы один вид спорта"),
   goals: z.string().optional(),
+  fitnessLevel: z.enum(fitnessLevels).optional(),
+});
+
+export const profileSchema = z.object({
+  sportTypes: z.array(z.enum(sportTypes)).min(1, "Выберите хотя бы один вид спорта"),
+  goals: z.string().optional(),
+  fitnessLevel: z.enum(fitnessLevels).optional(),
+  age: z.number().min(10).max(100).optional().nullable(),
+  weeklyHours: z.number().min(0).max(40).optional().nullable(),
+  experienceYears: z.number().min(0).max(50).optional().nullable(),
+  injuries: z.string().optional(),
+  personalRecords: z.string().optional(),
+  preferences: z.string().optional(),
 });
 
 export const garminConnectSchema = z.object({

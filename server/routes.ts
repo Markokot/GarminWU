@@ -55,6 +55,7 @@ export async function registerRoutes(
         password: parsed.password,
         sportTypes: parsed.sportTypes,
         goals: parsed.goals || "",
+        fitnessLevel: parsed.fitnessLevel,
       });
       req.session.userId = user.id;
       const { password: _, ...safeUser } = user;
@@ -104,9 +105,18 @@ export async function registerRoutes(
 
   app.patch("/api/auth/profile", requireAuth, async (req, res) => {
     try {
+      const { profileSchema } = await import("@shared/schema");
+      const parsed = profileSchema.parse(req.body);
       const user = await storage.updateUser(req.session.userId!, {
-        sportTypes: req.body.sportTypes,
-        goals: req.body.goals,
+        sportTypes: parsed.sportTypes,
+        goals: parsed.goals || "",
+        fitnessLevel: parsed.fitnessLevel,
+        age: parsed.age ?? undefined,
+        weeklyHours: parsed.weeklyHours ?? undefined,
+        experienceYears: parsed.experienceYears ?? undefined,
+        injuries: parsed.injuries,
+        personalRecords: parsed.personalRecords,
+        preferences: parsed.preferences,
       });
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
       const { password: _, ...safeUser } = user;
@@ -258,7 +268,7 @@ export async function registerRoutes(
       try {
         if (user.garminConnected) {
           await ensureGarminSession(user.id, user);
-          activities = await getGarminActivities(user.id, 5);
+          activities = await getGarminActivities(user.id, 10);
         }
       } catch {}
 

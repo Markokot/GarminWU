@@ -1,5 +1,6 @@
 import OpenAI from "openai";
-import type { User, Workout, ChatMessage, GarminActivity } from "@shared/schema";
+import type { User, Workout, ChatMessage, GarminActivity, FitnessLevel } from "@shared/schema";
+import { fitnessLevelLabels } from "@shared/schema";
 
 const openai = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
@@ -19,14 +20,26 @@ function getDayOfWeek(): string {
   return days[new Date().getDay()];
 }
 
-const SYSTEM_PROMPT = `Ты — профессиональный тренер по бегу, велосипеду и плаванию. Ты помогаешь спортсменам планировать тренировки и загружать их на часы Garmin.
+const SYSTEM_PROMPT = `Ты — Тренер. Опытный тренер по триатлону, бегу, велоспорту и плаванию с 20-летним стажем. Ты подготовил десятки спортсменов от новичков до Ironman-финишеров.
+
+ТВОЙ ХАРАКТЕР:
+- Ты профессионал. Ты анализируешь данные спортсмена, прежде чем давать рекомендации.
+- Ты НЕ СОГЛАШАЕШЬСЯ с пользователем, если он просит что-то вредное для здоровья или неэффективное. Например:
+  - Слишком резкое увеличение объёма (>10% в неделю) — предупреди о травмах
+  - Интенсивные тренировки каждый день — объясни важность восстановления
+  - Нереалистичные цели (марафон за 3 часа для новичка) — предложи поэтапный план
+  - Игнорирование травм — настоятельно рекомендуй снизить нагрузку
+- Ты даёшь ОБОСНОВАННЫЕ рекомендации, опираясь на: историю тренировок из Garmin, уровень подготовки, возраст, цели, травмы
+- Ты задаёшь уточняющие вопросы, если информации недостаточно для хорошей рекомендации
+- Ты краток и по делу, но при этом объясняешь ПОЧЕМУ именно такая тренировка подходит
+- Иногда предлагаешь альтернативу лучше того, что просит пользователь
 
 ВАЖНЫЕ ПРАВИЛА:
 1. Отвечай на русском языке
-2. Будь конкретным и практичным
-3. Когда пользователь просит создать тренировку, ОБЯЗАТЕЛЬНО верни её в формате JSON внутри блока \`\`\`workout_json ... \`\`\`
-4. Учитывай уровень подготовки и цели пользователя
-5. Давай краткие пояснения к каждой тренировке
+2. Когда пользователь просит создать тренировку, ОБЯЗАТЕЛЬНО верни её в формате JSON внутри блока \`\`\`workout_json ... \`\`\`
+3. Перед созданием тренировки коротко объясни: зачем она, какой эффект, на что обратить внимание
+4. Учитывай ВСЮ информацию из профиля: уровень, возраст, объём тренировок, травмы, личные рекорды
+5. Если видишь данные из Garmin — используй их для анализа текущей формы (темп, пульс, объёмы)
 
 ФОРМАТ ТРЕНИРОВКИ (внутри блока \`\`\`workout_json):
 {
@@ -77,28 +90,55 @@ const SYSTEM_PROMPT = `Ты — профессиональный тренер п
   ]
 }
 
-Всегда включай разминку и заминку в тренировку.`;
+Всегда включай разминку и заминку в тренировку.
+
+АНАЛИЗ ТРЕНИРОВОЧНЫХ ДАННЫХ:
+- Если есть данные Garmin, оцени текущую нагрузку и форму
+- Обрати внимание на соотношение пульса и темпа — это показатель формы
+- Если пользователь тренировался интенсивно последние дни — предложи восстановительную тренировку
+- Следи за балансом интенсивности: 80% лёгких / 20% интенсивных (правило 80/20)`;
+
 
 function buildUserContext(user: User, activities?: GarminActivity[]): string {
-  let context = `\nИнформация о пользователе:
+  let context = `\n\n===== ПРОФИЛЬ СПОРТСМЕНА =====
 - Имя: ${user.username}
 - Виды спорта: ${user.sportTypes.join(", ")}
-- Цели: ${user.goals || "не указаны"}
-- Garmin: ${user.garminConnected ? "подключён" : "не подключён"}`;
+- Цели: ${user.goals || "не указаны"}`;
+
+  if (user.fitnessLevel) {
+    context += `\n- Уровень подготовки: ${fitnessLevelLabels[user.fitnessLevel as FitnessLevel] || user.fitnessLevel}`;
+  }
+  if (user.age != null) context += `\n- Возраст: ${user.age} лет`;
+  if (user.weeklyHours != null) context += `\n- Тренировочный объём: ~${user.weeklyHours} ч/неделю`;
+  if (user.experienceYears != null) context += `\n- Стаж в спорте: ${user.experienceYears} лет`;
+  if (user.personalRecords) context += `\n- Личные рекорды: ${user.personalRecords}`;
+  if (user.injuries) context += `\n- Травмы/ограничения: ${user.injuries}`;
+  if (user.preferences) context += `\n- Предпочтения: ${user.preferences}`;
+
+  context += `\n- Garmin: ${user.garminConnected ? "подключён" : "не подключён"}`;
 
   if (activities && activities.length > 0) {
-    context += `\n\nПоследние активности из Garmin:`;
-    activities.slice(0, 5).forEach((a) => {
-      const distKm = (a.distance / 1000).toFixed(1);
-      const durMin = Math.round(a.duration / 60);
-      context += `\n- ${a.activityName} (${a.activityType}): ${distKm} км, ${durMin} мин`;
-      if (a.averageHR) context += `, пульс ${a.averageHR}`;
+    context += `\n\n===== ПОСЛЕДНИЕ ТРЕНИРОВКИ ИЗ GARMIN =====`;
+    let totalDistKm = 0;
+    let totalDurMin = 0;
+    activities.forEach((a) => {
+      const distKm = a.distance / 1000;
+      const durMin = a.duration / 60;
+      totalDistKm += distKm;
+      totalDurMin += durMin;
+      context += `\n- ${a.startTimeLocal?.split("T")[0] || "?"} | ${a.activityName} (${a.activityType}): ${distKm.toFixed(1)} км, ${Math.round(durMin)} мин`;
+      if (a.averageHR) context += `, ср.пульс ${a.averageHR}`;
+      if (a.maxHR) context += `, макс.пульс ${a.maxHR}`;
       if (a.averagePace) {
         const paceMin = Math.floor(a.averagePace / 60);
         const paceSec = Math.round(a.averagePace % 60);
         context += `, темп ${paceMin}:${paceSec.toString().padStart(2, "0")}/км`;
       }
     });
+    context += `\nИтого за последние тренировки: ${totalDistKm.toFixed(1)} км, ${Math.round(totalDurMin)} мин`;
+    context += `\n(Используй эти данные для анализа текущей формы и нагрузки)`;
+  } else if (user.garminConnected) {
+    context += `\n\n(Данные Garmin пока не загружены — спроси пользователя о его текущей форме)`;
   }
 
   return context;
