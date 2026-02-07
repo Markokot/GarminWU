@@ -7,6 +7,7 @@ import { loginSchema, registerSchema, garminConnectSchema, createWorkoutSchema, 
 import { z } from "zod";
 import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected, ensureGarminSession } from "./garmin";
 import { chat } from "./ai";
+import { encrypt, decrypt } from "./crypto";
 
 const MemStore = MemoryStore(session);
 
@@ -58,7 +59,7 @@ export async function registerRoutes(
         fitnessLevel: parsed.fitnessLevel,
       });
       req.session.userId = user.id;
-      const { password: _, ...safeUser } = user;
+      const { password: _, garminPassword: __, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Ошибка регистрации" });
@@ -77,7 +78,19 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Неверное имя пользователя или пароль" });
       }
       req.session.userId = user.id;
-      const { password: _, ...safeUser } = user;
+
+      if (user.garminConnected && user.garminEmail && user.garminPassword) {
+        try {
+          disconnectGarmin(user.id);
+          const garminPass = decrypt(user.garminPassword);
+          await connectGarmin(user.id, user.garminEmail, garminPass);
+          console.log(`[Login] Garmin reconnected for user ${user.id}`);
+        } catch (err: any) {
+          console.error(`[Login] Garmin reconnect failed: ${err.message}`);
+        }
+      }
+
+      const { password: _, garminPassword: __, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Ошибка входа" });
@@ -92,8 +105,19 @@ export async function registerRoutes(
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
+
+    if (user.garminConnected && user.garminEmail && user.garminPassword && !isGarminConnected(user.id)) {
+      try {
+        const garminPass = decrypt(user.garminPassword);
+        await connectGarmin(user.id, user.garminEmail, garminPass);
+        console.log(`[Auth/me] Garmin reconnected for user ${user.id}`);
+      } catch (err: any) {
+        console.error(`[Auth/me] Garmin reconnect failed: ${err.message}`);
+      }
+    }
+
     const garminActive = isGarminConnected(user.id);
-    const { password: _, ...safeUser } = user;
+    const { password: _, garminPassword: __, ...safeUser } = user;
     res.json({ ...safeUser, garminConnected: user.garminConnected && garminActive ? true : user.garminConnected });
   });
 
@@ -119,7 +143,7 @@ export async function registerRoutes(
         preferences: parsed.preferences,
       });
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
-      const { password: _, ...safeUser } = user;
+      const { password: _, garminPassword: __, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -133,10 +157,11 @@ export async function registerRoutes(
       await connectGarmin(req.session.userId!, parsed.garminEmail, parsed.garminPassword);
       const user = await storage.updateUser(req.session.userId!, {
         garminEmail: parsed.garminEmail,
+        garminPassword: encrypt(parsed.garminPassword),
         garminConnected: true,
       });
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
-      const { password: _, ...safeUser } = user;
+      const { password: _, garminPassword: __, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -149,9 +174,10 @@ export async function registerRoutes(
       const user = await storage.updateUser(req.session.userId!, {
         garminConnected: false,
         garminEmail: undefined,
+        garminPassword: undefined,
       });
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
-      const { password: _, ...safeUser } = user;
+      const { password: _, garminPassword: __, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message });

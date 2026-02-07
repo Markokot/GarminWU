@@ -80,6 +80,7 @@ export interface User {
   username: string;
   password: string;
   garminEmail?: string;
+  garminPassword?: string;
   garminConnected: boolean;
   sportTypes: SportType[];
   goals: string;
