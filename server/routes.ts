@@ -234,7 +234,7 @@ export async function registerRoutes(
   });
 
   app.delete("/api/workouts/:id", requireAuth, async (req, res) => {
-    const result = await storage.deleteWorkout(req.params.id);
+    const result = await storage.deleteWorkout(req.params.id as string);
     if (!result) return res.status(404).json({ message: "Тренировка не найдена" });
     res.json({ ok: true });
   });
