@@ -3,11 +3,17 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
-const requiredEnvVars = ["SESSION_SECRET", "DEEPSEEK_API_KEY"];
+const requiredEnvVars = ["SESSION_SECRET"];
+const optionalEnvVars = ["DEEPSEEK_API_KEY"];
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
-    console.error(`ОШИБКА: Переменная окружения ${envVar} не задана. Приложение не может запуститься.`);
+    console.error(`ERROR: Environment variable ${envVar} is not set. Application cannot start.`);
     process.exit(1);
+  }
+}
+for (const envVar of optionalEnvVars) {
+  if (!process.env[envVar]) {
+    console.warn(`WARNING: Environment variable ${envVar} is not set. Some features may be unavailable.`);
   }
 }
 

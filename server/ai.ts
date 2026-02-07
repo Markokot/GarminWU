@@ -2,10 +2,15 @@ import OpenAI from "openai";
 import type { User, Workout, ChatMessage, GarminActivity, FitnessLevel } from "@shared/schema";
 import { fitnessLevelLabels } from "@shared/schema";
 
-const openai = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY,
-  baseURL: "https://api.deepseek.com",
-});
+function getOpenAIClient(): OpenAI {
+  if (!process.env.DEEPSEEK_API_KEY) {
+    throw new Error("DEEPSEEK_API_KEY is not set. AI features are unavailable.");
+  }
+  return new OpenAI({
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseURL: "https://api.deepseek.com",
+  });
+}
 
 function getTodayDateString(): string {
   const now = new Date();
@@ -227,6 +232,7 @@ export async function chat(
   messages.push({ role: "user", content: userMessage });
 
   try {
+    const openai = getOpenAIClient();
     const completion = await openai.chat.completions.create({
       model: "deepseek-chat",
       messages,
