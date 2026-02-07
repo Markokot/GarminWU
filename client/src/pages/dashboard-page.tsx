@@ -173,14 +173,8 @@ export default function DashboardPage() {
       )}
 
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4">
           <h2 className="text-lg font-semibold">Мои тренировки</h2>
-          <Link href="/workouts">
-            <Button variant="ghost" size="sm" data-testid="button-view-all-workouts">
-              Все тренировки
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-          </Link>
         </div>
         {workoutsLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
