@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { sportTypes, sportTypeLabels } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
 import { Watch, Activity, Zap } from "lucide-react";
 
 export default function AuthPage() {
@@ -46,6 +46,7 @@ export default function AuthPage() {
     },
     onSuccess: (data) => {
       login(data);
+      queryClient.prefetchQuery({ queryKey: ["/api/workouts"], queryFn: getQueryFn({ on401: "throw" }) });
     },
     onError: (error: Error) => {
       if (error.message !== "Заполните все поля") {
@@ -75,6 +76,7 @@ export default function AuthPage() {
     },
     onSuccess: (data) => {
       login(data);
+      queryClient.prefetchQuery({ queryKey: ["/api/workouts"], queryFn: getQueryFn({ on401: "throw" }) });
     },
     onError: (error: Error) => {
       if (error.message !== "Заполните все поля") {
