@@ -153,5 +153,236 @@
       "sentToGarmin": false
     },
     "id": "1d796b95-bf19-48a5-8a7a-cfcbf1093cf2"
+  },
+  {
+    "userId": "f9069777-2b8a-4e79-bbc4-f7c7746fe888",
+    "role": "user",
+    "content": "Давай сделаем интервальную тренировку на сегодня",
+    "timestamp": "2026-02-07T11:32:32.967Z",
+    "id": "8c245c76-0127-4762-a085-b0acb0e8888d"
+  },
+  {
+    "userId": "f9069777-2b8a-4e79-bbc4-f7c7746fe888",
+    "role": "assistant",
+    "content": "Понял, Андрей! Создаю для вас интервальную тренировку на **сегодня (2026-02-07)**.\n\nУчитывая, что у вас уже была восстановительная пробежка, а теперь запланированы интервалы, важно не перегружаться. Предлагаю более короткую, но интенсивную сессию для развития скорости и мощности: **Пирамида 400-600-800-600-400 метров**.\n\n**Почему эта тренировка хороша сегодня:**\n*   **Короткие интервалы:** Меньше нагрузка на суставы и мышцы после вчерашнего дня.\n*   **Пирамида:** Позволяет постепенно включиться в работу (400м), достичь пика нагрузки (800м) и плавно сойти на нет.\n*   **Фокус на технике:** На коротких отрезках легче концентрироваться на частоте шагов и работе рук.\n\n**Ключевые параметры:**\n*   **Темп на интервалах:** **4:40 - 5:00 мин/км** (280-300 сек/км). Чуть быстрее, чем на длинных 800м.\n*   **Отдых:** Активный, ровно **90 секунд** между всеми интервалами.\n\nВот ваша тренировка в формате для Garmin.\n\n\n\n**Совет по выполнению:**\n*   **Разминка (10 мин):** Сделайте её полноценной, включив 2-3 коротких ускорения по 20 секунд в конце, чтобы подготовить мышцы к скорости.\n*   **Во время интервалов:** Первый 400-метровый отрезок используйте для поиска целевого темпа, не выкладывайтесь на 100%.\n*   **Заминка (10 мин):** Обязательна для вывода молочной кислоты.\n\n**Итого:** ~40 минут чистого времени + разминка/заминка. Эффективная и не перегружающая тренировка на сегодня. Удачи",
+    "timestamp": "2026-02-07T11:33:14.230Z",
+    "workoutJson": {
+      "id": "",
+      "userId": "",
+      "name": "Интервалы-пирамида (сегодня)",
+      "description": "Короткая интенсивная сессия: 400-600-800-600-400м. Темп 4:40-5:00/км. Отдых 90с.",
+      "sportType": "running",
+      "scheduledDate": "2026-02-07",
+      "steps": [
+        {
+          "stepId": 1,
+          "stepOrder": 1,
+          "stepType": "warmup",
+          "durationType": "time",
+          "durationValue": 600,
+          "targetType": "no.target",
+          "targetValueLow": null,
+          "targetValueHigh": null,
+          "intensity": "active"
+        },
+        {
+          "stepId": 2,
+          "stepOrder": 2,
+          "stepType": "interval",
+          "durationType": "distance",
+          "durationValue": 400,
+          "targetType": "pace.zone",
+          "targetValueLow": 280,
+          "targetValueHigh": 300,
+          "intensity": "active"
+        },
+        {
+          "stepId": 3,
+          "stepOrder": 3,
+          "stepType": "recovery",
+          "durationType": "time",
+          "durationValue": 90,
+          "targetType": "no.target",
+          "targetValueLow": null,
+          "targetValueHigh": null,
+          "intensity": "resting"
+        },
+        {
+          "stepId": 4,
+          "stepOrder": 4,
+          "stepType": "interval",
+          "durationType": "distance",
+          "durationValue": 600,
+          "targetType": "pace.zone",
+          "targetValueLow": 280,
+          "targetValueHigh": 300,
+          "intensity": "active"
+        },
+        {
+          "stepId": 5,
+          "stepOrder": 5,
+          "stepType": "recovery",
+          "durationType": "time",
+          "durationValue": 90,
+          "targetType": "no.target",
+          "targetValueLow": null,
+          "targetValueHigh": null,
+          "intensity": "resting"
+        },
+        {
+          "stepId": 6,
+          "stepOrder": 6,
+          "stepType": "interval",
+          "durationType": "distance",
+          "durationValue": 800,
+          "targetType": "pace.zone",
+          "targetValueLow": 280,
+          "targetValueHigh": 300,
+          "intensity": "active"
+        },
+        {
+          "stepId": 7,
+          "stepOrder": 7,
+          "stepType": "recovery",
+          "durationType": "time",
+          "durationValue": 90,
+          "targetType": "no.target",
+          "targetValueLow": null,
+          "targetValueHigh": null,
+          "intensity": "resting"
+        },
+        {
+          "stepId": 8,
+          "stepOrder": 8,
+          "stepType": "interval",
+          "durationType": "distance",
+          "durationValue": 600,
+          "targetType": "pace.zone",
+          "targetValueLow": 280,
+          "targetValueHigh": 300,
+          "intensity": "active"
+        },
+        {
+          "stepId": 9,
+          "stepOrder": 9,
+          "stepType": "recovery",
+          "durationType": "time",
+          "durationValue": 90,
+          "targetType": "no.target",
+          "targetValueLow": null,
+          "targetValueHigh": null,
+          "intensity": "resting"
+        },
+        {
+          "stepId": 10,
+          "stepOrder": 10,
+          "stepType": "interval",
+          "durationType": "distance",
+          "durationValue": 400,
+          "targetType": "pace.zone",
+          "targetValueLow": 280,
+          "targetValueHigh": 300,
+          "intensity": "active"
+        },
+        {
+          "stepId": 11,
+          "stepOrder": 11,
+          "stepType": "cooldown",
+          "durationType": "time",
+          "durationValue": 600,
+          "targetType": "no.target",
+          "targetValueLow": null,
+          "targetValueHigh": null,
+          "intensity": "active"
+        }
+      ],
+      "createdAt": "2026-02-07T11:33:14.230Z",
+      "sentToGarmin": false
+    },
+    "id": "81ccc403-0d96-4d45-976a-01af20acc60b"
+  },
+  {
+    "userId": "f9069777-2b8a-4e79-bbc4-f7c7746fe888",
+    "role": "user",
+    "content": "давай что-ниубдь более легкое на сегодня сделаем",
+    "timestamp": "2026-02-07T11:38:00.094Z",
+    "id": "78ecf4d7-59a2-4b0b-8d9c-8e3001e0192a"
+  },
+  {
+    "userId": "f9069777-2b8a-4e79-bbc4-f7c7746fe888",
+    "role": "assistant",
+    "content": "Правильное решение, Андрей! После вчерашней тренировки важно дать организму восстановиться. Создам для вас **лёгкую восстановительную тренировку с элементами фартлека** на сегодня. Она поможет поддерживать тонус, улучшит кровообращение и поднимет настроение без серьёзной нагрузки.\n\n**Суть тренировки:** Лёгкий бег с 5 короткими ускорениями по 30 секунд. Ускорения выполняются не на максимуме, а в комфортно-быстром темпе (примерно на 20-30 секунд/км быстрее вашего обычного лёгкого темпа), чтобы \"встряхнуть\" мышцы и сердечно-сосудистую систему.\n\n\n\n**Как выполнять:**\n1.  **Разминка (10 мин):** Спокойный лёгкий бег.\n2.  **Основной блок (5 повторов):**\n    *   **Ускорение (30 сек):** Бегите в темпе **~5:20-5:30/км**. Это не спринт! Ощущение должно быть \"быстро, но под контролем\".\n    *   **Восстановление (2,5 мин):** Возвращайтесь к вашему обычному лёгкому восстановительному темпу (около 6:30-7:00/км).\n3.  **Заминка (10 мин):** Спокойный бег.\n\n**Итого:** ~35 минут. Идеальная активность для активного восстановления. Слушайте своё тело, если чувствуете усталость — можно сократить количество ускорений до 3-4 или сделать их короче. Главное — удовольствие от движения!",
+    "timestamp": "2026-02-07T11:38:28.195Z",
+    "workoutJson": {
+      "id": "",
+      "userId": "",
+      "name": "Лёгкий фартлек на восстановление",
+      "description": "Восстановительный бег с короткими ускорениями. Ускорения выполняются в комфортно-быстром темпе (~5:20-5:30/км), без перенапряжения.",
+      "sportType": "running",
+      "scheduledDate": "2026-02-07",
+      "steps": [
+        {
+          "stepId": 1,
+          "stepOrder": 1,
+          "stepType": "warmup",
+          "durationType": "time",
+          "durationValue": 600,
+          "targetType": "no.target",
+          "targetValueLow": null,
+          "targetValueHigh": null,
+          "intensity": "active"
+        },
+        {
+          "stepId": 2,
+          "stepOrder": 2,
+          "stepType": "repeat",
+          "durationType": "lap.button",
+          "durationValue": null,
+          "targetType": "no.target",
+          "targetValueLow": null,
+          "targetValueHigh": null,
+          "intensity": "active",
+          "repeatCount": 5,
+          "childSteps": [
+            {
+              "stepId": 21,
+              "stepOrder": 1,
+              "stepType": "interval",
+              "durationType": "time",
+              "durationValue": 30,
+              "targetType": "pace.zone",
+              "targetValueLow": 320,
+              "targetValueHigh": 330,
+              "intensity": "active"
+            },
+            {
+              "stepId": 22,
+              "stepOrder": 2,
+              "stepType": "recovery",
+              "durationType": "time",
+              "durationValue": 150,
+              "targetType": "no.target",
+              "targetValueLow": null,
+              "targetValueHigh": null,
+              "intensity": "active"
+            }
+          ]
+        },
+        {
+          "stepId": 3,
+          "stepOrder": 3,
+          "stepType": "cooldown",
+          "durationType": "time",
+          "durationValue": 600,
+          "targetType": "no.target",
+          "targetValueLow": null,
+          "targetValueHigh": null,
+          "intensity": "active"
+        }
+      ],
+      "createdAt": "2026-02-07T11:38:28.195Z",
+      "sentToGarmin": false
+    },
+    "id": "9630a147-5824-400b-9d52-53698bc7d728"
   }
 ]

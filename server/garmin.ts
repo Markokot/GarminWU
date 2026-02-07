@@ -32,19 +32,36 @@ export function isGarminConnected(userId: string): boolean {
   return garminSessions.has(userId);
 }
 
-export async function ensureGarminSession(userId: string, user: User): Promise<void> {
-  if (garminSessions.has(userId)) return;
-
-  const creds = garminCredentials.get(userId);
-  if (creds) {
-    console.log(`[Garmin] Re-authenticating from cached credentials for user ${userId}`);
-    try {
-      await connectGarmin(userId, creds.email, creds.password);
-      return;
-    } catch (err: any) {
-      console.error(`[Garmin] Re-auth from cache failed: ${err.message}`);
-    }
+async function isSessionAlive(userId: string): Promise<boolean> {
+  const client = garminSessions.get(userId);
+  if (!client) return false;
+  try {
+    await client.getUserProfile();
+    return true;
+  } catch {
+    console.log(`[Garmin] Session expired for user ${userId}`);
+    garminSessions.delete(userId);
+    return false;
   }
+}
+
+async function reconnectFromCredentials(userId: string): Promise<boolean> {
+  const creds = garminCredentials.get(userId);
+  if (!creds) return false;
+  console.log(`[Garmin] Re-authenticating from cached credentials for user ${userId}`);
+  try {
+    await connectGarmin(userId, creds.email, creds.password);
+    return true;
+  } catch (err: any) {
+    console.error(`[Garmin] Re-auth from cache failed: ${err.message}`);
+    return false;
+  }
+}
+
+export async function ensureGarminSession(userId: string, user: User): Promise<void> {
+  if (await isSessionAlive(userId)) return;
+
+  if (await reconnectFromCredentials(userId)) return;
 
   if (user.garminEmail) {
     throw new Error("Сессия Garmin истекла. Переподключите аккаунт в настройках.");
@@ -60,8 +77,8 @@ export async function getGarminActivities(userId: string, count: number = 10) {
   const client = garminSessions.get(userId);
   if (!client) throw new Error("Garmin не подключён");
 
-  try {
-    const activities = await client.getActivities(0, count);
+  const fetchActivities = async (c: any) => {
+    const activities = await c.getActivities(0, count);
     return (activities || []).map((a: any) => ({
       activityId: a.activityId,
       activityName: a.activityName || "Тренировка",
@@ -73,9 +90,18 @@ export async function getGarminActivities(userId: string, count: number = 10) {
       maxHR: a.maxHR || null,
       averagePace: a.averageSpeed ? (1000 / a.averageSpeed) : null,
     }));
+  };
+
+  try {
+    return await fetchActivities(client);
   } catch (error: any) {
-    console.error("[Garmin] Error fetching activities:", error.message);
-    throw new Error("Ошибка получения данных из Garmin");
+    console.log("[Garmin] Activities fetch failed, attempting reconnect:", error.message);
+    garminSessions.delete(userId);
+    if (await reconnectFromCredentials(userId)) {
+      const newClient = garminSessions.get(userId);
+      if (newClient) return await fetchActivities(newClient);
+    }
+    throw new Error("Ошибка получения данных из Garmin. Переподключите аккаунт в настройках.");
   }
 }
 
@@ -239,6 +265,38 @@ export function convertToGarminWorkout(workout: { name: string; description?: st
   };
 }
 
+async function doPushAndSchedule(
+  client: any,
+  garminWorkout: any,
+  workout: { scheduledDate?: string | null }
+): Promise<{ workoutId: number | null; scheduled: boolean; scheduledDate?: string }> {
+  const result = await client.addWorkout(garminWorkout);
+  const workoutId = result?.workoutId || null;
+  console.log("[Garmin] Push workout result, workoutId:", workoutId);
+
+  let scheduled = false;
+  let scheduledDate: string | undefined;
+
+  if (workoutId && workout.scheduledDate) {
+    try {
+      const dateStr = workout.scheduledDate;
+      const scheduleDate = new Date(dateStr + "T12:00:00");
+      console.log(`[Garmin] Scheduling workout ${workoutId} for ${dateStr}`);
+      await client.scheduleWorkout(
+        { workoutId: String(workoutId) },
+        scheduleDate
+      );
+      scheduled = true;
+      scheduledDate = dateStr;
+      console.log(`[Garmin] Workout ${workoutId} scheduled for ${dateStr}`);
+    } catch (schedErr: any) {
+      console.error("[Garmin] Schedule error:", schedErr.message);
+    }
+  }
+
+  return { workoutId, scheduled, scheduledDate };
+}
+
 export async function pushWorkoutToGarmin(
   userId: string,
   workout: { name: string; description?: string; sportType: string; steps: WorkoutStep[]; scheduledDate?: string | null }
@@ -251,43 +309,20 @@ export async function pushWorkoutToGarmin(
   console.log("[Garmin] Pushing workout:", JSON.stringify(garminWorkout, null, 2));
 
   try {
-    const result = await client.addWorkout(garminWorkout);
-    const workoutId = result?.workoutId || null;
-    console.log("[Garmin] Push workout result, workoutId:", workoutId);
-
-    let scheduled = false;
-    let scheduledDate: string | undefined;
-
-    if (workoutId && workout.scheduledDate) {
-      try {
-        const dateStr = workout.scheduledDate;
-        const scheduleDate = new Date(dateStr + "T12:00:00");
-        console.log(`[Garmin] Scheduling workout ${workoutId} for ${dateStr}`);
-        await client.scheduleWorkout(
-          { workoutId: String(workoutId) },
-          scheduleDate
-        );
-        scheduled = true;
-        scheduledDate = dateStr;
-        console.log(`[Garmin] Workout ${workoutId} scheduled for ${dateStr}`);
-      } catch (schedErr: any) {
-        console.error("[Garmin] Schedule error:", schedErr.message);
+    return await doPushAndSchedule(client, garminWorkout, workout);
+  } catch (error: any) {
+    console.log("[Garmin] Push failed, attempting reconnect and retry:", error.message);
+    garminSessions.delete(userId);
+    if (await reconnectFromCredentials(userId)) {
+      const newClient = garminSessions.get(userId);
+      if (newClient) {
+        try {
+          return await doPushAndSchedule(newClient, garminWorkout, workout);
+        } catch (retryErr: any) {
+          console.error("[Garmin] Retry after reconnect also failed:", retryErr.message);
+        }
       }
     }
-
-    return { workoutId, scheduled, scheduledDate };
-  } catch (error: any) {
-    console.error("[Garmin] Push workout error:", error.message);
-    if (error.response) {
-      console.error("[Garmin] Response status:", error.response?.status);
-      try {
-        const body = typeof error.response?.data === "string" ? error.response.data : JSON.stringify(error.response?.data);
-        console.error("[Garmin] Response body:", body?.substring(0, 1000));
-      } catch {}
-    }
-    if (error.data) {
-      console.error("[Garmin] Error data:", typeof error.data === "string" ? error.data.substring(0, 500) : JSON.stringify(error.data));
-    }
-    throw new Error("Ошибка при отправке тренировки в Garmin Connect: " + (error.message || "Unknown error"));
+    throw new Error("Ошибка при отправке тренировки в Garmin Connect. Попробуйте переподключить аккаунт в настройках.");
   }
 }
