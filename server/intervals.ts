@@ -3,7 +3,7 @@ import type { Workout } from "@shared/schema";
 const INTERVALS_API = "https://intervals.icu/api/v1";
 
 function authHeader(apiKey: string): string {
-  return "Basic " + Buffer.from(apiKey + ":").toString("base64");
+  return "Basic " + Buffer.from("API_KEY:" + apiKey).toString("base64");
 }
 
 const sportTypeMap: Record<string, string> = {
