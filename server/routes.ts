@@ -285,12 +285,14 @@ export async function registerRoutes(
         });
       }
 
-      res.json({
+      const pushResponse = {
         success: true,
         eventId: result.eventId,
         scheduled: result.scheduled,
         scheduledDate: result.scheduledDate,
-      });
+      };
+      console.log("[Intervals] Push response:", JSON.stringify(pushResponse));
+      res.json(pushResponse);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Некорректный формат тренировки: " + error.errors.map((e) => e.message).join(", ") });
