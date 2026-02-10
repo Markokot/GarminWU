@@ -174,7 +174,8 @@ export default function CoachPage() {
     },
     onSuccess: (data: any) => {
       if (data.scheduled && data.scheduledDate) {
-        const dateStr = new Date(data.scheduledDate + "T12:00:00").toLocaleDateString("ru-RU", {
+        const raw = String(data.scheduledDate).split("T")[0];
+        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString("ru-RU", {
           day: "numeric",
           month: "long",
           weekday: "long",
@@ -197,7 +198,8 @@ export default function CoachPage() {
     },
     onSuccess: (data: any) => {
       if (data.scheduled && data.scheduledDate) {
-        const dateStr = new Date(data.scheduledDate + "T12:00:00").toLocaleDateString("ru-RU", {
+        const raw = String(data.scheduledDate).split("T")[0];
+        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString("ru-RU", {
           day: "numeric",
           month: "long",
           weekday: "long",
