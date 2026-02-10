@@ -91,6 +91,45 @@ export async function pushWorkoutToIntervals(
   };
 }
 
+function formatDuration(durationType: string, durationValue: number | null): string {
+  if (!durationValue) return "";
+  if (durationType === "time") {
+    const m = Math.floor(durationValue / 60);
+    const s = durationValue % 60;
+    if (s === 0) return `${m}m`;
+    return `${m}m${s}`;
+  } else if (durationType === "distance") {
+    if (durationValue >= 1000) {
+      const km = durationValue / 1000;
+      return km % 1 === 0 ? `${km}km` : `${km.toFixed(1)}km`;
+    }
+    return `${durationValue}m`;
+  }
+  return "";
+}
+
+function formatTarget(step: { targetType: string; targetValueLow: number | null; targetValueHigh: number | null }): string {
+  if (step.targetType === "no.target" || !step.targetValueLow || !step.targetValueHigh) return "";
+  if (step.targetType === "heart.rate.zone") {
+    return ` ${step.targetValueLow}-${step.targetValueHigh}bpm`;
+  } else if (step.targetType === "pace.zone") {
+    const lo = `${Math.floor(step.targetValueLow / 60)}:${(step.targetValueLow % 60).toString().padStart(2, "0")}`;
+    const hi = `${Math.floor(step.targetValueHigh / 60)}:${(step.targetValueHigh % 60).toString().padStart(2, "0")}`;
+    return ` ${lo}-${hi}/km`;
+  } else if (step.targetType === "power.zone") {
+    return ` ${step.targetValueLow}-${step.targetValueHigh}w`;
+  } else if (step.targetType === "cadence") {
+    return ` ${step.targetValueLow}-${step.targetValueHigh}rpm`;
+  }
+  return "";
+}
+
+function buildStepLine(step: { durationType: string; durationValue: number | null; targetType: string; targetValueLow: number | null; targetValueHigh: number | null }): string {
+  const dur = formatDuration(step.durationType, step.durationValue);
+  const target = formatTarget(step);
+  return `- ${dur}${target}`.trim();
+}
+
 function buildWorkoutDescription(workout: Workout): string {
   const lines: string[] = [];
 
@@ -99,45 +138,30 @@ function buildWorkoutDescription(workout: Workout): string {
     lines.push("");
   }
 
-  lines.push("Структура:");
   for (const step of workout.steps) {
-    let line = `- ${step.stepType}`;
-
-    if (step.durationValue) {
-      if (step.durationType === "time") {
-        const m = Math.floor(step.durationValue / 60);
-        const s = step.durationValue % 60;
-        line += ` ${m}:${s.toString().padStart(2, "0")}`;
-      } else if (step.durationType === "distance") {
-        line += step.durationValue >= 1000
-          ? ` ${(step.durationValue / 1000).toFixed(1)}км`
-          : ` ${step.durationValue}м`;
+    if (step.stepType === "warmup") {
+      lines.push("Warmup");
+      lines.push(buildStepLine(step));
+    } else if (step.stepType === "cooldown") {
+      lines.push("Cooldown");
+      lines.push(buildStepLine(step));
+    } else if (step.stepType === "repeat" && step.repeatCount && step.childSteps) {
+      lines.push(`${step.repeatCount}x`);
+      for (const child of step.childSteps) {
+        if (child.stepType === "recovery") {
+          const dur = formatDuration(child.durationType, child.durationValue);
+          lines.push(`- ${dur} recovery`);
+        } else {
+          lines.push(buildStepLine(child));
+        }
       }
+    } else if (step.stepType === "recovery" || step.stepType === "rest") {
+      const dur = formatDuration(step.durationType, step.durationValue);
+      lines.push(`- ${dur} recovery`);
+    } else {
+      lines.push(buildStepLine(step));
     }
-
-    if (step.targetType !== "no.target" && step.targetValueLow && step.targetValueHigh) {
-      if (step.targetType === "heart.rate.zone") {
-        line += ` (пульс ${step.targetValueLow}-${step.targetValueHigh})`;
-      } else if (step.targetType === "pace.zone") {
-        const lo = `${Math.floor(step.targetValueLow / 60)}:${(step.targetValueLow % 60).toString().padStart(2, "0")}`;
-        const hi = `${Math.floor(step.targetValueHigh / 60)}:${(step.targetValueHigh % 60).toString().padStart(2, "0")}`;
-        line += ` (темп ${lo}-${hi})`;
-      } else if (step.targetType === "power.zone") {
-        line += ` (мощность ${step.targetValueLow}-${step.targetValueHigh}W)`;
-      } else if (step.targetType === "cadence") {
-        line += ` (каденс ${step.targetValueLow}-${step.targetValueHigh})`;
-      }
-    }
-
-    if (step.stepType === "repeat" && step.repeatCount) {
-      line += ` x${step.repeatCount}`;
-    }
-
-    lines.push(line);
   }
-
-  lines.push("");
-  lines.push("Создано в GarminCoach AI");
 
   return lines.join("\n");
 }
