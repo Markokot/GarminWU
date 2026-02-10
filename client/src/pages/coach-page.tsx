@@ -20,18 +20,23 @@ import {
   Loader2,
   Sparkles,
   CalendarDays,
+  BarChart3,
 } from "lucide-react";
 
 function formatTime(ts: string) {
   return new Date(ts).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-function WorkoutPreview({ workout, onSave, onPushToGarmin, saving, pushing }: {
+function WorkoutPreview({ workout, onSave, onPushToGarmin, onPushToIntervals, saving, pushing, pushingIntervals, showGarmin, showIntervals }: {
   workout: Workout;
   onSave: () => void;
   onPushToGarmin: () => void;
+  onPushToIntervals: () => void;
   saving: boolean;
   pushing: boolean;
+  pushingIntervals: boolean;
+  showGarmin: boolean;
+  showIntervals: boolean;
 }) {
   return (
     <Card className="mt-3">
@@ -98,10 +103,18 @@ function WorkoutPreview({ workout, onSave, onPushToGarmin, saving, pushing }: {
             {saving ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Dumbbell className="w-3 h-3 mr-1" />}
             Сохранить
           </Button>
-          <Button size="sm" onClick={onPushToGarmin} disabled={pushing} data-testid="button-push-garmin">
-            {pushing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Watch className="w-3 h-3 mr-1" />}
-            На часы
-          </Button>
+          {showGarmin && (
+            <Button size="sm" onClick={onPushToGarmin} disabled={pushing} data-testid="button-push-garmin">
+              {pushing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Watch className="w-3 h-3 mr-1" />}
+              Garmin
+            </Button>
+          )}
+          {showIntervals && (
+            <Button size="sm" variant="secondary" onClick={onPushToIntervals} disabled={pushingIntervals} data-testid="button-push-intervals">
+              {pushingIntervals ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <BarChart3 className="w-3 h-3 mr-1" />}
+              Intervals
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -174,6 +187,29 @@ export default function CoachPage() {
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка отправки", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const pushIntervalsMutation = useMutation({
+    mutationFn: async (workout: Workout & { scheduledDate?: string | null }) => {
+      const res = await apiRequest("POST", "/api/intervals/push-workout", workout);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.scheduled && data.scheduledDate) {
+        const dateStr = new Date(data.scheduledDate + "T12:00:00").toLocaleDateString("ru-RU", {
+          day: "numeric",
+          month: "long",
+          weekday: "long",
+        });
+        toast({ title: "Тренировка отправлена в Intervals.icu", description: `Запланирована на ${dateStr}` });
+      } else {
+        toast({ title: "Тренировка отправлена в Intervals.icu" });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/workouts"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка отправки в Intervals.icu", description: error.message, variant: "destructive" });
     },
   });
 
@@ -285,8 +321,12 @@ export default function CoachPage() {
                           workout={msg.workoutJson}
                           onSave={() => saveMutation.mutate(msg.workoutJson!)}
                           onPushToGarmin={() => pushMutation.mutate(msg.workoutJson!)}
+                          onPushToIntervals={() => pushIntervalsMutation.mutate(msg.workoutJson!)}
                           saving={saveMutation.isPending}
                           pushing={pushMutation.isPending}
+                          pushingIntervals={pushIntervalsMutation.isPending}
+                          showGarmin={!!user?.garminConnected}
+                          showIntervals={!!user?.intervalsConnected}
                         />
                       )}
                     </>

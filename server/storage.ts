@@ -38,7 +38,7 @@ export interface IStorage {
 
   getWorkouts(userId: string): Promise<Workout[]>;
   getWorkout(id: string): Promise<Workout | undefined>;
-  createWorkout(workout: Omit<Workout, "id" | "createdAt" | "sentToGarmin">): Promise<Workout>;
+  createWorkout(workout: Omit<Workout, "id" | "createdAt" | "sentToGarmin" | "sentToIntervals">): Promise<Workout>;
   updateWorkout(id: string, updates: Partial<Workout>): Promise<Workout | undefined>;
   deleteWorkout(id: string): Promise<boolean>;
 
@@ -92,6 +92,7 @@ export class FileStorage implements IStorage {
       goals: input.goals,
       fitnessLevel: input.fitnessLevel,
       garminConnected: false,
+      intervalsConnected: false,
     };
     this.users.set(id, user);
     this.saveUsers();
@@ -121,13 +122,14 @@ export class FileStorage implements IStorage {
     return this.workouts.get(id);
   }
 
-  async createWorkout(input: Omit<Workout, "id" | "createdAt" | "sentToGarmin">): Promise<Workout> {
+  async createWorkout(input: Omit<Workout, "id" | "createdAt" | "sentToGarmin" | "sentToIntervals">): Promise<Workout> {
     const id = randomUUID();
     const workout: Workout = {
       ...input,
       id,
       createdAt: new Date().toISOString(),
       sentToGarmin: false,
+      sentToIntervals: false,
     };
     this.workouts.set(id, workout);
     this.saveWorkouts();

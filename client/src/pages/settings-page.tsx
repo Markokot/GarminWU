@@ -14,8 +14,8 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
-import { garminConnectSchema, sportTypes, sportTypeLabels, fitnessLevels, fitnessLevelLabels } from "@shared/schema";
-import type { GarminConnectInput } from "@shared/schema";
+import { garminConnectSchema, intervalsConnectSchema, sportTypes, sportTypeLabels, fitnessLevels, fitnessLevelLabels } from "@shared/schema";
+import type { GarminConnectInput, IntervalsConnectInput } from "@shared/schema";
 import {
   Watch,
   Loader2,
@@ -23,6 +23,9 @@ import {
   XCircle,
   Settings,
   Unlink,
+  BarChart3,
+  FlaskConical,
+  ExternalLink,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -60,6 +63,43 @@ export default function SettingsPage() {
     onSuccess: (data) => {
       updateUser(data);
       toast({ title: "Garmin отключён" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const intervalsForm = useForm<IntervalsConnectInput>({
+    resolver: zodResolver(intervalsConnectSchema),
+    defaultValues: {
+      athleteId: user?.intervalsAthleteId || "",
+      apiKey: "",
+    },
+  });
+
+  const intervalsConnectMutation = useMutation({
+    mutationFn: async (data: IntervalsConnectInput) => {
+      const res = await apiRequest("POST", "/api/intervals/connect", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      updateUser(data);
+      toast({ title: "Intervals.icu подключён" });
+      intervalsForm.reset({ athleteId: data.intervalsAthleteId || "", apiKey: "" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка подключения", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const intervalsDisconnectMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/intervals/disconnect");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      updateUser(data);
+      toast({ title: "Intervals.icu отключён" });
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
@@ -217,6 +257,140 @@ export default function SettingsPage() {
                 </Button>
               </form>
             </Form>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-md bg-accent flex items-center justify-center flex-shrink-0">
+                <BarChart3 className="w-5 h-5 text-accent-foreground" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-sm">Intervals.icu</h2>
+                <p className="text-xs text-muted-foreground">Zwift, Polar, Suunto, COROS, Huawei</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                <FlaskConical className="w-3 h-3 mr-1" />
+                Эксперимент
+              </Badge>
+              {user?.intervalsConnected ? (
+                <Badge variant="secondary">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Подключено
+                </Badge>
+              ) : (
+                <Badge variant="outline">
+                  <XCircle className="w-3 h-3 mr-1" />
+                  Не подключено
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {user?.intervalsConnected ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Athlete ID: <span className="font-medium text-foreground">{user.intervalsAthleteId}</span>
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => intervalsDisconnectMutation.mutate()}
+                disabled={intervalsDisconnectMutation.isPending}
+                data-testid="button-disconnect-intervals"
+              >
+                {intervalsDisconnectMutation.isPending ? (
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                ) : (
+                  <Unlink className="w-3 h-3 mr-1" />
+                )}
+                Отключить
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground space-y-2 bg-accent/50 rounded-md p-3">
+                <p className="font-medium text-foreground">Для чего это нужно?</p>
+                <p>
+                  Intervals.icu — бесплатная платформа для анализа тренировок. Через неё можно отправлять
+                  тренировки в <span className="font-medium text-foreground">Zwift</span> и другие сервисы.
+                  Подходит для часов <span className="font-medium text-foreground">Polar, Suunto, COROS, Huawei</span> и всех,
+                  кто не использует Garmin.
+                </p>
+                <p className="font-medium text-foreground">Как подключить:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>
+                    Зарегистрируйтесь на{" "}
+                    <a href="https://intervals.icu" target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-0.5">
+                      intervals.icu <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </li>
+                  <li>Подключите Zwift/Strava/часы в настройках Intervals.icu</li>
+                  <li>Откройте Settings &rarr; Developer Settings</li>
+                  <li>Скопируйте <span className="font-medium text-foreground">Athlete ID</span> (начинается с &quot;i&quot;) и <span className="font-medium text-foreground">API Key</span></li>
+                  <li>Вставьте их ниже</li>
+                </ol>
+              </div>
+              <Form {...intervalsForm}>
+                <form
+                  onSubmit={intervalsForm.handleSubmit((d) => intervalsConnectMutation.mutate(d))}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={intervalsForm.control}
+                    name="athleteId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Athlete ID</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="i12345"
+                            {...field}
+                            data-testid="input-intervals-athlete-id"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={intervalsForm.control}
+                    name="apiKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>API Key</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            {...field}
+                            data-testid="input-intervals-api-key"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="submit"
+                    disabled={intervalsConnectMutation.isPending}
+                    data-testid="button-connect-intervals"
+                  >
+                    {intervalsConnectMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <BarChart3 className="w-4 h-4 mr-2" />
+                    )}
+                    Подключить Intervals.icu
+                  </Button>
+                </form>
+              </Form>
+            </div>
           )}
         </CardContent>
       </Card>

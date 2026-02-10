@@ -63,6 +63,8 @@ export interface Workout {
   createdAt: string;
   sentToGarmin: boolean;
   garminWorkoutId?: number;
+  sentToIntervals: boolean;
+  intervalsEventId?: string;
 }
 
 export const fitnessLevels = ["beginner", "intermediate", "advanced", "elite"] as const;
@@ -82,6 +84,9 @@ export interface User {
   garminEmail?: string;
   garminPassword?: string;
   garminConnected: boolean;
+  intervalsAthleteId?: string;
+  intervalsApiKey?: string;
+  intervalsConnected: boolean;
   sportTypes: SportType[];
   goals: string;
   fitnessLevel?: FitnessLevel;
@@ -144,6 +149,11 @@ export const garminConnectSchema = z.object({
   garminPassword: z.string().min(1, "Введите пароль"),
 });
 
+export const intervalsConnectSchema = z.object({
+  athleteId: z.string().min(1, "Введите Athlete ID"),
+  apiKey: z.string().min(1, "Введите API ключ"),
+});
+
 export const workoutStepSchema: z.ZodType<WorkoutStep> = z.lazy(() =>
   z.object({
     stepId: z.number(),
@@ -171,5 +181,6 @@ export const createWorkoutSchema = z.object({
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type GarminConnectInput = z.infer<typeof garminConnectSchema>;
+export type IntervalsConnectInput = z.infer<typeof intervalsConnectSchema>;
 export type CreateWorkoutInput = z.infer<typeof createWorkoutSchema>;
-export type InsertUser = Omit<User, "id" | "garminConnected">;
+export type InsertUser = Omit<User, "id" | "garminConnected" | "intervalsConnected">;

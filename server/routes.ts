@@ -3,9 +3,10 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import MemoryStore from "memorystore";
 import { storage } from "./storage";
-import { loginSchema, registerSchema, garminConnectSchema, createWorkoutSchema, workoutStepSchema } from "@shared/schema";
+import { loginSchema, registerSchema, garminConnectSchema, intervalsConnectSchema, createWorkoutSchema, workoutStepSchema } from "@shared/schema";
 import { z } from "zod";
 import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected } from "./garmin";
+import { verifyIntervalsConnection, pushWorkoutToIntervals } from "./intervals";
 import { chat } from "./ai";
 import { encrypt, decrypt } from "./crypto";
 
@@ -76,7 +77,7 @@ export async function registerRoutes(
         fitnessLevel: parsed.fitnessLevel,
       });
       req.session.userId = user.id;
-      const { password: _, garminPassword: __, ...safeUser } = user;
+      const { password: _, garminPassword: __, intervalsApiKey: ___, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Ошибка регистрации" });
@@ -96,7 +97,7 @@ export async function registerRoutes(
       }
       req.session.userId = user.id;
 
-      const { password: _, garminPassword: __, ...safeUser } = user;
+      const { password: _, garminPassword: __, intervalsApiKey: ___, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Ошибка входа" });
@@ -112,7 +113,7 @@ export async function registerRoutes(
       return res.status(401).json({ message: "User not found" });
     }
 
-    const { password: _, garminPassword: __, ...safeUser } = user;
+    const { password: _, garminPassword: __, intervalsApiKey: ___, ...safeUser } = user;
     res.json(safeUser);
   });
 
@@ -138,7 +139,7 @@ export async function registerRoutes(
         preferences: parsed.preferences,
       });
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
-      const { password: _, garminPassword: __, ...safeUser } = user;
+      const { password: _, garminPassword: __, intervalsApiKey: ___, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -156,7 +157,7 @@ export async function registerRoutes(
         garminConnected: true,
       });
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
-      const { password: _, garminPassword: __, ...safeUser } = user;
+      const { password: _, garminPassword: __, intervalsApiKey: ___, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -172,7 +173,7 @@ export async function registerRoutes(
         garminPassword: undefined,
       });
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
-      const { password: _, garminPassword: __, ...safeUser } = user;
+      const { password: _, garminPassword: __, intervalsApiKey: ___, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -218,6 +219,75 @@ export async function registerRoutes(
       res.json({
         success: true,
         garminWorkoutId: result.workoutId,
+        scheduled: result.scheduled,
+        scheduledDate: result.scheduledDate,
+      });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Некорректный формат тренировки: " + error.errors.map((e) => e.message).join(", ") });
+      }
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  // Intervals.icu routes
+  app.post("/api/intervals/connect", requireAuth, async (req, res) => {
+    try {
+      const parsed = intervalsConnectSchema.parse(req.body);
+      await verifyIntervalsConnection(parsed.athleteId, parsed.apiKey);
+      const user = await storage.updateUser(req.session.userId!, {
+        intervalsAthleteId: parsed.athleteId,
+        intervalsApiKey: encrypt(parsed.apiKey),
+        intervalsConnected: true,
+      });
+      if (!user) return res.status(404).json({ message: "Пользователь не найден" });
+      const { password: _, garminPassword: __, intervalsApiKey: ___, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/intervals/disconnect", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.updateUser(req.session.userId!, {
+        intervalsConnected: false,
+        intervalsAthleteId: undefined,
+        intervalsApiKey: undefined,
+      });
+      if (!user) return res.status(404).json({ message: "Пользователь не найден" });
+      const { password: _, garminPassword: __, intervalsApiKey: ___, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/intervals/push-workout", requireAuth, async (req, res) => {
+    try {
+      const pushSchema = createWorkoutSchema.extend({
+        id: z.string().optional(),
+      });
+      const workout = pushSchema.parse(req.body);
+
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || !user.intervalsConnected || !user.intervalsAthleteId || !user.intervalsApiKey) {
+        return res.status(400).json({ message: "Intervals.icu не подключён. Подключите в настройках." });
+      }
+
+      const apiKey = decrypt(user.intervalsApiKey);
+      const result = await pushWorkoutToIntervals(user.intervalsAthleteId, apiKey, workout as any);
+
+      if (workout.id) {
+        await storage.updateWorkout(workout.id, {
+          sentToIntervals: true,
+          intervalsEventId: result.eventId,
+        });
+      }
+
+      res.json({
+        success: true,
+        eventId: result.eventId,
         scheduled: result.scheduled,
         scheduledDate: result.scheduledDate,
       });

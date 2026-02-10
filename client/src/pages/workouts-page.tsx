@@ -19,6 +19,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Link } from "wouter";
 import type { Workout } from "@shared/schema";
 import { sportTypeLabels, stepTypeLabels } from "@shared/schema";
+import { useAuth } from "@/lib/auth";
 import {
   Dumbbell,
   Watch,
@@ -27,6 +28,7 @@ import {
   Loader2,
   Clock,
   ArrowRight,
+  BarChart3,
 } from "lucide-react";
 
 function StepSummary({ workout }: { workout: Workout }) {
@@ -67,6 +69,7 @@ function StepSummary({ workout }: { workout: Workout }) {
 }
 
 export default function WorkoutsPage() {
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const { data: workouts = [], isLoading } = useQuery<Workout[]>({
@@ -80,6 +83,20 @@ export default function WorkoutsPage() {
     },
     onSuccess: () => {
       toast({ title: "Тренировка отправлена на Garmin" });
+      queryClient.invalidateQueries({ queryKey: ["/api/workouts"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const pushIntervalsMutation = useMutation({
+    mutationFn: async (workout: Workout) => {
+      const res = await apiRequest("POST", "/api/intervals/push-workout", workout);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Тренировка отправлена в Intervals.icu" });
       queryClient.invalidateQueries({ queryKey: ["/api/workouts"] });
     },
     onError: (error: Error) => {
@@ -164,7 +181,13 @@ export default function WorkoutsPage() {
                       {workout.sentToGarmin && (
                         <Badge variant="secondary" className="text-xs">
                           <Watch className="w-3 h-3 mr-1" />
-                          На часах
+                          Garmin
+                        </Badge>
+                      )}
+                      {workout.sentToIntervals && (
+                        <Badge variant="secondary" className="text-xs">
+                          <BarChart3 className="w-3 h-3 mr-1" />
+                          Intervals
                         </Badge>
                       )}
                     </div>
@@ -182,19 +205,37 @@ export default function WorkoutsPage() {
                     </div>
                   </div>
                   <div className="flex sm:flex-col gap-2 flex-shrink-0">
-                    <Button
-                      size="sm"
-                      onClick={() => pushMutation.mutate(workout)}
-                      disabled={pushMutation.isPending}
-                      data-testid={`button-push-${workout.id}`}
-                    >
-                      {pushMutation.isPending ? (
-                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                      ) : (
-                        <Watch className="w-3 h-3 mr-1" />
-                      )}
-                      На часы
-                    </Button>
+                    {user?.garminConnected && (
+                      <Button
+                        size="sm"
+                        onClick={() => pushMutation.mutate(workout)}
+                        disabled={pushMutation.isPending}
+                        data-testid={`button-push-garmin-${workout.id}`}
+                      >
+                        {pushMutation.isPending ? (
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        ) : (
+                          <Watch className="w-3 h-3 mr-1" />
+                        )}
+                        Garmin
+                      </Button>
+                    )}
+                    {user?.intervalsConnected && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => pushIntervalsMutation.mutate(workout)}
+                        disabled={pushIntervalsMutation.isPending}
+                        data-testid={`button-push-intervals-${workout.id}`}
+                      >
+                        {pushIntervalsMutation.isPending ? (
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        ) : (
+                          <BarChart3 className="w-3 h-3 mr-1" />
+                        )}
+                        Intervals
+                      </Button>
+                    )}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
