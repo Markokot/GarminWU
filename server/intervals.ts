@@ -50,11 +50,13 @@ export async function pushWorkoutToIntervals(
   };
 
   if (workout.scheduledDate) {
-    event.start_date_local = workout.scheduledDate;
+    event.start_date_local = workout.scheduledDate.includes("T")
+      ? workout.scheduledDate
+      : workout.scheduledDate + "T00:00:00";
   } else {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    event.start_date_local = tomorrow.toISOString().split("T")[0];
+    event.start_date_local = tomorrow.toISOString().split("T")[0] + "T00:00:00";
   }
 
   if (workout.sportType === "cycling") {

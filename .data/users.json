@@ -18,6 +18,9 @@
     ],
     "goals": "",
     "garminConnected": true,
-    "garminEmail": "a_knjazev@mail.ru"
+    "garminEmail": "a_knjazev@mail.ru",
+    "intervalsAthleteId": "i506178",
+    "intervalsApiKey": "8c4dbc81db88c932293a27b96c2b109c:b0f7bfe8f71f31faf31f327205f4a35e:4f9409c49a7f56d8735f8821de00eed984c1bed62ba7f180a0",
+    "intervalsConnected": true
   }
 ]
