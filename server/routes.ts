@@ -384,7 +384,7 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
-  const ADMIN_USERNAME = "Андрей";
+  const ADMIN_USERNAME = "Andrey";
 
   app.get("/api/admin/stats", requireAuth, async (req, res) => {
     const currentUser = await storage.getUser(req.session.userId!);

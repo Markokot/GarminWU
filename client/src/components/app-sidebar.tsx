@@ -82,7 +82,7 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
-              {user?.username === "Андрей" && (
+              {user?.username === "Andrey" && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
