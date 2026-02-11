@@ -170,12 +170,12 @@ export default function SettingsPage() {
             </div>
             {user?.garminConnected ? (
               <Badge variant="secondary">
-                <CheckCircle className="w-3 h-3 mr-1" />
+                <div className="w-1.5 h-1.5 rounded-full bg-status-online mr-1.5" />
                 Подключено
               </Badge>
             ) : (
               <Badge variant="outline">
-                <XCircle className="w-3 h-3 mr-1" />
+                <div className="w-1.5 h-1.5 rounded-full bg-status-offline mr-1.5" />
                 Не подключено
               </Badge>
             )}
@@ -280,12 +280,12 @@ export default function SettingsPage() {
               </Badge>
               {user?.intervalsConnected ? (
                 <Badge variant="secondary">
-                  <CheckCircle className="w-3 h-3 mr-1" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-status-online mr-1.5" />
                   Подключено
                 </Badge>
               ) : (
                 <Badge variant="outline">
-                  <XCircle className="w-3 h-3 mr-1" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-status-offline mr-1.5" />
                   Не подключено
                 </Badge>
               )}
