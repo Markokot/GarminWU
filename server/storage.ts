@@ -45,6 +45,10 @@ export interface IStorage {
   getMessages(userId: string): Promise<ChatMessage[]>;
   addMessage(message: Omit<ChatMessage, "id">): Promise<ChatMessage>;
   clearMessages(userId: string): Promise<void>;
+
+  getAllUsers(): Promise<User[]>;
+  getAllWorkouts(): Promise<Workout[]>;
+  getAllMessages(): Promise<ChatMessage[]>;
 }
 
 export class FileStorage implements IStorage {
@@ -171,6 +175,18 @@ export class FileStorage implements IStorage {
       .map(([k]) => k);
     toDelete.forEach((k) => this.messages.delete(k));
     this.saveMessages();
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
+  async getAllWorkouts(): Promise<Workout[]> {
+    return Array.from(this.workouts.values());
+  }
+
+  async getAllMessages(): Promise<ChatMessage[]> {
+    return Array.from(this.messages.values());
   }
 }
 

@@ -25,6 +25,7 @@ import {
   Watch,
   HelpCircle,
   FlaskConical,
+  BarChart3,
 } from "lucide-react";
 
 const menuItems = [
@@ -81,6 +82,20 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+              {user?.username === "Андрей" && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === "/admin"}
+                    data-testid="nav-admin"
+                  >
+                    <Link href="/admin" onClick={handleNavClick}>
+                      <BarChart3 className="w-4 h-4" />
+                      <span>Статистика</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

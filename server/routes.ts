@@ -384,5 +384,86 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  const ADMIN_USERNAME = "Андрей";
+
+  app.get("/api/admin/stats", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+
+    const allUsers = await storage.getAllUsers();
+    const allWorkouts = await storage.getAllWorkouts();
+    const allMessages = await storage.getAllMessages();
+
+    const userStats = allUsers.map((u) => {
+      const userMessages = allMessages.filter((m) => m.userId === u.id);
+      const userWorkouts = allWorkouts.filter((w) => w.userId === u.id);
+      const lastMessage = userMessages.length > 0
+        ? userMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+        : null;
+      const lastWorkout = userWorkouts.length > 0
+        ? userWorkouts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+        : null;
+
+      return {
+        username: u.username,
+        garminConnected: u.garminConnected,
+        intervalsConnected: u.intervalsConnected,
+        sportTypes: u.sportTypes,
+        fitnessLevel: u.fitnessLevel || null,
+        messageCount: userMessages.filter((m) => m.role === "user").length,
+        totalMessages: userMessages.length,
+        workoutCount: userWorkouts.length,
+        workoutsSentToGarmin: userWorkouts.filter((w) => w.sentToGarmin).length,
+        workoutsSentToIntervals: userWorkouts.filter((w) => w.sentToIntervals).length,
+        lastMessageDate: lastMessage?.timestamp || null,
+        lastWorkoutDate: lastWorkout?.createdAt || null,
+      };
+    });
+
+    const recentUsers = [...userStats]
+      .sort((a, b) => {
+        const dateA = a.lastMessageDate || "1970-01-01";
+        const dateB = b.lastMessageDate || "1970-01-01";
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
+      })
+      .slice(0, 10);
+
+    const totalUserMessages = allMessages.filter((m) => m.role === "user").length;
+    const totalAiMessages = allMessages.filter((m) => m.role === "assistant").length;
+    const lastGlobalMessage = allMessages.length > 0
+      ? allMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+      : null;
+
+    const sportDistribution: Record<string, number> = {};
+    allUsers.forEach((u) => {
+      u.sportTypes.forEach((s) => {
+        sportDistribution[s] = (sportDistribution[s] || 0) + 1;
+      });
+    });
+
+    const fitnessDistribution: Record<string, number> = {};
+    allUsers.forEach((u) => {
+      const level = u.fitnessLevel || "not_set";
+      fitnessDistribution[level] = (fitnessDistribution[level] || 0) + 1;
+    });
+
+    res.json({
+      totalUsers: allUsers.length,
+      garminConnected: allUsers.filter((u) => u.garminConnected).length,
+      intervalsConnected: allUsers.filter((u) => u.intervalsConnected).length,
+      totalWorkouts: allWorkouts.length,
+      totalWorkoutsSentToGarmin: allWorkouts.filter((w) => w.sentToGarmin).length,
+      totalWorkoutsSentToIntervals: allWorkouts.filter((w) => w.sentToIntervals).length,
+      totalUserMessages,
+      totalAiMessages,
+      lastGlobalMessageDate: lastGlobalMessage?.timestamp || null,
+      sportDistribution,
+      fitnessDistribution,
+      recentUsers,
+    });
+  });
+
   return httpServer;
 }
