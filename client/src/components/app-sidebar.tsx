@@ -24,6 +24,7 @@ import {
   LogOut,
   Watch,
   HelpCircle,
+  FlaskConical,
 } from "lucide-react";
 
 const menuItems = [
@@ -90,12 +91,33 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <div className="px-3 py-2">
                 {user.garminConnected ? (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs" data-testid="status-garmin-connected">
                     <div className="w-1.5 h-1.5 rounded-full bg-status-online mr-1.5" />
                     Подключено
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs" data-testid="status-garmin-disconnected">
+                    <div className="w-1.5 h-1.5 rounded-full bg-status-offline mr-1.5" />
+                    Не подключено
+                  </Badge>
+                )}
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {user && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Intervals.icu</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <div className="px-3 py-2">
+                {user.intervalsConnected ? (
+                  <Badge variant="secondary" className="text-xs" data-testid="status-intervals-connected">
+                    <div className="w-1.5 h-1.5 rounded-full bg-status-online mr-1.5" />
+                    Подключено
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs" data-testid="status-intervals-disconnected">
                     <div className="w-1.5 h-1.5 rounded-full bg-status-offline mr-1.5" />
                     Не подключено
                   </Badge>
