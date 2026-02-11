@@ -23,6 +23,7 @@ import {
   Settings,
   LogOut,
   Watch,
+  HelpCircle,
 } from "lucide-react";
 
 const menuItems = [
@@ -30,6 +31,7 @@ const menuItems = [
   { title: "AI Тренер", url: "/coach", icon: MessageSquare },
   { title: "Тренировки", url: "/workouts", icon: Dumbbell },
   { title: "Настройки", url: "/settings", icon: Settings },
+  { title: "FAQ", url: "/faq", icon: HelpCircle },
 ];
 
 export function AppSidebar() {
