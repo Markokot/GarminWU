@@ -316,17 +316,8 @@ export default function FaqPage() {
                 Как отправить тренировку в Zwift через Intervals.icu?
               </AccordionTrigger>
               <AccordionContent>
-                <div className="space-y-3 text-sm text-muted-foreground">
-                  <p>После подключения Intervals.icu в настройках GarminCoach AI:</p>
-                  <ol className="list-decimal pl-5 space-y-2">
-                    <li>Попросите AI-тренера создать тренировку (например, «велотренировка на станке 45 минут»)</li>
-                    <li>Нажмите <strong>Intervals.icu</strong> на карточке тренировки</li>
-                    <li>Тренировка появится в вашем календаре на Intervals.icu</li>
-                    <li>В Intervals.icu откройте тренировку и нажмите <strong>Download</strong> в формате <strong>ZWO</strong></li>
-                    <li>Поместите скачанный файл в папку Zwift: <code>Documents/Zwift/Workouts/[ваш-id]</code></li>
-                    <li>Запустите Zwift — тренировка появится в разделе Custom Workouts</li>
-                  </ol>
-                  <p className="text-xs">
+                <div className="text-sm text-muted-foreground">
+                  <p>
                     Если у вас настроена автоматическая синхронизация между Intervals.icu и Zwift, тренировка может
                     появиться в Zwift автоматически.
                   </p>
