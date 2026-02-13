@@ -92,33 +92,23 @@ export async function verifyIntervalsConnection(athleteId: string, apiKey: strin
   return { name: data.name || data.email || athleteId };
 }
 
-async function fetchAthleteMaxHR(athleteId: string, apiKey: string): Promise<number | null> {
+async function fetchAthleteMaxHR(athleteId: string, apiKey: string, sportType: string): Promise<number | null> {
   try {
-    const res = await fetch(`${INTERVALS_API}/athlete/${athleteId}`, {
+    const res = await fetch(`${INTERVALS_API}/athlete/${athleteId}/sport-settings/${sportType}`, {
       headers: { Authorization: authHeader(apiKey) },
     });
     if (!res.ok) {
-      console.log(`[Intervals] Athlete profile fetch failed: ${res.status}`);
+      console.log(`[Intervals] Sport settings fetch failed for ${sportType}: ${res.status}`);
       return null;
     }
     const data = await res.json();
-    const allKeys = Object.keys(data);
-    console.log(`[Intervals] Athlete profile keys:`, JSON.stringify(allKeys));
-    const hrRelated: Record<string, any> = {};
-    for (const key of allKeys) {
-      if (key.toLowerCase().includes("hr") || key.toLowerCase().includes("heart") || key.toLowerCase().includes("max") || key.toLowerCase().includes("zone")) {
-        hrRelated[key] = data[key];
-      }
-    }
-    console.log(`[Intervals] HR-related fields:`, JSON.stringify(hrRelated));
-    const maxHR = data.max_hr ?? data.maxHr ?? data.hrMax;
-    if (maxHR && maxHR > 0) {
-      console.log(`[Intervals] Athlete maxHR from profile: ${maxHR}`);
-      return maxHR;
+    console.log(`[Intervals] Sport settings for ${sportType}: max_hr=${data.max_hr}, threshold_hr=${data.threshold_hr}`);
+    if (data.max_hr && data.max_hr > 0) {
+      return data.max_hr;
     }
     return null;
   } catch (e) {
-    console.error("[Intervals] Failed to fetch athlete maxHR:", e);
+    console.error("[Intervals] Failed to fetch sport settings:", e);
     return null;
   }
 }
@@ -131,7 +121,7 @@ export async function pushWorkoutToIntervals(
 ): Promise<{ eventId: string; scheduled: boolean; scheduledDate?: string }> {
   const sportType = sportTypeMap[workout.sportType] || "Run";
 
-  let maxHR = await fetchAthleteMaxHR(athleteId, apiKey);
+  let maxHR = await fetchAthleteMaxHR(athleteId, apiKey, sportType);
   if (!maxHR && userAge) {
     maxHR = Math.round(220 - userAge);
     console.log(`[Intervals] Using estimated maxHR from age ${userAge}: ${maxHR}`);
