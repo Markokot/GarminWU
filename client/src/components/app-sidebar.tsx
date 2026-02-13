@@ -83,18 +83,32 @@ export function AppSidebar() {
                 );
               })}
               {user?.username === "Andrey" && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === "/admin"}
-                    data-testid="nav-admin"
-                  >
-                    <Link href="/admin" onClick={handleNavClick}>
-                      <BarChart3 className="w-4 h-4" />
-                      <span>Статистика</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === "/admin"}
+                      data-testid="nav-admin"
+                    >
+                      <Link href="/admin" onClick={handleNavClick}>
+                        <BarChart3 className="w-4 h-4" />
+                        <span>Статистика</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === "/test-workouts"}
+                      data-testid="nav-test-workouts"
+                    >
+                      <Link href="/test-workouts" onClick={handleNavClick}>
+                        <FlaskConical className="w-4 h-4" />
+                        <span>Тесты</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
