@@ -40,7 +40,7 @@ function AuthenticatedLayout() {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
+      <div className="flex h-dvh w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           <header className="flex items-center justify-between gap-2 p-2 border-b sticky top-0 z-50 bg-background">
