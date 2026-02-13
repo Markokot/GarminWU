@@ -102,14 +102,15 @@ async function fetchAthleteMaxHR(athleteId: string, apiKey: string): Promise<num
       return null;
     }
     const data = await res.json();
-    const hrFields = {
-      max_hr: data.max_hr,
-      lthr: data.lthr,
-      resting_hr: data.resting_hr,
-      maxHr: data.maxHr,
-      hrMax: data.hrMax,
-    };
-    console.log(`[Intervals] Athlete HR fields:`, JSON.stringify(hrFields));
+    const allKeys = Object.keys(data);
+    console.log(`[Intervals] Athlete profile keys:`, JSON.stringify(allKeys));
+    const hrRelated: Record<string, any> = {};
+    for (const key of allKeys) {
+      if (key.toLowerCase().includes("hr") || key.toLowerCase().includes("heart") || key.toLowerCase().includes("max") || key.toLowerCase().includes("zone")) {
+        hrRelated[key] = data[key];
+      }
+    }
+    console.log(`[Intervals] HR-related fields:`, JSON.stringify(hrRelated));
     const maxHR = data.max_hr ?? data.maxHr ?? data.hrMax;
     if (maxHR && maxHR > 0) {
       console.log(`[Intervals] Athlete maxHR from profile: ${maxHR}`);
