@@ -97,11 +97,23 @@ async function fetchAthleteMaxHR(athleteId: string, apiKey: string): Promise<num
     const res = await fetch(`${INTERVALS_API}/athlete/${athleteId}`, {
       headers: { Authorization: authHeader(apiKey) },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.log(`[Intervals] Athlete profile fetch failed: ${res.status}`);
+      return null;
+    }
     const data = await res.json();
-    if (data.max_hr && data.max_hr > 0) {
-      console.log(`[Intervals] Athlete maxHR from profile: ${data.max_hr}`);
-      return data.max_hr;
+    const hrFields = {
+      max_hr: data.max_hr,
+      lthr: data.lthr,
+      resting_hr: data.resting_hr,
+      maxHr: data.maxHr,
+      hrMax: data.hrMax,
+    };
+    console.log(`[Intervals] Athlete HR fields:`, JSON.stringify(hrFields));
+    const maxHR = data.max_hr ?? data.maxHr ?? data.hrMax;
+    if (maxHR && maxHR > 0) {
+      console.log(`[Intervals] Athlete maxHR from profile: ${maxHR}`);
+      return maxHR;
     }
     return null;
   } catch (e) {
