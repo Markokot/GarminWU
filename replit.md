@@ -102,4 +102,4 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - Ironman preparation (triathlon)
 
 ## Date
-Last updated: February 10, 2026
+Last updated: February 13, 2026
