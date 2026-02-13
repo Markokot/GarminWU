@@ -161,9 +161,9 @@ function formatDuration(durationType: string, durationValue: number | null): str
   } else if (durationType === "distance") {
     if (durationValue >= 1000) {
       const km = durationValue / 1000;
-      return km % 1 === 0 ? `${km}km` : `${km.toFixed(1)}km`;
+      return km % 1 === 0 ? `${km}km` : `${km.toFixed(2)}km`.replace(/0+km$/, "km");
     }
-    return `${durationValue}m`;
+    return `${durationValue}mtr`;
   }
   return "";
 }
