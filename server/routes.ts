@@ -317,7 +317,7 @@ export async function registerRoutes(
       }
 
       const apiKey = decrypt(user.intervalsApiKey);
-      const result = await pushWorkoutToIntervals(user.intervalsAthleteId, apiKey, workout as any);
+      const result = await pushWorkoutToIntervals(user.intervalsAthleteId, apiKey, workout as any, user.age ?? undefined);
 
       if (workout.id) {
         await storage.updateWorkout(workout.id, {

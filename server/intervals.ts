@@ -95,11 +95,13 @@ export async function verifyIntervalsConnection(athleteId: string, apiKey: strin
 export async function pushWorkoutToIntervals(
   athleteId: string,
   apiKey: string,
-  workout: Workout
+  workout: Workout,
+  userAge?: number
 ): Promise<{ eventId: string; scheduled: boolean; scheduledDate?: string }> {
   const sportType = sportTypeMap[workout.sportType] || "Run";
 
-  const description = buildWorkoutDescription(workout);
+  const maxHR = userAge ? Math.round(220 - userAge) : null;
+  const description = buildWorkoutDescription(workout, maxHR);
 
   const event: Record<string, any> = {
     category: "WORKOUT",
@@ -168,9 +170,17 @@ function formatDuration(durationType: string, durationValue: number | null): str
   return "";
 }
 
-function formatTarget(step: { targetType: string; targetValueLow: number | null; targetValueHigh: number | null }): string {
+function formatTarget(step: { targetType: string; targetValueLow: number | null; targetValueHigh: number | null }, maxHR: number | null = null): string {
   if (step.targetType === "no.target" || step.targetValueLow == null || step.targetValueHigh == null) return "";
   if (step.targetType === "heart.rate.zone") {
+    if (maxHR && maxHR > 0) {
+      const pctLow = Math.round((step.targetValueLow / maxHR) * 100);
+      const pctHigh = Math.round((step.targetValueHigh / maxHR) * 100);
+      if (pctLow === pctHigh) {
+        return ` ${pctHigh}% HR`;
+      }
+      return ` ${pctLow}-${pctHigh}% HR`;
+    }
     if (step.targetValueLow === step.targetValueHigh) {
       return `HR ${step.targetValueHigh}`;
     }
@@ -187,19 +197,16 @@ function formatTarget(step: { targetType: string; targetValueLow: number | null;
   return "";
 }
 
-function buildStepLine(step: { durationType: string; durationValue: number | null; targetType: string; targetValueLow: number | null; targetValueHigh: number | null }): string {
+function buildStepLine(step: { durationType: string; durationValue: number | null; targetType: string; targetValueLow: number | null; targetValueHigh: number | null }, maxHR: number | null = null): string {
   const dur = formatDuration(step.durationType, step.durationValue);
-  if (step.targetType === "heart.rate.zone") {
-    const hrLabel = formatTarget(step);
-    if (hrLabel) {
-      return `- ${hrLabel} ${dur}`.trim();
-    }
+  const target = formatTarget(step, maxHR);
+  if (step.targetType === "heart.rate.zone" && !maxHR && target) {
+    return `- ${target} ${dur}`.trim();
   }
-  const target = formatTarget(step);
   return `- ${dur}${target}`.trim();
 }
 
-function buildWorkoutDescription(workout: Workout): string {
+function buildWorkoutDescription(workout: Workout, maxHR: number | null = null): string {
   const parts: string[] = [];
 
   if (workout.description) {
@@ -210,12 +217,12 @@ function buildWorkoutDescription(workout: Workout): string {
     if (step.stepType === "warmup") {
       const section: string[] = [];
       section.push("Warmup");
-      section.push(buildStepLine(step));
+      section.push(buildStepLine(step, maxHR));
       parts.push(section.join("\n"));
     } else if (step.stepType === "cooldown") {
       const section: string[] = [];
       section.push("Cooldown");
-      section.push(buildStepLine(step));
+      section.push(buildStepLine(step, maxHR));
       parts.push(section.join("\n"));
     } else if (step.stepType === "repeat" && step.repeatCount && step.childSteps) {
       const section: string[] = [];
@@ -225,7 +232,7 @@ function buildWorkoutDescription(workout: Workout): string {
           const dur = formatDuration(child.durationType, child.durationValue);
           section.push(`- ${dur} rest`);
         } else {
-          section.push(buildStepLine(child));
+          section.push(buildStepLine(child, maxHR));
         }
       }
       parts.push(section.join("\n"));
@@ -233,7 +240,7 @@ function buildWorkoutDescription(workout: Workout): string {
       const dur = formatDuration(step.durationType, step.durationValue);
       parts.push(`- ${dur} rest`);
     } else {
-      parts.push(buildStepLine(step));
+      parts.push(buildStepLine(step, maxHR));
     }
   }
 
