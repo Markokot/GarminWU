@@ -92,6 +92,24 @@ export async function verifyIntervalsConnection(athleteId: string, apiKey: strin
   return { name: data.name || data.email || athleteId };
 }
 
+async function fetchAthleteMaxHR(athleteId: string, apiKey: string): Promise<number | null> {
+  try {
+    const res = await fetch(`${INTERVALS_API}/athlete/${athleteId}`, {
+      headers: { Authorization: authHeader(apiKey) },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.max_hr && data.max_hr > 0) {
+      console.log(`[Intervals] Athlete maxHR from profile: ${data.max_hr}`);
+      return data.max_hr;
+    }
+    return null;
+  } catch (e) {
+    console.error("[Intervals] Failed to fetch athlete maxHR:", e);
+    return null;
+  }
+}
+
 export async function pushWorkoutToIntervals(
   athleteId: string,
   apiKey: string,
@@ -100,7 +118,11 @@ export async function pushWorkoutToIntervals(
 ): Promise<{ eventId: string; scheduled: boolean; scheduledDate?: string }> {
   const sportType = sportTypeMap[workout.sportType] || "Run";
 
-  const maxHR = userAge ? Math.round(220 - userAge) : null;
+  let maxHR = await fetchAthleteMaxHR(athleteId, apiKey);
+  if (!maxHR && userAge) {
+    maxHR = Math.round(220 - userAge);
+    console.log(`[Intervals] Using estimated maxHR from age ${userAge}: ${maxHR}`);
+  }
   const description = buildWorkoutDescription(workout, maxHR);
 
   const event: Record<string, any> = {
