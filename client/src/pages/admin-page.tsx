@@ -23,8 +23,8 @@ interface UserStat {
   messageCount: number;
   totalMessages: number;
   workoutCount: number;
-  workoutsSentToGarmin: number;
-  workoutsSentToIntervals: number;
+  garminPushCount: number;
+  intervalsPushCount: number;
   lastMessageDate: string | null;
   lastWorkoutDate: string | null;
 }
@@ -34,8 +34,8 @@ interface AdminStats {
   garminConnected: number;
   intervalsConnected: number;
   totalWorkouts: number;
-  totalWorkoutsSentToGarmin: number;
-  totalWorkoutsSentToIntervals: number;
+  totalGarminPushes: number;
+  totalIntervalsPushes: number;
   totalUserMessages: number;
   totalAiMessages: number;
   lastGlobalMessageDate: string | null;
@@ -139,8 +139,8 @@ export default function AdminPage() {
               <MessageSquare className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Сообщений</span>
             </div>
-            <p className="text-2xl font-bold" data-testid="text-total-messages">{stats.totalUserMessages + stats.totalAiMessages}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{stats.totalUserMessages} от пользователей</p>
+            <p className="text-2xl font-bold" data-testid="text-total-messages">{stats.totalUserMessages}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">от пользователей</p>
           </CardContent>
         </Card>
 
@@ -206,11 +206,11 @@ export default function AdminPage() {
             <div className="border-t pt-3 mt-3 space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Отправлено на Garmin</span>
-                <span className="font-medium" data-testid="text-sent-garmin">{stats.totalWorkoutsSentToGarmin}</span>
+                <span className="font-medium" data-testid="text-sent-garmin">{stats.totalGarminPushes}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Отправлено на Intervals.icu</span>
-                <span className="font-medium" data-testid="text-sent-intervals">{stats.totalWorkoutsSentToIntervals}</span>
+                <span className="font-medium" data-testid="text-sent-intervals">{stats.totalIntervalsPushes}</span>
               </div>
             </div>
           </CardContent>
@@ -267,30 +267,23 @@ export default function AdminPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto relative">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 font-medium">Пользователь</th>
+                  <th className="pb-2 font-medium sticky left-0 bg-card z-10 pr-3">Пользователь</th>
                   <th className="pb-2 font-medium text-center">Garmin</th>
                   <th className="pb-2 font-medium text-center">Int.icu</th>
                   <th className="pb-2 font-medium text-right">Сообщений</th>
                   <th className="pb-2 font-medium text-right">Тренировок</th>
-                  <th className="pb-2 font-medium text-right">Последняя активность</th>
+                  <th className="pb-2 font-medium text-right whitespace-nowrap">Последняя активность</th>
                 </tr>
               </thead>
               <tbody>
                 {stats.recentUsers.map((user, idx) => (
                   <tr key={user.username} className="border-b last:border-0" data-testid={`row-user-${idx}`}>
-                    <td className="py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{user.username}</span>
-                        {user.fitnessLevel && (
-                          <Badge variant="outline" className="text-xs">
-                            {fitnessLevelLabels[user.fitnessLevel]}
-                          </Badge>
-                        )}
-                      </div>
+                    <td className="py-2.5 sticky left-0 bg-card z-10 pr-3">
+                      <span className="font-medium">{user.username}</span>
                     </td>
                     <td className="py-2.5 text-center">
                       <div className={`w-2 h-2 rounded-full mx-auto ${user.garminConnected ? "bg-status-online" : "bg-status-offline"}`} />
@@ -301,13 +294,13 @@ export default function AdminPage() {
                     <td className="py-2.5 text-right tabular-nums">{user.messageCount}</td>
                     <td className="py-2.5 text-right tabular-nums">
                       {user.workoutCount}
-                      {(user.workoutsSentToGarmin > 0 || user.workoutsSentToIntervals > 0) && (
+                      {(user.garminPushCount > 0 || user.intervalsPushCount > 0) && (
                         <span className="text-xs text-muted-foreground ml-1">
-                          ({user.workoutsSentToGarmin}G / {user.workoutsSentToIntervals}I)
+                          ({user.garminPushCount}G / {user.intervalsPushCount}I)
                         </span>
                       )}
                     </td>
-                    <td className="py-2.5 text-right text-muted-foreground text-xs">
+                    <td className="py-2.5 text-right text-muted-foreground text-xs whitespace-nowrap">
                       {formatDateShort(user.lastMessageDate || user.lastWorkoutDate)}
                     </td>
                   </tr>

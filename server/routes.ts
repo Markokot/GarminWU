@@ -216,6 +216,10 @@ export async function registerRoutes(
         });
       }
 
+      await storage.updateUser(req.session.userId!, {
+        garminPushCount: (user.garminPushCount || 0) + 1,
+      });
+
       res.json({
         success: true,
         garminWorkoutId: result.workoutId,
@@ -284,6 +288,10 @@ export async function registerRoutes(
           intervalsEventId: result.eventId,
         });
       }
+
+      await storage.updateUser(req.session.userId!, {
+        intervalsPushCount: (user.intervalsPushCount || 0) + 1,
+      });
 
       res.json({
         success: true,
@@ -415,8 +423,8 @@ export async function registerRoutes(
         messageCount: userMessages.filter((m) => m.role === "user").length,
         totalMessages: userMessages.length,
         workoutCount: userWorkouts.length,
-        workoutsSentToGarmin: userWorkouts.filter((w) => w.sentToGarmin).length,
-        workoutsSentToIntervals: userWorkouts.filter((w) => w.sentToIntervals).length,
+        garminPushCount: u.garminPushCount || 0,
+        intervalsPushCount: u.intervalsPushCount || 0,
         lastMessageDate: lastMessage?.timestamp || null,
         lastWorkoutDate: lastWorkout?.createdAt || null,
       };
@@ -454,8 +462,8 @@ export async function registerRoutes(
       garminConnected: allUsers.filter((u) => u.garminConnected).length,
       intervalsConnected: allUsers.filter((u) => u.intervalsConnected).length,
       totalWorkouts: allWorkouts.length,
-      totalWorkoutsSentToGarmin: allWorkouts.filter((w) => w.sentToGarmin).length,
-      totalWorkoutsSentToIntervals: allWorkouts.filter((w) => w.sentToIntervals).length,
+      totalGarminPushes: allUsers.reduce((sum, u) => sum + (u.garminPushCount || 0), 0),
+      totalIntervalsPushes: allUsers.reduce((sum, u) => sum + (u.intervalsPushCount || 0), 0),
       totalUserMessages,
       totalAiMessages,
       lastGlobalMessageDate: lastGlobalMessage?.timestamp || null,

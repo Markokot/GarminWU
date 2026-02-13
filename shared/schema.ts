@@ -96,6 +96,8 @@ export interface User {
   injuries?: string;
   personalRecords?: string;
   preferences?: string;
+  garminPushCount?: number;
+  intervalsPushCount?: number;
 }
 
 export interface ChatMessage {
