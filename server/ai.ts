@@ -193,6 +193,7 @@ function extractWorkoutJson(text: string): (Workout & { scheduledDate?: string }
       })),
       createdAt: new Date().toISOString(),
       sentToGarmin: false,
+      sentToIntervals: false,
     };
   } catch (e) {
     console.error("Failed to parse workout JSON:", e);
