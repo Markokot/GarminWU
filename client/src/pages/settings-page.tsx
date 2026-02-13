@@ -145,7 +145,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-6 max-w-2xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold tracking-tight" data-testid="text-settings-title">
           <Settings className="w-6 h-6 inline mr-2" />
@@ -273,7 +273,7 @@ export default function SettingsPage() {
                 <p className="text-xs text-muted-foreground">Zwift, Polar, Suunto, COROS, Huawei</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className="text-xs">
                 <FlaskConical className="w-3 h-3 mr-1" />
                 Эксперимент
@@ -425,7 +425,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium mb-2 block">Уровень подготовки</label>
               <Select value={fitnessLevel} onValueChange={setFitnessLevel}>
@@ -455,7 +455,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium mb-2 block">Часов тренировок в неделю</label>
               <Input

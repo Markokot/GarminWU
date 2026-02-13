@@ -307,17 +307,17 @@ export default function CoachPage() {
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] ${
+                  className={`max-w-[80%] min-w-0 ${
                     msg.role === "user"
                       ? "bg-primary text-primary-foreground rounded-md rounded-br-sm px-4 py-3"
                       : "space-y-1"
                   }`}
                 >
                   {msg.role === "user" ? (
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    <p className="text-sm whitespace-pre-wrap break-words overflow-hidden">{msg.content}</p>
                   ) : (
                     <>
-                      <div className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</div>
+                      <div className="text-sm whitespace-pre-wrap leading-relaxed break-words overflow-hidden">{msg.content}</div>
                       {msg.workoutJson && (
                         <WorkoutPreview
                           workout={msg.workoutJson}
@@ -360,7 +360,7 @@ export default function CoachPage() {
         </div>
       </ScrollArea>
 
-      <div className="border-t p-4">
+      <div className="border-t p-3 sm:p-4">
         <div className="max-w-3xl mx-auto flex items-end gap-2">
           <Textarea
             ref={textareaRef}
