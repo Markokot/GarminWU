@@ -153,10 +153,11 @@ export async function pushWorkoutToIntervals(
 function formatDuration(durationType: string, durationValue: number | null): string {
   if (!durationValue) return "";
   if (durationType === "time") {
-    const m = Math.floor(durationValue / 60);
+    const totalMinutes = Math.floor(durationValue / 60);
     const s = durationValue % 60;
-    if (s === 0) return `${m}m`;
-    return `${m}m${s}`;
+    if (totalMinutes > 0 && s > 0) return `${totalMinutes}m${s}s`;
+    if (totalMinutes > 0) return `${totalMinutes}m`;
+    return `${s}s`;
   } else if (durationType === "distance") {
     if (durationValue >= 1000) {
       const km = durationValue / 1000;
@@ -190,37 +191,42 @@ function buildStepLine(step: { durationType: string; durationValue: number | nul
 }
 
 function buildWorkoutDescription(workout: Workout): string {
-  const lines: string[] = [];
+  const parts: string[] = [];
 
   if (workout.description) {
-    lines.push(workout.description);
-    lines.push("");
+    parts.push(workout.description);
   }
 
   for (const step of workout.steps) {
     if (step.stepType === "warmup") {
-      lines.push("Warmup");
-      lines.push(buildStepLine(step));
+      const section: string[] = [];
+      section.push("Warmup");
+      section.push(buildStepLine(step));
+      parts.push(section.join("\n"));
     } else if (step.stepType === "cooldown") {
-      lines.push("Cooldown");
-      lines.push(buildStepLine(step));
+      const section: string[] = [];
+      section.push("Cooldown");
+      section.push(buildStepLine(step));
+      parts.push(section.join("\n"));
     } else if (step.stepType === "repeat" && step.repeatCount && step.childSteps) {
-      lines.push(`${step.repeatCount}x`);
+      const section: string[] = [];
+      section.push(`Main set ${step.repeatCount}x`);
       for (const child of step.childSteps) {
-        if (child.stepType === "recovery") {
+        if (child.stepType === "recovery" || child.stepType === "rest") {
           const dur = formatDuration(child.durationType, child.durationValue);
-          lines.push(`- ${dur} recovery`);
+          section.push(`- ${dur} rest`);
         } else {
-          lines.push(buildStepLine(child));
+          section.push(buildStepLine(child));
         }
       }
+      parts.push(section.join("\n"));
     } else if (step.stepType === "recovery" || step.stepType === "rest") {
       const dur = formatDuration(step.durationType, step.durationValue);
-      lines.push(`- ${dur} recovery`);
+      parts.push(`- ${dur} rest`);
     } else {
-      lines.push(buildStepLine(step));
+      parts.push(buildStepLine(step));
     }
   }
 
-  return lines.join("\n");
+  return parts.join("\n\n");
 }
