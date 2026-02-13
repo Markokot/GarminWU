@@ -169,9 +169,12 @@ function formatDuration(durationType: string, durationValue: number | null): str
 }
 
 function formatTarget(step: { targetType: string; targetValueLow: number | null; targetValueHigh: number | null }): string {
-  if (step.targetType === "no.target" || !step.targetValueLow || !step.targetValueHigh) return "";
+  if (step.targetType === "no.target" || step.targetValueLow == null || step.targetValueHigh == null) return "";
   if (step.targetType === "heart.rate.zone") {
-    return ` ${step.targetValueLow}-${step.targetValueHigh}bpm`;
+    if (step.targetValueLow === step.targetValueHigh) {
+      return `HR ${step.targetValueHigh}`;
+    }
+    return `HR ${step.targetValueLow}-${step.targetValueHigh}`;
   } else if (step.targetType === "pace.zone") {
     const lo = `${Math.floor(step.targetValueLow / 60)}:${(step.targetValueLow % 60).toString().padStart(2, "0")}`;
     const hi = `${Math.floor(step.targetValueHigh / 60)}:${(step.targetValueHigh % 60).toString().padStart(2, "0")}`;
@@ -186,6 +189,12 @@ function formatTarget(step: { targetType: string; targetValueLow: number | null;
 
 function buildStepLine(step: { durationType: string; durationValue: number | null; targetType: string; targetValueLow: number | null; targetValueHigh: number | null }): string {
   const dur = formatDuration(step.durationType, step.durationValue);
+  if (step.targetType === "heart.rate.zone") {
+    const hrLabel = formatTarget(step);
+    if (hrLabel) {
+      return `- ${hrLabel} ${dur}`.trim();
+    }
+  }
   const target = formatTarget(step);
   return `- ${dur}${target}`.trim();
 }
