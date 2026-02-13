@@ -124,6 +124,7 @@ export async function pushWorkoutToIntervals(
     console.log(`[Intervals] Using estimated maxHR from age ${userAge}: ${maxHR}`);
   }
   const description = buildWorkoutDescription(workout, maxHR);
+  console.log(`[Intervals] maxHR used: ${maxHR}, workout description:\n${description}`);
 
   const event: Record<string, any> = {
     category: "WORKOUT",
@@ -252,7 +253,12 @@ function buildWorkoutDescription(workout: Workout, maxHR: number | null = null):
       for (const child of step.childSteps) {
         if (child.stepType === "recovery" || child.stepType === "rest") {
           const dur = formatDuration(child.durationType, child.durationValue);
-          section.push(`- ${dur} rest`);
+          const target = formatTarget(child, maxHR);
+          if (target) {
+            section.push(`- ${dur}${target}`);
+          } else {
+            section.push(`- ${dur} rest`);
+          }
         } else {
           section.push(buildStepLine(child, maxHR));
         }
@@ -260,7 +266,12 @@ function buildWorkoutDescription(workout: Workout, maxHR: number | null = null):
       parts.push(section.join("\n"));
     } else if (step.stepType === "recovery" || step.stepType === "rest") {
       const dur = formatDuration(step.durationType, step.durationValue);
-      parts.push(`- ${dur} rest`);
+      const target = formatTarget(step, maxHR);
+      if (target) {
+        parts.push(`- ${dur}${target}`);
+      } else {
+        parts.push(`- ${dur} rest`);
+      }
     } else {
       parts.push(buildStepLine(step, maxHR));
     }
