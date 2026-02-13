@@ -43,9 +43,18 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - User provides Athlete ID and API key from Intervals.icu Developer Settings
 - API key encrypted with AES-256-GCM before storage
 - Workouts pushed as calendar events via POST /api/v1/athlete/{id}/events
+- Activities fetched via GET /api/v1/athlete/{id}/activities (last 90 days)
 - Supports running (Run), cycling (Ride), swimming (Swim) sport types
 - Workout description includes structured step details
 - Scheduled date extracted from workout or defaults to tomorrow
+
+## Activities Fetch Logic
+- Unified `/api/activities` endpoint with source priority: Garmin (primary) → Intervals.icu (fallback)
+- If Garmin connected → fetch from Garmin; if Garmin fails → try Intervals.icu
+- If only Intervals.icu connected → fetch from Intervals.icu
+- AI coach uses same fallback logic for training load analysis
+- Dashboard shows source badge (Garmin / Intervals.icu)
+- Per-user push counters (garminPushCount, intervalsPushCount) track successful pushes
 
 ## Project Structure
 - `client/src/pages/` - Page components (auth, dashboard, coach, workouts, settings)
@@ -54,7 +63,7 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - `server/routes.ts` - All API endpoints
 - `server/storage.ts` - File-based storage (users, workouts, chat messages)
 - `server/garmin.ts` - Garmin Connect integration (connect, activities, push workouts)
-- `server/intervals.ts` - Intervals.icu API integration (connect, push workouts)
+- `server/intervals.ts` - Intervals.icu API integration (connect, activities, push workouts)
 - `server/ai.ts` - DeepSeek AI integration for workout generation
 - `server/crypto.ts` - AES-256-GCM encryption for credentials
 - `shared/schema.ts` - Shared TypeScript types and Zod schemas

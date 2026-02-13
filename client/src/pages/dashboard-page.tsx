@@ -12,6 +12,7 @@ import {
   Heart,
   MessageSquare,
   Watch,
+  BarChart3,
   ArrowRight,
   Dumbbell,
 } from "lucide-react";
@@ -40,10 +41,15 @@ function formatPace(secondsPerKm: number | undefined): string {
 export default function DashboardPage() {
   const { user } = useAuth();
 
-  const { data: activities, isLoading: activitiesLoading } = useQuery<GarminActivity[]>({
-    queryKey: ["/api/garmin/activities"],
-    enabled: !!user?.garminConnected,
+  const hasAnyConnection = !!user?.garminConnected || !!user?.intervalsConnected;
+
+  const { data: activitiesData, isLoading: activitiesLoading } = useQuery<{ activities: GarminActivity[]; source: string }>({
+    queryKey: ["/api/activities"],
+    enabled: hasAnyConnection,
   });
+
+  const activities = activitiesData?.activities;
+  const activitiesSource = activitiesData?.source;
 
   const { data: workouts, isLoading: workoutsLoading } = useQuery<Workout[]>({
     queryKey: ["/api/workouts"],
@@ -70,16 +76,16 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {!user?.garminConnected && (
+      {!hasAnyConnection && (
         <Card>
           <CardContent className="flex flex-col sm:flex-row items-center gap-4 py-6">
             <div className="w-12 h-12 rounded-md bg-accent flex items-center justify-center flex-shrink-0">
               <Watch className="w-6 h-6 text-accent-foreground" />
             </div>
             <div className="flex-1 text-center sm:text-left">
-              <h3 className="font-semibold">Подключите Garmin</h3>
+              <h3 className="font-semibold">Подключите устройство</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Подключите аккаунт Garmin Connect, чтобы видеть свои активности и загружать тренировки на часы
+                Подключите Garmin Connect или Intervals.icu, чтобы видеть свои активности и загружать тренировки
               </p>
             </div>
             <Link href="/settings">
@@ -92,14 +98,16 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {user?.garminConnected && (
+      {hasAnyConnection && (
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Последние активности</h2>
-            <Badge variant="secondary" className="text-xs">
-              <div className="w-1.5 h-1.5 rounded-full bg-status-online mr-1.5" />
-              Garmin
-            </Badge>
+            {activitiesSource && (
+              <Badge variant="secondary" className="text-xs">
+                <div className="w-1.5 h-1.5 rounded-full bg-status-online mr-1.5" />
+                {activitiesSource === "garmin" ? "Garmin" : "Intervals.icu"}
+              </Badge>
+            )}
           </div>
           {activitiesLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

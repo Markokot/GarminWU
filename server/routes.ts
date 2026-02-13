@@ -6,7 +6,7 @@ import { storage } from "./storage";
 import { loginSchema, registerSchema, garminConnectSchema, intervalsConnectSchema, createWorkoutSchema, workoutStepSchema } from "@shared/schema";
 import { z } from "zod";
 import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected } from "./garmin";
-import { verifyIntervalsConnection, pushWorkoutToIntervals } from "./intervals";
+import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities } from "./intervals";
 import { chat } from "./ai";
 import { encrypt, decrypt } from "./crypto";
 
@@ -180,15 +180,52 @@ export async function registerRoutes(
     }
   });
 
+  async function fetchActivitiesWithFallback(userId: string, user: any, count: number = 10) {
+    if (user.garminConnected) {
+      try {
+        await ensureGarminSessionWithDecrypt(userId, user);
+        const activities = await getGarminActivities(userId, count);
+        return { activities, source: "garmin" };
+      } catch (err: any) {
+        console.log(`[Activities] Garmin failed for user ${userId}: ${err.message}`);
+        if (user.intervalsConnected && user.intervalsAthleteId && user.intervalsApiKey) {
+          console.log(`[Activities] Falling back to Intervals.icu for user ${userId}`);
+          const apiKey = decrypt(user.intervalsApiKey);
+          const activities = await getIntervalsActivities(user.intervalsAthleteId, apiKey, count);
+          return { activities, source: "intervals" };
+        }
+        throw err;
+      }
+    }
+
+    if (user.intervalsConnected && user.intervalsAthleteId && user.intervalsApiKey) {
+      const apiKey = decrypt(user.intervalsApiKey);
+      const activities = await getIntervalsActivities(user.intervalsAthleteId, apiKey, count);
+      return { activities, source: "intervals" };
+    }
+
+    throw new Error("Нет подключённых источников данных. Подключите Garmin или Intervals.icu в настройках.");
+  }
+
+  app.get("/api/activities", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Пользователь не найден" });
+
+      const result = await fetchActivitiesWithFallback(req.session.userId!, user);
+      res.json({ activities: result.activities, source: result.source });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   app.get("/api/garmin/activities", requireAuth, async (req, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (!user || !user.garminConnected) {
-        return res.status(400).json({ message: "Garmin не подключён" });
-      }
-      await ensureGarminSessionWithDecrypt(req.session.userId!, user);
-      const activities = await getGarminActivities(req.session.userId!);
-      res.json(activities);
+      if (!user) return res.status(404).json({ message: "Пользователь не найден" });
+
+      const result = await fetchActivitiesWithFallback(req.session.userId!, user);
+      res.json(result.activities);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
@@ -365,10 +402,8 @@ export async function registerRoutes(
 
       let activities: any[] | undefined;
       try {
-        if (user.garminConnected) {
-          await ensureGarminSessionWithDecrypt(user.id, user);
-          activities = await getGarminActivities(user.id, 10);
-        }
+        const result = await fetchActivitiesWithFallback(user.id, user, 10);
+        activities = result.activities;
       } catch {}
 
       const aiResponse = await chat(user, content, history, activities);

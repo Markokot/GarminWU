@@ -1,4 +1,4 @@
-import type { Workout } from "@shared/schema";
+import type { Workout, GarminActivity } from "@shared/schema";
 
 const INTERVALS_API = "https://intervals.icu/api/v1";
 
@@ -11,6 +11,65 @@ const sportTypeMap: Record<string, string> = {
   cycling: "Ride",
   swimming: "Swim",
 };
+
+const intervalsTypeToLocal: Record<string, string> = {
+  Run: "running",
+  Ride: "cycling",
+  Swim: "swimming",
+  Walk: "walking",
+  Hike: "hiking",
+  WeightTraining: "strength_training",
+  VirtualRide: "virtual_ride",
+  VirtualRun: "virtual_run",
+};
+
+export async function getIntervalsActivities(
+  athleteId: string,
+  apiKey: string,
+  count: number = 10
+): Promise<GarminActivity[]> {
+  const newest = new Date();
+  const oldest = new Date();
+  oldest.setDate(oldest.getDate() - 90);
+
+  const params = new URLSearchParams({
+    oldest: oldest.toISOString().split("T")[0],
+    newest: newest.toISOString().split("T")[0],
+  });
+
+  const res = await fetch(`${INTERVALS_API}/athlete/${athleteId}/activities?${params}`, {
+    headers: {
+      Authorization: authHeader(apiKey),
+    },
+  });
+
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      throw new Error("API ключ Intervals.icu истёк. Переподключите в настройках.");
+    }
+    throw new Error(`Ошибка получения активностей из Intervals.icu (${res.status})`);
+  }
+
+  const data: any[] = await res.json();
+
+  const activities = data
+    .sort((a, b) => new Date(b.start_date_local || "").getTime() - new Date(a.start_date_local || "").getTime())
+    .slice(0, count)
+    .map((a: any) => ({
+      activityId: typeof a.id === "string" ? parseInt(a.id.replace(/\D/g, "")) || 0 : a.id || 0,
+      activityName: a.name || "Тренировка",
+      activityType: intervalsTypeToLocal[a.type] || a.type || "unknown",
+      distance: a.distance || 0,
+      duration: a.moving_time || a.elapsed_time || 0,
+      startTimeLocal: a.start_date_local || new Date().toISOString(),
+      averageHR: a.avg_hr || undefined,
+      maxHR: a.max_hr || undefined,
+      averagePace: a.avg_speed ? (1000 / a.avg_speed) : undefined,
+    }));
+
+  console.log(`[Intervals] Fetched ${activities.length} activities for athlete ${athleteId}`);
+  return activities;
+}
 
 export async function verifyIntervalsConnection(athleteId: string, apiKey: string): Promise<{ name: string }> {
   const res = await fetch(`${INTERVALS_API}/athlete/${athleteId}`, {
