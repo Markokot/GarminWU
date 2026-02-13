@@ -110,7 +110,7 @@ function convertStepType(step: WorkoutStep): { stepTypeId: number; stepTypeKey: 
     warmup: { stepTypeId: 1, stepTypeKey: "warmup" },
     interval: { stepTypeId: 3, stepTypeKey: "interval" },
     recovery: { stepTypeId: 4, stepTypeKey: "recovery" },
-    rest: { stepTypeId: 4, stepTypeKey: "rest" },
+    rest: { stepTypeId: 5, stepTypeKey: "rest" },
     cooldown: { stepTypeId: 2, stepTypeKey: "cooldown" },
     repeat: { stepTypeId: 6, stepTypeKey: "repeat" },
   };
@@ -121,10 +121,17 @@ function convertSportType(sportType: string): { sportTypeId: number; sportTypeKe
   const map: Record<string, { sportTypeId: number; sportTypeKey: string }> = {
     running: { sportTypeId: 1, sportTypeKey: "running" },
     cycling: { sportTypeId: 2, sportTypeKey: "cycling" },
-    swimming: { sportTypeId: 5, sportTypeKey: "lap_swimming" },
+    swimming: { sportTypeId: 4, sportTypeKey: "swimming" },
   };
   return map[sportType] || { sportTypeId: 1, sportTypeKey: "running" };
 }
+
+const STROKE_TYPE_MAPPING: Record<string, { strokeTypeId: number; strokeTypeKey: string; displayOrder: number }> = {
+  free: { strokeTypeId: 6, strokeTypeKey: "free", displayOrder: 6 },
+  backstroke: { strokeTypeId: 2, strokeTypeKey: "backstroke", displayOrder: 2 },
+  breaststroke: { strokeTypeId: 3, strokeTypeKey: "breaststroke", displayOrder: 3 },
+  fly: { strokeTypeId: 5, strokeTypeKey: "fly", displayOrder: 5 },
+};
 
 function buildEndCondition(step: WorkoutStep) {
   if (step.durationType === "time") {
@@ -166,7 +173,7 @@ function buildTargetType(step: WorkoutStep) {
   };
 }
 
-function buildGarminSteps(steps: WorkoutStep[]): any[] {
+function buildGarminSteps(steps: WorkoutStep[], sportType: string = "running"): any[] {
   return steps.map((step, i) => {
     const { stepTypeId, stepTypeKey } = convertStepType(step);
 
@@ -183,7 +190,7 @@ function buildGarminSteps(steps: WorkoutStep[]): any[] {
         numberOfIterations: step.repeatCount || 2,
         smartRepeat: false,
         childStepId: null,
-        workoutSteps: buildGarminSteps(step.childSteps),
+        workoutSteps: buildGarminSteps(step.childSteps, sportType),
       };
     }
 
@@ -197,8 +204,21 @@ function buildGarminSteps(steps: WorkoutStep[]): any[] {
       endConditionValue = endConditionValue;
     }
 
-    const targetType = buildTargetType(step);
+    const isSwimming = sportType === "swimming";
+
+    const targetType = isSwimming && step.targetType === "no.target"
+      ? { workoutTargetTypeId: 18, workoutTargetTypeKey: "swim.instruction", displayOrder: 18 }
+      : buildTargetType(step);
     const hasTarget = step.targetType !== "no.target";
+
+    const strokeType = isSwimming
+      ? (STROKE_TYPE_MAPPING["free"])
+      : { strokeTypeId: 0, strokeTypeKey: null, displayOrder: 0 };
+
+    let preferredEndConditionUnit = null;
+    if (isSwimming && step.durationType === "distance") {
+      preferredEndConditionUnit = { unitId: 1, unitKey: "meter", factor: 100 };
+    }
 
     const garminStep: any = {
       type: "ExecutableStepDTO",
@@ -213,7 +233,7 @@ function buildGarminSteps(steps: WorkoutStep[]): any[] {
       description: null,
       endCondition,
       endConditionValue: endConditionValue,
-      preferredEndConditionUnit: null,
+      preferredEndConditionUnit,
       endConditionCompare: null,
       endConditionZone: null,
       targetType,
@@ -226,11 +246,7 @@ function buildGarminSteps(steps: WorkoutStep[]): any[] {
       secondaryTargetValueTwo: null,
       secondaryTargetValueUnit: null,
       secondaryZoneNumber: null,
-      strokeType: {
-        strokeTypeId: 0,
-        strokeTypeKey: null,
-        displayOrder: 0,
-      },
+      strokeType,
       equipmentType: {
         equipmentTypeId: 0,
         equipmentTypeKey: null,
@@ -250,19 +266,28 @@ function buildGarminSteps(steps: WorkoutStep[]): any[] {
 
 export function convertToGarminWorkout(workout: { name: string; description?: string; sportType: string; steps: WorkoutStep[] }): any {
   const { sportTypeId, sportTypeKey } = convertSportType(workout.sportType);
+  const isSwimming = workout.sportType === "swimming";
 
-  return {
+  const garminWorkout: any = {
     workoutName: workout.name,
     description: workout.description || "Created by GarminCoach AI",
     sportType: { sportTypeId, sportTypeKey },
+    subSportType: isSwimming ? "LAP_SWIMMING" : null,
     workoutSegments: [
       {
         segmentOrder: 1,
         sportType: { sportTypeId, sportTypeKey },
-        workoutSteps: buildGarminSteps(workout.steps),
+        workoutSteps: buildGarminSteps(workout.steps, workout.sportType),
       },
     ],
   };
+
+  if (isSwimming) {
+    garminWorkout.poolLength = 25;
+    garminWorkout.poolLengthUnit = { unitId: 1, unitKey: "meter", factor: 100 };
+  }
+
+  return garminWorkout;
 }
 
 async function doPushAndSchedule(
