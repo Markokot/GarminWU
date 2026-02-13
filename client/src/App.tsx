@@ -16,6 +16,7 @@ import WorkoutsPage from "@/pages/workouts-page";
 import SettingsPage from "@/pages/settings-page";
 import FaqPage from "@/pages/faq-page";
 import AdminPage from "@/pages/admin-page";
+import TestWorkoutsPage from "@/pages/test-workouts-page";
 import { Loader2 } from "lucide-react";
 
 function Router() {
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/settings" component={SettingsPage} />
       <Route path="/faq" component={FaqPage} />
       <Route path="/admin" component={AdminPage} />
+      <Route path="/test-workouts" component={TestWorkoutsPage} />
       <Route component={NotFound} />
     </Switch>
   );
