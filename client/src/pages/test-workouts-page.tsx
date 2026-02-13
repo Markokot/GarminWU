@@ -213,7 +213,13 @@ export default function TestWorkoutsPage() {
     }
   };
 
-  if (!user) return null;
+  if (!user || user.username !== "Andrey") {
+    return (
+      <div className="p-4 text-center text-muted-foreground">
+        Доступ запрещён
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 max-w-4xl mx-auto space-y-4">
