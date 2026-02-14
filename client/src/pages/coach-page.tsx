@@ -356,15 +356,6 @@ export default function CoachPage() {
     setStreamingText("");
     streamDoneRef.current = false;
 
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      userId: user!.id,
-      role: "user",
-      content,
-      timestamp: new Date().toISOString(),
-    };
-    queryClient.setQueryData<ChatMessage[]>(["/api/chat/messages"], (old = []) => [...old, userMessage]);
-
     try {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", "/api/chat/send", true);
@@ -373,24 +364,27 @@ export default function CoachPage() {
 
       let processedLength = 0;
       let streamError: string | null = null;
-      let doneMessage: ChatMessage | null = null;
+      let sseBuffer = "";
 
-      const processChunks = (text: string) => {
-        const parts = text.split("\n\n");
-        for (const part of parts) {
-          const dataLine = part.split("\n").find((l) => l.startsWith("data: "));
+      const processBuffer = (flush: boolean) => {
+        const events = sseBuffer.split("\n\n");
+        if (!flush) {
+          sseBuffer = events.pop() || "";
+        } else {
+          sseBuffer = "";
+        }
+        for (const event of events) {
+          if (!event.trim()) continue;
+          const dataLine = event.split("\n").find((l) => l.startsWith("data: "));
           if (!dataLine) continue;
           try {
-            const event = JSON.parse(dataLine.slice(6));
-            if (event.type === "chunk") {
-              setStreamingText((prev) => prev + event.content);
-            } else if (event.type === "done") {
+            const parsed = JSON.parse(dataLine.slice(6));
+            if (parsed.type === "chunk") {
+              setStreamingText((prev) => prev + parsed.content);
+            } else if (parsed.type === "done") {
               streamDoneRef.current = true;
-              if (event.message) {
-                doneMessage = event.message;
-              }
-            } else if (event.type === "error") {
-              streamError = event.message;
+            } else if (parsed.type === "error") {
+              streamError = parsed.message;
             }
           } catch {}
         }
@@ -400,14 +394,16 @@ export default function CoachPage() {
         xhr.onprogress = () => {
           const newText = xhr.responseText.substring(processedLength);
           processedLength = xhr.responseText.length;
-          processChunks(newText);
+          sseBuffer += newText;
+          processBuffer(false);
         };
 
         xhr.onload = () => {
           const remaining = xhr.responseText.substring(processedLength);
           if (remaining) {
-            processChunks(remaining);
+            sseBuffer += remaining;
           }
+          processBuffer(true);
           if (xhr.status >= 400) {
             try {
               const err = JSON.parse(xhr.responseText);
@@ -430,14 +426,11 @@ export default function CoachPage() {
         xhr.send(JSON.stringify({ content }));
       });
 
-      if (doneMessage) {
-        queryClient.setQueryData<ChatMessage[]>(["/api/chat/messages"], (old = []) => [...old, doneMessage!]);
-      }
+      await queryClient.refetchQueries({ queryKey: ["/api/chat/messages"] });
       setStreamingText("");
     } catch (error: any) {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
       setStreamingText("");
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
     } finally {
       setIsSending(false);
     }
