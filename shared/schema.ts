@@ -118,6 +118,7 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   workoutJson?: Workout;
+  workoutsJson?: Workout[];
 }
 
 export interface GarminActivity {
