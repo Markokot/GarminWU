@@ -98,6 +98,32 @@ const SYSTEM_PROMPT = `Ты — Тренер. Опытный тренер по �
 Всегда включай разминку и заминку в тренировку.
 ОБЯЗАТЕЛЬНО указывай heart.rate.zone для ВСЕХ шагов (warmup, interval, recovery, cooldown) — не оставляй "no.target". Для разминки и заминки ставь лёгкий пульс, для recovery — восстановительный.
 
+ТРЕНИРОВОЧНЫЙ ПЛАН НА ПЕРИОД:
+Когда пользователь просит составить план на несколько дней/недель (например, "план на 4 недели", "расписание тренировок на 2 недели"), верни ВСЕ тренировки в одном блоке \`\`\`training_plan_json ... \`\`\`:
+{
+  "planTitle": "Название плана",
+  "planDescription": "Краткое описание плана и его целей",
+  "workouts": [
+    {
+      "name": "Название тренировки",
+      "description": "Описание",
+      "sportType": "running",
+      "scheduledDate": "YYYY-MM-DD",
+      "steps": [...]
+    }
+  ]
+}
+
+ПРАВИЛА ДЛЯ ПЛАНА:
+- Максимальная длительность плана: 12 недель. Если пользователь просит больше — объясни, что планирование более чем на 12 недель неэффективно (нужна корректировка по ходу)
+- КАЖДАЯ тренировка в плане ОБЯЗАНА иметь scheduledDate (конкретную дату YYYY-MM-DD)
+- Распределяй тренировки по дням недели, учитывая дни отдыха
+- Чередуй интенсивные и восстановительные тренировки
+- Не ставь тяжёлые тренировки два дня подряд
+- Включай разнообразие: лёгкие пробежки, длительные, интервальные, темповые
+- Если пользователь просит ОДНУ тренировку — используй формат workout_json (как описано выше)
+- Если пользователь просит ПЛАН/РАСПИСАНИЕ на период — используй формат training_plan_json
+
 АНАЛИЗ ТРЕНИРОВОЧНЫХ ДАННЫХ:
 - Если есть данные Garmin, оцени текущую нагрузку и форму
 - Обрати внимание на соотношение пульса и темпа — это показатель формы
@@ -153,6 +179,9 @@ function buildUserContext(user: User, activities?: GarminActivity[]): string {
 export interface AiResponse {
   text: string;
   workout: (Workout & { scheduledDate?: string }) | null;
+  workouts: (Workout & { scheduledDate?: string })[] | null;
+  planTitle?: string;
+  planDescription?: string;
 }
 
 function extractWorkoutJson(text: string): (Workout & { scheduledDate?: string }) | null {
@@ -202,8 +231,64 @@ function extractWorkoutJson(text: string): (Workout & { scheduledDate?: string }
   }
 }
 
+function extractTrainingPlanJson(text: string): { workouts: (Workout & { scheduledDate?: string })[]; planTitle?: string; planDescription?: string } | null {
+  const regex = /```training_plan_json\s*([\s\S]*?)```/;
+  const match = text.match(regex);
+  if (!match) return null;
+
+  try {
+    const parsed = JSON.parse(match[1].trim());
+    const rawWorkouts = parsed.workouts || parsed;
+    if (!Array.isArray(rawWorkouts) || rawWorkouts.length === 0) return null;
+
+    const workouts = rawWorkouts.map((w: any, idx: number) => ({
+      id: "",
+      userId: "",
+      name: w.name || `Тренировка ${idx + 1}`,
+      description: w.description || "",
+      sportType: w.sportType || "running",
+      scheduledDate: w.scheduledDate || null,
+      steps: (w.steps || []).map((s: any, i: number) => ({
+        stepId: s.stepId || i + 1,
+        stepOrder: s.stepOrder || i + 1,
+        stepType: s.stepType || "interval",
+        durationType: s.durationType || "time",
+        durationValue: s.durationValue ?? null,
+        targetType: s.targetType || "no.target",
+        targetValueLow: s.targetValueLow ?? null,
+        targetValueHigh: s.targetValueHigh ?? null,
+        intensity: s.intensity || "active",
+        repeatCount: s.repeatCount,
+        childSteps: s.childSteps?.map((cs: any, j: number) => ({
+          stepId: cs.stepId || j + 100,
+          stepOrder: cs.stepOrder || j + 1,
+          stepType: cs.stepType || "interval",
+          durationType: cs.durationType || "time",
+          durationValue: cs.durationValue ?? null,
+          targetType: cs.targetType || "no.target",
+          targetValueLow: cs.targetValueLow ?? null,
+          targetValueHigh: cs.targetValueHigh ?? null,
+          intensity: cs.intensity || "active",
+        })),
+      })),
+      createdAt: new Date().toISOString(),
+      sentToGarmin: false,
+      sentToIntervals: false,
+    }));
+
+    return {
+      workouts,
+      planTitle: parsed.planTitle || undefined,
+      planDescription: parsed.planDescription || undefined,
+    };
+  } catch (e) {
+    console.error("Failed to parse training plan JSON:", e);
+    return null;
+  }
+}
+
 function cleanResponseText(text: string): string {
-  return text.replace(/```workout_json\s*[\s\S]*?```/g, "").trim();
+  return text.replace(/```workout_json\s*[\s\S]*?```/g, "").replace(/```training_plan_json\s*[\s\S]*?```/g, "").trim();
 }
 
 export async function chat(
@@ -239,14 +324,21 @@ export async function chat(
       model: "deepseek-chat",
       messages,
       temperature: 0.7,
-      max_tokens: 4000,
+      max_tokens: 8000,
     });
 
     const responseText = completion.choices[0]?.message?.content || "Извините, не удалось получить ответ.";
     const workout = extractWorkoutJson(responseText);
+    const plan = extractTrainingPlanJson(responseText);
     const cleanText = cleanResponseText(responseText);
 
-    return { text: cleanText, workout };
+    return {
+      text: cleanText,
+      workout,
+      workouts: plan?.workouts || null,
+      planTitle: plan?.planTitle,
+      planDescription: plan?.planDescription,
+    };
   } catch (error: any) {
     console.error("DeepSeek API error:", error.message);
     throw new Error("Ошибка AI: " + (error.message || "не удалось получить ответ"));

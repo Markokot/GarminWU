@@ -465,6 +465,7 @@ export async function registerRoutes(
         content: aiResponse.text,
         timestamp: new Date().toISOString(),
         workoutJson: aiResponse.workout || undefined,
+        workoutsJson: aiResponse.workouts || undefined,
       });
 
       res.json(assistantMessage);

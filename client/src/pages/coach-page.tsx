@@ -22,10 +22,21 @@ import {
   CalendarDays,
   BarChart3,
   Star,
+  ChevronDown,
+  ChevronUp,
+  ListChecks,
 } from "lucide-react";
 
 function formatTime(ts: string) {
   return new Date(ts).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr + "T12:00:00").toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    weekday: "short",
+  });
 }
 
 function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals, savingFavorite, pushing, pushingIntervals, showGarmin, showIntervals }: {
@@ -57,13 +68,7 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
         {workout.scheduledDate && (
           <div className="flex items-center gap-1.5 mb-3 text-xs text-muted-foreground">
             <CalendarDays className="w-3 h-3" />
-            <span>
-              {new Date(workout.scheduledDate + "T12:00:00").toLocaleDateString("ru-RU", {
-                day: "numeric",
-                month: "long",
-                weekday: "long",
-              })}
-            </span>
+            <span>{formatDate(workout.scheduledDate)}</span>
           </div>
         )}
         <div className="space-y-1.5 mb-4">
@@ -122,18 +127,178 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
   );
 }
 
+function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGarmin, onBulkPushIntervals, onBulkFavorite, bulkPushing, bulkPushingIntervals, bulkSaving }: {
+  workouts: Workout[];
+  showGarmin: boolean;
+  showIntervals: boolean;
+  onBulkPushGarmin: () => void;
+  onBulkPushIntervals: () => void;
+  onBulkFavorite: () => void;
+  bulkPushing: boolean;
+  bulkPushingIntervals: boolean;
+  bulkSaving: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const dateRange = (() => {
+    const dates = workouts.filter(w => w.scheduledDate).map(w => w.scheduledDate!).sort();
+    if (dates.length === 0) return null;
+    return { from: dates[0], to: dates[dates.length - 1] };
+  })();
+
+  const weekGroups = (() => {
+    const groups: Record<string, Workout[]> = {};
+    workouts.forEach(w => {
+      if (w.scheduledDate) {
+        const d = new Date(w.scheduledDate + "T12:00:00");
+        const weekStart = new Date(d);
+        const day = weekStart.getDay();
+        const diff = day === 0 ? 6 : day - 1;
+        weekStart.setDate(weekStart.getDate() - diff);
+        const key = weekStart.toISOString().split("T")[0];
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(w);
+      } else {
+        if (!groups["no-date"]) groups["no-date"] = [];
+        groups["no-date"].push(w);
+      }
+    });
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  })();
+
+  return (
+    <Card className="mt-3">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <ListChecks className="w-4 h-4 text-primary flex-shrink-0" />
+            <span className="font-medium text-sm">
+              Тренировочный план
+            </span>
+            <Badge variant="outline" className="text-xs flex-shrink-0">
+              {workouts.length} тренировок
+            </Badge>
+          </div>
+        </div>
+
+        {dateRange && (
+          <div className="flex items-center gap-1.5 mb-3 text-xs text-muted-foreground">
+            <CalendarDays className="w-3 h-3" />
+            <span>{formatDate(dateRange.from)} — {formatDate(dateRange.to)}</span>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 flex-wrap mb-3">
+          <Button size="sm" variant="outline" onClick={onBulkFavorite} disabled={bulkSaving} data-testid="button-plan-save-all">
+            {bulkSaving ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Star className="w-3 h-3 mr-1" />}
+            Все в избранное
+          </Button>
+          {showGarmin && (
+            <Button size="sm" onClick={onBulkPushGarmin} disabled={bulkPushing} data-testid="button-plan-push-garmin">
+              {bulkPushing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Watch className="w-3 h-3 mr-1" />}
+              Все на Garmin
+            </Button>
+          )}
+          {showIntervals && (
+            <Button size="sm" variant="secondary" onClick={onBulkPushIntervals} disabled={bulkPushingIntervals} data-testid="button-plan-push-intervals">
+              {bulkPushingIntervals ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <BarChart3 className="w-3 h-3 mr-1" />}
+              Все в Intervals
+            </Button>
+          )}
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setExpanded(!expanded)}
+          className="w-full justify-between text-xs text-muted-foreground"
+          data-testid="button-plan-expand"
+        >
+          <span>{expanded ? "Свернуть" : "Показать все тренировки"}</span>
+          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </Button>
+
+        {expanded && (
+          <div className="mt-3 space-y-4">
+            {weekGroups.map(([weekKey, weekWorkouts]) => (
+              <div key={weekKey}>
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  {weekKey === "no-date" ? "Без даты" : `Неделя с ${formatDate(weekKey)}`}
+                </p>
+                <div className="space-y-2">
+                  {weekWorkouts.map((w, idx) => (
+                    <div key={idx} className="border rounded-md p-3 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Dumbbell className="w-3 h-3 text-primary flex-shrink-0" />
+                          <span className="text-xs font-medium truncate">{w.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <Badge variant="outline" className="text-[10px]">
+                            {sportTypeLabels[w.sportType]}
+                          </Badge>
+                        </div>
+                      </div>
+                      {w.scheduledDate && (
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <CalendarDays className="w-2.5 h-2.5" />
+                          <span>{formatDate(w.scheduledDate)}</span>
+                        </div>
+                      )}
+                      {w.description && (
+                        <p className="text-[10px] text-muted-foreground">{w.description}</p>
+                      )}
+                      <div className="space-y-1">
+                        {w.steps.map((step, si) => (
+                          <div key={si} className="flex items-center gap-1.5 text-[10px]">
+                            <div className="w-4 h-4 rounded bg-accent flex items-center justify-center flex-shrink-0 text-[8px] font-medium text-accent-foreground">
+                              {si + 1}
+                            </div>
+                            <span className="capitalize">{step.stepType}</span>
+                            {step.durationValue && (
+                              <span className="text-muted-foreground">
+                                {step.durationType === "time"
+                                  ? `${Math.floor(step.durationValue / 60)}:${(step.durationValue % 60).toString().padStart(2, "0")}`
+                                  : step.durationType === "distance"
+                                  ? `${step.durationValue}м`
+                                  : "по кнопке"}
+                              </span>
+                            )}
+                            {step.stepType === "repeat" && step.repeatCount && (
+                              <Badge variant="secondary" className="text-[8px]">
+                                x{step.repeatCount}
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 const quickPrompts = [
   "Легкая восстановительная пробежка на 30 минут",
   "Интервальная тренировка для улучшения скорости",
   "Длительная тренировка для подготовки к полумарафону",
   "Велосипедная тренировка на выносливость 1.5 часа",
-  "Тренировка по плаванию для подготовки к Ironman",
+  "План на 2 недели для подготовки к забегу на 10 км",
 ];
 
 export default function CoachPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [message, setMessage] = useState("");
+  const [bulkPushing, setBulkPushing] = useState(false);
+  const [bulkPushingIntervals, setBulkPushingIntervals] = useState(false);
+  const [bulkSaving, setBulkSaving] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -185,7 +350,6 @@ export default function CoachPage() {
       } else {
         toast({ title: "Тренировка отправлена на Garmin" });
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/workouts"] });
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка отправки", description: error.message, variant: "destructive" });
@@ -209,12 +373,78 @@ export default function CoachPage() {
       } else {
         toast({ title: "Тренировка отправлена в Intervals.icu" });
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/workouts"] });
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка отправки в Intervals.icu", description: error.message, variant: "destructive" });
     },
   });
+
+  const handleBulkPushGarmin = async (workouts: Workout[]) => {
+    setBulkPushing(true);
+    let success = 0;
+    let failed = 0;
+    for (const w of workouts) {
+      try {
+        const res = await apiRequest("POST", "/api/garmin/push-workout", w);
+        if (!res.ok) throw new Error("push failed");
+        success++;
+      } catch {
+        failed++;
+      }
+    }
+    setBulkPushing(false);
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    if (failed > 0) {
+      toast({ title: `Garmin: ${success} отправлено, ${failed} с ошибкой`, variant: "destructive" });
+    } else {
+      toast({ title: `${success} тренировок отправлено на Garmin` });
+    }
+  };
+
+  const handleBulkPushIntervals = async (workouts: Workout[]) => {
+    setBulkPushingIntervals(true);
+    let success = 0;
+    let failed = 0;
+    for (const w of workouts) {
+      try {
+        const res = await apiRequest("POST", "/api/intervals/push-workout", w);
+        if (!res.ok) throw new Error("push failed");
+        success++;
+      } catch {
+        failed++;
+      }
+    }
+    setBulkPushingIntervals(false);
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    if (failed > 0) {
+      toast({ title: `Intervals.icu: ${success} отправлено, ${failed} с ошибкой`, variant: "destructive" });
+    } else {
+      toast({ title: `${success} тренировок отправлено в Intervals.icu` });
+    }
+  };
+
+  const handleBulkFavorite = async (workouts: Workout[]) => {
+    setBulkSaving(true);
+    let success = 0;
+    let failed = 0;
+    for (const w of workouts) {
+      try {
+        const res = await apiRequest("POST", "/api/favorites", w);
+        if (!res.ok) throw new Error("save failed");
+        success++;
+      } catch {
+        failed++;
+      }
+    }
+    setBulkSaving(false);
+    queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    if (failed > 0) {
+      toast({ title: `${success} сохранено, ${failed} с ошибкой`, variant: "destructive" });
+    } else {
+      toast({ title: `${success} тренировок сохранено в избранное` });
+    }
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -246,7 +476,7 @@ export default function CoachPage() {
           <div>
             <h1 className="text-lg font-semibold" data-testid="text-coach-title">AI Тренер</h1>
             <p className="text-xs text-muted-foreground">
-              Опишите желаемую тренировку — AI создаст план и загрузит на часы
+              Опишите тренировку или попросите план на период — AI создаст и загрузит на часы
             </p>
           </div>
         </div>
@@ -274,7 +504,7 @@ export default function CoachPage() {
               <div>
                 <h2 className="text-lg font-semibold mb-1">Ваш персональный тренер</h2>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  Опишите желаемую тренировку, и AI создаст структурированный план, который можно загрузить на часы Garmin
+                  Опишите тренировку или попросите план на период — AI создаст структурированные тренировки для загрузки на часы
                 </p>
               </div>
               <div className="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
@@ -319,7 +549,7 @@ export default function CoachPage() {
                   ) : (
                     <>
                       <div className="text-sm whitespace-pre-wrap leading-relaxed break-words overflow-hidden">{msg.content}</div>
-                      {msg.workoutJson && (
+                      {msg.workoutJson && !(msg.workoutsJson && msg.workoutsJson.length > 0) && (
                         <WorkoutPreview
                           workout={msg.workoutJson}
                           onFavorite={() => favoriteMutation.mutate(msg.workoutJson!)}
@@ -330,6 +560,19 @@ export default function CoachPage() {
                           pushingIntervals={pushIntervalsMutation.isPending}
                           showGarmin={!!user?.garminConnected}
                           showIntervals={!!user?.intervalsConnected}
+                        />
+                      )}
+                      {msg.workoutsJson && msg.workoutsJson.length > 0 && (
+                        <TrainingPlanPreview
+                          workouts={msg.workoutsJson}
+                          showGarmin={!!user?.garminConnected}
+                          showIntervals={!!user?.intervalsConnected}
+                          onBulkPushGarmin={() => handleBulkPushGarmin(msg.workoutsJson!)}
+                          onBulkPushIntervals={() => handleBulkPushIntervals(msg.workoutsJson!)}
+                          onBulkFavorite={() => handleBulkFavorite(msg.workoutsJson!)}
+                          bulkPushing={bulkPushing}
+                          bulkPushingIntervals={bulkPushingIntervals}
+                          bulkSaving={bulkSaving}
                         />
                       )}
                     </>
@@ -368,7 +611,7 @@ export default function CoachPage() {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Опишите тренировку, например: интервальная тренировка 5x1000м с пульсом 160-170"
+            placeholder="Опишите тренировку или попросите план: «план на 3 недели для 10 км»"
             className="resize-none min-h-[44px] max-h-[120px] text-sm"
             rows={1}
             data-testid="input-chat-message"

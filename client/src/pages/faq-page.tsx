@@ -17,6 +17,9 @@ import {
   Key,
   Lock,
   FlaskConical,
+  Star,
+  ListChecks,
+  CalendarDays,
 } from "lucide-react";
 
 export default function FaqPage() {
@@ -103,6 +106,130 @@ export default function FaqPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
+            <Dumbbell className="w-5 h-5 text-primary" />
+            <h2 className="font-semibold">Тренировки и планы</h2>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="multiple" className="w-full">
+            <AccordionItem value="single-workout">
+              <AccordionTrigger data-testid="faq-single-workout">
+                Как создать одну тренировку?
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>
+                    Перейдите в раздел <strong>AI Тренер</strong> и опишите тренировку обычным языком. Примеры:
+                  </p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>«Лёгкая пробежка на 30 минут»</li>
+                    <li>«Интервалы 5x1000м на темпе 4:30-4:45 с отдыхом 2 минуты»</li>
+                    <li>«Велотренировка на выносливость 1.5 часа с пульсом 130-145»</li>
+                    <li>«Тренировка по плаванию на 2 км для подготовки к Ironman»</li>
+                  </ul>
+                  <p>
+                    AI создаст структурированную тренировку с разминкой, основной частью и заминкой.
+                    Тренировку можно сразу отправить на Garmin или Intervals.icu, а также сохранить в избранное.
+                  </p>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="training-plan">
+              <AccordionTrigger data-testid="faq-training-plan">
+                <div className="flex items-center gap-2">
+                  <ListChecks className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span>Как получить план тренировок на период?</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>
+                    Попросите AI составить план на несколько дней или недель. Примеры запросов:
+                  </p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>«Составь план тренировок на 2 недели для подготовки к забегу на 10 км»</li>
+                    <li>«План на 4 недели для улучшения выносливости в беге»</li>
+                    <li>«Расписание тренировок на неделю: 3 беговые + 1 велотренировка»</li>
+                    <li>«Подготовка к полумарафону на 8 недель»</li>
+                  </ul>
+                  <div className="bg-muted rounded-md p-3 space-y-2">
+                    <p className="font-medium text-foreground">Что вы получите:</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li>Все тренировки плана с конкретными датами</li>
+                      <li>Структурированные шаги для каждой тренировки (разминка, интервалы, заминка)</li>
+                      <li>Тренировки сгруппированы по неделям</li>
+                      <li>Возможность отправить <strong>все тренировки сразу</strong> на Garmin или Intervals.icu одной кнопкой</li>
+                      <li>Возможность сохранить весь план в избранное</li>
+                    </ul>
+                  </div>
+                  <div className="bg-muted rounded-md p-3 space-y-1">
+                    <p className="font-medium text-foreground flex items-center gap-1">
+                      <CalendarDays className="w-4 h-4 text-primary" />
+                      Ограничения
+                    </p>
+                    <p>
+                      Максимальная длительность плана — <strong>12 недель</strong>.
+                      Для более длительной подготовки рекомендуется создавать планы по блокам (например, по 4 недели),
+                      чтобы AI мог корректировать нагрузку на основе ваших результатов.
+                    </p>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="favorites">
+              <AccordionTrigger data-testid="faq-favorites">
+                <div className="flex items-center gap-2">
+                  <Star className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span>Как работает избранное?</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>
+                    Когда AI создаёт тренировку в чате, вы можете сохранить её в <strong>Избранное</strong>,
+                    нажав кнопку «В избранное». Если AI создал план на период — можно сохранить все тренировки сразу
+                    кнопкой «Все в избранное».
+                  </p>
+                  <p>
+                    Сохранённые тренировки доступны в разделе <strong>Избранное</strong> в боковом меню.
+                    Оттуда их можно быстро отправить на Garmin или Intervals.icu повторно,
+                    не обращаясь к AI заново. Ненужные тренировки можно удалить из избранного.
+                  </p>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="scheduling">
+              <AccordionTrigger data-testid="faq-scheduling">
+                Как назначается дата тренировки?
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>
+                    AI автоматически определяет дату из вашего сообщения. Вы можете сказать:
+                  </p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>«Тренировка на сегодня» — дата сегодняшнего дня</li>
+                    <li>«На завтра» — завтрашняя дата</li>
+                    <li>«В среду» — ближайшая среда</li>
+                    <li>Конкретная дата: «на 15 марта»</li>
+                  </ul>
+                  <p>
+                    Для планов на период AI автоматически распределяет тренировки по дням, учитывая дни отдыха
+                    и правильное чередование нагрузки.
+                  </p>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
             <Watch className="w-5 h-5 text-primary" />
             <h2 className="font-semibold">Garmin Connect</h2>
           </div>
@@ -178,6 +305,10 @@ export default function FaqPage() {
                   <p>
                     Убедитесь, что приложение Garmin Connect на телефоне запущено и часы синхронизированы.
                     Обычно тренировка появляется на часах в течение нескольких минут.
+                  </p>
+                  <p>
+                    При отправке плана на период кнопкой «Все на Garmin» — все тренировки отправляются
+                    последовательно и появятся в вашем календаре Garmin на запланированные даты.
                   </p>
                 </div>
               </AccordionContent>
@@ -396,104 +527,6 @@ export default function FaqPage() {
                   <p>
                     Данные не передаются третьим лицам, кроме случаев прямого
                     взаимодействия с Garmin Connect и Intervals.icu по вашему запросу.
-                  </p>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Dumbbell className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold">Тренировки</h2>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Accordion type="multiple" className="w-full">
-            <AccordionItem value="create-workout">
-              <AccordionTrigger data-testid="faq-create-workout">
-                Как создать тренировку?
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <p>
-                    Перейдите в раздел <strong>AI Тренер</strong> и опишите тренировку обычным языком.
-                    Например:
-                  </p>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>«Лёгкий бег 40 минут на пульсе 130-140»</li>
-                    <li>«Интервалы 8 по 400 метров с отдыхом 90 секунд»</li>
-                    <li>«Велотренировка на станке 1 час с темповым блоком»</li>
-                    <li>«Тренировка в бассейне 2000 метров»</li>
-                  </ul>
-                  <p>
-                    AI-тренер создаст структурированную тренировку, которую можно сохранить
-                    и отправить на часы или в Zwift.
-                  </p>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="edit-workout">
-              <AccordionTrigger data-testid="faq-edit-workout">
-                Можно ли изменить тренировку после создания?
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <p>
-                    Да! Просто попросите AI-тренера внести изменения в чате. Например:
-                  </p>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>«Сделай разминку длиннее — 15 минут вместо 10»</li>
-                    <li>«Добавь ещё 2 повтора интервалов»</li>
-                    <li>«Снизь целевой пульс до 125-135»</li>
-                    <li>«Перенеси тренировку на среду»</li>
-                  </ul>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="schedule-workout">
-              <AccordionTrigger data-testid="faq-schedule-workout">
-                Как запланировать тренировку на конкретный день?
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <p>
-                    Упомяните дату в разговоре с AI-тренером — он автоматически установит дату тренировки.
-                    Например: «Создай тренировку на завтра» или «Интервалы на среду».
-                  </p>
-                  <p>
-                    При отправке на Garmin Connect или Intervals.icu тренировка будет запланирована на указанную дату
-                    и появится в вашем тренировочном календаре.
-                  </p>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="profile-importance">
-              <AccordionTrigger data-testid="faq-profile-importance">
-                Зачем заполнять профиль спортсмена?
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <p>
-                    Чем больше информации о вас знает AI-тренер, тем точнее и безопаснее будут
-                    рекомендации. В профиле вы можете указать:
-                  </p>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li><strong>Уровень подготовки</strong> — от новичка до элитного спортсмена</li>
-                    <li><strong>Возраст</strong> — для расчёта безопасных пульсовых зон</li>
-                    <li><strong>Объём тренировок</strong> — сколько часов в неделю вы тренируетесь</li>
-                    <li><strong>Травмы</strong> — чтобы тренер учитывал ограничения</li>
-                    <li><strong>Рекорды</strong> — для калибровки интенсивности</li>
-                    <li><strong>Цели</strong> — подготовка к конкретному старту или общая форма</li>
-                  </ul>
-                  <p>
-                    Заполнить профиль можно в разделе <strong>Настройки</strong>.
                   </p>
                 </div>
               </AccordionContent>

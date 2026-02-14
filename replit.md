@@ -20,11 +20,21 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - Structured workout generation (running, cycling, swimming)
 - Push workouts to Garmin Connect / watches OR Intervals.icu (→ Zwift)
 - Favorites system — explicitly save workouts from AI chat for quick re-push
+- Training plan generation — multi-week plans (up to 12 weeks) with bulk push to devices
 - Automatic workout scheduling to Garmin calendar (date extracted from conversation)
 - View recent Garmin activities
 - Dark/light theme toggle
 - Expanded athlete profile (fitness level, age, weekly volume, experience, injuries, PRs, preferences)
 - AI acts as experienced coach: analyzes Garmin data, gives recommendations, can disagree with unsafe requests
+
+## Training Plan Generation
+- User asks for multi-week plan (e.g., "план на 4 недели для полумарафона")
+- AI generates all workouts with scheduled dates in a single `training_plan_json` block
+- Plans stored in ChatMessage.workoutsJson array
+- Max plan duration: 12 weeks (enforced in AI prompt)
+- Bulk push: all workouts sent sequentially to Garmin/Intervals.icu
+- Bulk save: all workouts saved to favorites at once
+- UI groups workouts by week with collapsible view
 
 ## AI Coach Behavior
 - Analyzes last 10 Garmin activities for training load assessment
