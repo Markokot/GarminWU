@@ -318,6 +318,16 @@ function extractTrainingPlanJson(text: string): { workouts: (Workout & { schedul
   }
 }
 
+function stripManualImportInstructions(text: string): string {
+  return text
+    .replace(/\*?\*?(?:Пошаговая инструкция|Краткая инструкция|Как загрузить и запустить|Инструкция для загрузки)[^]*?(?=\n\n|\*\*Итого|\*\*Тренировка|Хорошего|Удачной|$)/gi, "")
+    .replace(/\d+\.\s*\*?\*?(?:Скопируй|Импортируй|Открой Garmin Connect|Вставь|Сохрани и синхронизируй)[^\n]*(?:\n(?:\s+\*[^\n]*|\s+\d+\.[^\n]*)?)*/gi, "")
+    .replace(/\*?\*?Скопируй (?:код|JSON|весь блок)[^\n]*/gi, "")
+    .replace(/Вот (?:JSON-код|код|готовый JSON)[^\n]*/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function cleanResponseText(text: string, hadWorkout: boolean, hadPlan: boolean): string {
   let cleaned = text
     .replace(/```workout_json\s*[\s\S]*?```/g, "")
@@ -325,6 +335,7 @@ function cleanResponseText(text: string, hadWorkout: boolean, hadPlan: boolean):
   if (hadWorkout || hadPlan) {
     cleaned = cleaned.replace(/```json\s*[\s\S]*?```/g, "");
   }
+  cleaned = stripManualImportInstructions(cleaned);
   return cleaned.trim();
 }
 
@@ -349,7 +360,11 @@ function buildChatMessages(
   const recentHistory = history.slice(-30);
   for (const msg of recentHistory) {
     if (msg.role === "user" || msg.role === "assistant") {
-      messages.push({ role: msg.role, content: msg.content });
+      let content = msg.content;
+      if (msg.role === "assistant") {
+        content = stripManualImportInstructions(content);
+      }
+      messages.push({ role: msg.role, content });
     }
   }
 
