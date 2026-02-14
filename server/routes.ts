@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import MemoryStore from "memorystore";
 import { storage } from "./storage";
-import { loginSchema, registerSchema, garminConnectSchema, intervalsConnectSchema, createWorkoutSchema, workoutStepSchema } from "@shared/schema";
+import { loginSchema, registerSchema, garminConnectSchema, intervalsConnectSchema, createWorkoutSchema, workoutStepSchema, swimStructuredWatchModels, type GarminWatchModel } from "@shared/schema";
 import { z } from "zod";
 import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected } from "./garmin";
 import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities } from "./intervals";
@@ -245,7 +245,36 @@ export async function registerRoutes(
       }
       await ensureGarminSessionWithDecrypt(req.session.userId!, user);
 
-      const result = await pushWorkoutToGarmin(req.session.userId!, workout);
+      let workoutToSend = workout;
+      if (workout.sportType === "swimming" && user.garminWatch && !swimStructuredWatchModels.includes(user.garminWatch as GarminWatchModel)) {
+        const stepLabels: Record<string, string> = {
+          warmup: "Разминка", cooldown: "Заминка", interval: "Интервал",
+          recovery: "Восстановление", rest: "Отдых", repeat: "Повтор",
+        };
+        const formatStep = (s: any): string => {
+          let desc = stepLabels[s.stepType] || s.stepType;
+          if (s.durationValue) {
+            desc += s.durationType === "time" ? ` ${Math.floor(s.durationValue / 60)}мин` : ` ${s.durationValue}м`;
+          }
+          if (s.stepType === "repeat" && s.repeatCount && s.childSteps) {
+            desc += ` x${s.repeatCount}: [${s.childSteps.map(formatStep).join(" → ")}]`;
+          }
+          return desc;
+        };
+        const stepsText = workout.steps.map(formatStep).join("\n");
+        const fullDescription = workout.description
+          ? `${workout.description}\n\n--- План ---\n${stepsText}`
+          : `План тренировки:\n${stepsText}`;
+        workoutToSend = {
+          ...workout,
+          description: fullDescription,
+          steps: [
+            { stepId: 1, stepOrder: 1, stepType: "warmup" as const, durationType: "lap.button" as const, durationValue: null, targetType: "no.target" as const, targetValueLow: null, targetValueHigh: null, intensity: "active" as const },
+          ],
+        };
+        console.log(`[Garmin] Simplified swimming workout to single step for incompatible watch: ${user.garminWatch}`);
+      }
+      const result = await pushWorkoutToGarmin(req.session.userId!, workoutToSend);
 
       if (workout.id) {
         await storage.updateWorkout(workout.id, {
