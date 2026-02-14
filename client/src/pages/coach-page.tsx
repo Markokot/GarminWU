@@ -135,16 +135,22 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
   );
 }
 
-function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGarmin, onBulkPushIntervals, onBulkFavorite, bulkPushing, bulkPushingIntervals, bulkSaving }: {
+function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGarmin, onBulkPushIntervals, onBulkFavorite, onPushGarmin, onPushIntervals, onFavorite, bulkPushing, bulkPushingIntervals, bulkSaving, pushingIdx, pushingIntervalsIdx, savingIdx }: {
   workouts: Workout[];
   showGarmin: boolean;
   showIntervals: boolean;
   onBulkPushGarmin: () => void;
   onBulkPushIntervals: () => void;
   onBulkFavorite: () => void;
+  onPushGarmin: (workout: Workout, idx: number) => void;
+  onPushIntervals: (workout: Workout, idx: number) => void;
+  onFavorite: (workout: Workout, idx: number) => void;
   bulkPushing: boolean;
   bulkPushingIntervals: boolean;
   bulkSaving: boolean;
+  pushingIdx: number | null;
+  pushingIntervalsIdx: number | null;
+  savingIdx: number | null;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -280,6 +286,23 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
                           </div>
                         ))}
                       </div>
+                      <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
+                        <Button size="sm" variant="ghost" className="h-7 text-[10px] px-2" onClick={() => onFavorite(w, workouts.indexOf(w))} disabled={savingIdx === workouts.indexOf(w)} data-testid={`button-plan-fav-${idx}`}>
+                          {savingIdx === workouts.indexOf(w) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Star className="w-3 h-3" />}
+                        </Button>
+                        {showGarmin && (
+                          <Button size="sm" variant="ghost" className="h-7 text-[10px] px-2" onClick={() => onPushGarmin(w, workouts.indexOf(w))} disabled={pushingIdx === workouts.indexOf(w)} data-testid={`button-plan-garmin-${idx}`}>
+                            {pushingIdx === workouts.indexOf(w) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Watch className="w-3 h-3" />}
+                            <span className="ml-1">Garmin</span>
+                          </Button>
+                        )}
+                        {showIntervals && (
+                          <Button size="sm" variant="ghost" className="h-7 text-[10px] px-2" onClick={() => onPushIntervals(w, workouts.indexOf(w))} disabled={pushingIntervalsIdx === workouts.indexOf(w)} data-testid={`button-plan-intervals-${idx}`}>
+                            {pushingIntervalsIdx === workouts.indexOf(w) ? <Loader2 className="w-3 h-3 animate-spin" /> : <BarChart3 className="w-3 h-3" />}
+                            <span className="ml-1">Intervals</span>
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -314,6 +337,9 @@ export default function CoachPage() {
   })();
   const [bulkPushingIntervals, setBulkPushingIntervals] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [singlePushIdx, setSinglePushIdx] = useState<number | null>(null);
+  const [singlePushIntervalsIdx, setSinglePushIntervalsIdx] = useState<number | null>(null);
+  const [singleSaveIdx, setSingleSaveIdx] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -543,6 +569,60 @@ export default function CoachPage() {
     }
   };
 
+  const handleSinglePushGarmin = async (workout: Workout, idx: number) => {
+    setSinglePushIdx(idx);
+    try {
+      const res = await apiRequest("POST", "/api/garmin/push-workout", workout);
+      const data = await res.json();
+      if (data.swimIncompatible) {
+        toast({ title: "Плавание не поддерживается", description: data.message, variant: "destructive", duration: 8000 });
+      } else if (data.scheduled && data.scheduledDate) {
+        const raw = String(data.scheduledDate).split("T")[0];
+        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long", weekday: "long" });
+        toast({ title: `${workout.name} → Garmin`, description: `Запланирована на ${dateStr}` });
+      } else {
+        toast({ title: `${workout.name} → Garmin` });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    } catch (error: any) {
+      toast({ title: "Ошибка отправки", description: error.message, variant: "destructive" });
+    } finally {
+      setSinglePushIdx(null);
+    }
+  };
+
+  const handleSinglePushIntervals = async (workout: Workout, idx: number) => {
+    setSinglePushIntervalsIdx(idx);
+    try {
+      const res = await apiRequest("POST", "/api/intervals/push-workout", workout);
+      const data = await res.json();
+      if (data.scheduled && data.scheduledDate) {
+        const raw = String(data.scheduledDate).split("T")[0];
+        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long", weekday: "long" });
+        toast({ title: `${workout.name} → Intervals.icu`, description: `Запланирована на ${dateStr}` });
+      } else {
+        toast({ title: `${workout.name} → Intervals.icu` });
+      }
+    } catch (error: any) {
+      toast({ title: "Ошибка отправки", description: error.message, variant: "destructive" });
+    } finally {
+      setSinglePushIntervalsIdx(null);
+    }
+  };
+
+  const handleSingleFavorite = async (workout: Workout, idx: number) => {
+    setSingleSaveIdx(idx);
+    try {
+      await apiRequest("POST", "/api/favorites", workout);
+      toast({ title: `${workout.name} → избранное` });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
+    } catch (error: any) {
+      toast({ title: "Ошибка сохранения", description: error.message, variant: "destructive" });
+    } finally {
+      setSingleSaveIdx(null);
+    }
+  };
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -686,9 +766,15 @@ export default function CoachPage() {
                           onBulkPushGarmin={() => handleBulkPushGarmin(msg.workoutsJson!)}
                           onBulkPushIntervals={() => handleBulkPushIntervals(msg.workoutsJson!)}
                           onBulkFavorite={() => handleBulkFavorite(msg.workoutsJson!)}
+                          onPushGarmin={handleSinglePushGarmin}
+                          onPushIntervals={handleSinglePushIntervals}
+                          onFavorite={handleSingleFavorite}
                           bulkPushing={bulkPushing}
                           bulkPushingIntervals={bulkPushingIntervals}
                           bulkSaving={bulkSaving}
+                          pushingIdx={singlePushIdx}
+                          pushingIntervalsIdx={singlePushIntervalsIdx}
+                          savingIdx={singleSaveIdx}
                         />
                       )}
                     </>
