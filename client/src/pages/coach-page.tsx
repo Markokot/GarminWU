@@ -356,6 +356,15 @@ export default function CoachPage() {
     setStreamingText("");
     streamDoneRef.current = false;
 
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      userId: user!.id,
+      role: "user",
+      content,
+      timestamp: new Date().toISOString(),
+    };
+    queryClient.setQueryData<ChatMessage[]>(["/api/chat/messages"], (old = []) => [...old, userMessage]);
+
     try {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", "/api/chat/send", true);
@@ -364,6 +373,7 @@ export default function CoachPage() {
 
       let processedLength = 0;
       let streamError: string | null = null;
+      let doneMessage: ChatMessage | null = null;
 
       const processChunks = (text: string) => {
         const parts = text.split("\n\n");
@@ -376,6 +386,9 @@ export default function CoachPage() {
               setStreamingText((prev) => prev + event.content);
             } else if (event.type === "done") {
               streamDoneRef.current = true;
+              if (event.message) {
+                doneMessage = event.message;
+              }
             } else if (event.type === "error") {
               streamError = event.message;
             }
@@ -417,12 +430,14 @@ export default function CoachPage() {
         xhr.send(JSON.stringify({ content }));
       });
 
-      await queryClient.refetchQueries({ queryKey: ["/api/chat/messages"] });
-      await new Promise(r => setTimeout(r, 100));
+      if (doneMessage) {
+        queryClient.setQueryData<ChatMessage[]>(["/api/chat/messages"], (old = []) => [...old, doneMessage!]);
+      }
       setStreamingText("");
     } catch (error: any) {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
       setStreamingText("");
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
     } finally {
       setIsSending(false);
     }
