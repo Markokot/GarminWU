@@ -457,7 +457,7 @@ export async function registerRoutes(
         activities = result.activities;
       } catch {}
 
-      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
       res.setHeader("X-Accel-Buffering", "no");
