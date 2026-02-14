@@ -342,6 +342,31 @@ function cleanResponseText(text: string, hadWorkout: boolean, hadPlan: boolean):
   return cleaned.trim();
 }
 
+function compressAssistantMessage(content: string): string {
+  let compressed = stripManualImportInstructions(content);
+
+  compressed = compressed
+    .replace(/```workout_json\s*[\s\S]*?```/g, "[тренировка создана]")
+    .replace(/```training_plan_json\s*[\s\S]*?```/g, "[план тренировок создан]")
+    .replace(/```json\s*[\s\S]*?```/g, "");
+
+  const lines = compressed.split("\n");
+  const filteredLines: string[] = [];
+  for (const line of lines) {
+    if (/^\s*[-*]\s*(Разминка|Заминка|Интервал|Повтор|Основная|Восстановл|Шаг \d)/i.test(line)) continue;
+    if (/^\s*\d+\.\s*(Разминка|Заминка|Интервал|Повтор|Основная|Восстановл)/i.test(line)) continue;
+    filteredLines.push(line);
+  }
+  compressed = filteredLines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+
+  const MAX_MSG_LENGTH = 500;
+  if (compressed.length > MAX_MSG_LENGTH) {
+    compressed = compressed.substring(0, MAX_MSG_LENGTH) + "...";
+  }
+
+  return compressed;
+}
+
 function buildChatMessages(
   user: User,
   userMessage: string,
@@ -360,14 +385,16 @@ function buildChatMessages(
     { role: "system", content: systemPrompt + userContext },
   ];
 
-  const recentHistory = history.slice(-30);
+  const recentHistory = history.slice(-10);
   for (const msg of recentHistory) {
-    if (msg.role === "user" || msg.role === "assistant") {
-      let content = msg.content;
-      if (msg.role === "assistant") {
-        content = stripManualImportInstructions(content);
+    if (msg.role === "user") {
+      const content = msg.content.length > 300 ? msg.content.substring(0, 300) + "..." : msg.content;
+      messages.push({ role: "user", content });
+    } else if (msg.role === "assistant") {
+      const content = compressAssistantMessage(msg.content);
+      if (content) {
+        messages.push({ role: "assistant", content });
       }
-      messages.push({ role: msg.role, content });
     }
   }
 
