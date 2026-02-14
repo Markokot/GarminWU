@@ -314,50 +314,59 @@ export default function CoachPage() {
     setStreamingText("");
 
     try {
-      const res = await fetch("/api/chat/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-        credentials: "include",
-      });
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/chat/send", true);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.withCredentials = true;
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: "Ошибка сервера" }));
-        throw new Error(err.message || "Ошибка сервера");
-      }
+      let processedLength = 0;
+      let streamError: string | null = null;
 
-      const reader = res.body?.getReader();
-      if (!reader) throw new Error("Streaming not supported");
+      await new Promise<void>((resolve, reject) => {
+        xhr.onprogress = () => {
+          const newText = xhr.responseText.substring(processedLength);
+          processedLength = xhr.responseText.length;
 
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() || "";
-
-        for (const eventBlock of events) {
-          const dataLine = eventBlock.split("\n").find((l) => l.startsWith("data: "));
-          if (!dataLine) continue;
-          try {
-            const event = JSON.parse(dataLine.slice(6));
-            if (event.type === "chunk") {
-              setStreamingText((prev) => prev + event.content);
-            } else if (event.type === "done") {
-              setStreamingText("");
-              queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
-            } else if (event.type === "error") {
-              throw new Error(event.message);
-            }
-          } catch (e: any) {
-            if (e.message && e.message !== "Unexpected end of JSON input") throw e;
+          const parts = newText.split("\n\n");
+          for (const part of parts) {
+            const dataLine = part.split("\n").find((l) => l.startsWith("data: "));
+            if (!dataLine) continue;
+            try {
+              const event = JSON.parse(dataLine.slice(6));
+              if (event.type === "chunk") {
+                setStreamingText((prev) => prev + event.content);
+              } else if (event.type === "done") {
+                setStreamingText("");
+                queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+              } else if (event.type === "error") {
+                streamError = event.message;
+              }
+            } catch {}
           }
-        }
-      }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 400) {
+            try {
+              const err = JSON.parse(xhr.responseText);
+              reject(new Error(err.message || "Ошибка сервера"));
+            } catch {
+              reject(new Error("Ошибка сервера"));
+            }
+            return;
+          }
+          if (streamError) {
+            reject(new Error(streamError));
+            return;
+          }
+          resolve();
+        };
+
+        xhr.onerror = () => reject(new Error("Ошибка сети"));
+        xhr.ontimeout = () => reject(new Error("Время ожидания истекло"));
+        xhr.timeout = 300000;
+        xhr.send(JSON.stringify({ content }));
+      });
     } catch (error: any) {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
     } finally {
