@@ -173,6 +173,18 @@ function buildTargetType(step: WorkoutStep) {
   };
 }
 
+function convertPaceTargets(step: WorkoutStep): { low: number | null; high: number | null } {
+  if (step.targetType !== "pace.zone" || step.targetValueLow == null || step.targetValueHigh == null) {
+    return { low: step.targetValueLow, high: step.targetValueHigh };
+  }
+  const speedFromLow = 1000 / step.targetValueLow;
+  const speedFromHigh = 1000 / step.targetValueHigh;
+  return {
+    low: Math.min(speedFromLow, speedFromHigh),
+    high: Math.max(speedFromLow, speedFromHigh),
+  };
+}
+
 function buildGarminSteps(steps: WorkoutStep[], sportType: string = "running"): any[] {
   return steps.map((step, i) => {
     const { stepTypeId, stepTypeKey } = convertStepType(step);
@@ -237,8 +249,8 @@ function buildGarminSteps(steps: WorkoutStep[], sportType: string = "running"): 
       endConditionCompare: null,
       endConditionZone: null,
       targetType,
-      targetValueOne: hasTarget ? step.targetValueLow : null,
-      targetValueTwo: hasTarget ? step.targetValueHigh : null,
+      targetValueOne: hasTarget ? convertPaceTargets(step).low : null,
+      targetValueTwo: hasTarget ? convertPaceTargets(step).high : null,
       targetValueUnit: null,
       zoneNumber: null,
       secondaryTargetType: null,
