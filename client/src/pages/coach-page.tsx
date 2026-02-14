@@ -365,29 +365,36 @@ export default function CoachPage() {
       let processedLength = 0;
       let streamError: string | null = null;
 
+      const processChunks = (text: string) => {
+        const parts = text.split("\n\n");
+        for (const part of parts) {
+          const dataLine = part.split("\n").find((l) => l.startsWith("data: "));
+          if (!dataLine) continue;
+          try {
+            const event = JSON.parse(dataLine.slice(6));
+            if (event.type === "chunk") {
+              setStreamingText((prev) => prev + event.content);
+            } else if (event.type === "done") {
+              streamDoneRef.current = true;
+            } else if (event.type === "error") {
+              streamError = event.message;
+            }
+          } catch {}
+        }
+      };
+
       await new Promise<void>((resolve, reject) => {
         xhr.onprogress = () => {
           const newText = xhr.responseText.substring(processedLength);
           processedLength = xhr.responseText.length;
-
-          const parts = newText.split("\n\n");
-          for (const part of parts) {
-            const dataLine = part.split("\n").find((l) => l.startsWith("data: "));
-            if (!dataLine) continue;
-            try {
-              const event = JSON.parse(dataLine.slice(6));
-              if (event.type === "chunk") {
-                setStreamingText((prev) => prev + event.content);
-              } else if (event.type === "done") {
-                streamDoneRef.current = true;
-              } else if (event.type === "error") {
-                streamError = event.message;
-              }
-            } catch {}
-          }
+          processChunks(newText);
         };
 
         xhr.onload = () => {
+          const remaining = xhr.responseText.substring(processedLength);
+          if (remaining) {
+            processChunks(remaining);
+          }
           if (xhr.status >= 400) {
             try {
               const err = JSON.parse(xhr.responseText);
@@ -410,12 +417,12 @@ export default function CoachPage() {
         xhr.send(JSON.stringify({ content }));
       });
 
-      if (streamDoneRef.current) {
-        await queryClient.refetchQueries({ queryKey: ["/api/chat/messages"] });
-        setStreamingText("");
-      }
+      await queryClient.refetchQueries({ queryKey: ["/api/chat/messages"] });
+      await new Promise(r => setTimeout(r, 100));
+      setStreamingText("");
     } catch (error: any) {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      setStreamingText("");
     } finally {
       setIsSending(false);
     }
@@ -797,7 +804,7 @@ export default function CoachPage() {
             ))
           )}
 
-          {isSending && (
+          {(isSending || streamingText) && (
             <div className="flex gap-3 max-w-3xl mx-auto">
               <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center flex-shrink-0">
                 <Bot className="w-4 h-4 text-primary-foreground" />
