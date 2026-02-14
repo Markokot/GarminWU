@@ -351,8 +351,9 @@ export default function CoachPage() {
               if (event.type === "chunk") {
                 setStreamingText((prev) => prev + event.content);
               } else if (event.type === "done") {
-                setStreamingText("");
-                queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] }).then(() => {
+                  setStreamingText("");
+                });
               } else if (event.type === "error") {
                 streamError = event.message;
               }
@@ -386,7 +387,6 @@ export default function CoachPage() {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
     } finally {
       setIsSending(false);
-      setStreamingText("");
     }
   };
 
