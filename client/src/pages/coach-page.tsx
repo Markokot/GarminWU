@@ -25,6 +25,7 @@ import {
   ChevronUp,
   ListChecks,
   AlertTriangle,
+  Trash2,
 } from "lucide-react";
 
 function formatTime(ts: string) {
@@ -403,6 +404,19 @@ export default function CoachPage() {
     },
   });
 
+  const clearChatMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", "/api/chat/messages");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+      toast({ title: "История чата очищена" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка очистки", description: error.message, variant: "destructive" });
+    },
+  });
+
   const pushMutation = useMutation({
     mutationFn: async (workout: Workout & { scheduledDate?: string | null }) => {
       const res = await apiRequest("POST", "/api/garmin/push-workout", workout);
@@ -552,16 +566,34 @@ export default function CoachPage() {
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
       <div className="border-b p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-md bg-primary flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-md bg-primary flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-lg font-semibold" data-testid="text-coach-title">AI Тренер</h1>
+              <p className="text-xs text-muted-foreground">
+                Опишите тренировку или попросите план на период — AI создаст и загрузит на часы
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h1 className="text-lg font-semibold" data-testid="text-coach-title">AI Тренер</h1>
-            <p className="text-xs text-muted-foreground">
-              Опишите тренировку или попросите план на период — AI создаст и загрузит на часы
-            </p>
-          </div>
+          {messages.length > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              data-testid="button-clear-chat"
+              disabled={isSending || clearChatMutation.isPending}
+              onClick={() => {
+                if (window.confirm("Очистить всю историю чата? Это действие нельзя отменить.")) {
+                  clearChatMutation.mutate();
+                }
+              }}
+            >
+              {clearChatMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              <span className="ml-1">Очистить</span>
+            </Button>
+          )}
         </div>
       </div>
 
