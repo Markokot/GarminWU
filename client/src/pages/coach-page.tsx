@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
@@ -538,13 +537,13 @@ export default function CoachPage() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full w-full overflow-hidden">
       <div className="border-b p-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-md bg-primary flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-lg font-semibold" data-testid="text-coach-title">AI Тренер</h1>
             <p className="text-xs text-muted-foreground">
               Опишите тренировку или попросите план на период — AI создаст и загрузит на часы
@@ -553,8 +552,8 @@ export default function CoachPage() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 overflow-x-hidden" ref={scrollRef}>
-        <div className="p-4 space-y-4 max-w-full sm:max-w-3xl mx-auto">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden" ref={scrollRef}>
+        <div className="p-4 space-y-4 max-w-3xl mx-auto">
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
@@ -681,7 +680,7 @@ export default function CoachPage() {
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="border-t p-3 sm:p-4">
         <div className="max-w-3xl mx-auto flex items-end gap-2">
