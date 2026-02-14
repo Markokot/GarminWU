@@ -12,7 +12,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
 import CoachPage from "@/pages/coach-page";
-import WorkoutsPage from "@/pages/workouts-page";
+import FavoritesPage from "@/pages/favorites-page";
 import SettingsPage from "@/pages/settings-page";
 import FaqPage from "@/pages/faq-page";
 import AdminPage from "@/pages/admin-page";
@@ -24,7 +24,7 @@ function Router() {
     <Switch>
       <Route path="/" component={DashboardPage} />
       <Route path="/coach" component={CoachPage} />
-      <Route path="/workouts" component={WorkoutsPage} />
+      <Route path="/favorites" component={FavoritesPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/faq" component={FaqPage} />
       <Route path="/admin" component={AdminPage} />

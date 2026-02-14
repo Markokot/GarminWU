@@ -1,4 +1,4 @@
-import type { User, Workout, ChatMessage, SportType, FitnessLevel } from "@shared/schema";
+import type { User, Workout, ChatMessage, FavoriteWorkout, SportType, FitnessLevel } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 import * as fs from "fs";
@@ -7,6 +7,7 @@ import * as path from "path";
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const WORKOUTS_FILE = path.join(DATA_DIR, "workouts.json");
+const FAVORITES_FILE = path.join(DATA_DIR, "favorites.json");
 const MESSAGES_FILE = path.join(DATA_DIR, "messages.json");
 
 function ensureDataDir() {
@@ -42,6 +43,10 @@ export interface IStorage {
   updateWorkout(id: string, updates: Partial<Workout>): Promise<Workout | undefined>;
   deleteWorkout(id: string): Promise<boolean>;
 
+  getFavorites(userId: string): Promise<FavoriteWorkout[]>;
+  addFavorite(favorite: Omit<FavoriteWorkout, "id" | "savedAt">): Promise<FavoriteWorkout>;
+  deleteFavorite(id: string): Promise<boolean>;
+
   getMessages(userId: string): Promise<ChatMessage[]>;
   addMessage(message: Omit<ChatMessage, "id">): Promise<ChatMessage>;
   clearMessages(userId: string): Promise<void>;
@@ -54,16 +59,19 @@ export interface IStorage {
 export class FileStorage implements IStorage {
   private users: Map<string, User>;
   private workouts: Map<string, Workout>;
+  private favorites: Map<string, FavoriteWorkout>;
   private messages: Map<string, ChatMessage>;
 
   constructor() {
     ensureDataDir();
     const usersArr: User[] = loadJson(USERS_FILE, []);
     const workoutsArr: Workout[] = loadJson(WORKOUTS_FILE, []);
+    const favoritesArr: FavoriteWorkout[] = loadJson(FAVORITES_FILE, []);
     const messagesArr: ChatMessage[] = loadJson(MESSAGES_FILE, []);
 
     this.users = new Map(usersArr.map((u) => [u.id, u]));
     this.workouts = new Map(workoutsArr.map((w) => [w.id, w]));
+    this.favorites = new Map(favoritesArr.map((f) => [f.id, f]));
     this.messages = new Map(messagesArr.map((m) => [m.id, m]));
   }
 
@@ -72,6 +80,9 @@ export class FileStorage implements IStorage {
   }
   private saveWorkouts() {
     saveJson(WORKOUTS_FILE, Array.from(this.workouts.values()));
+  }
+  private saveFavorites() {
+    saveJson(FAVORITES_FILE, Array.from(this.favorites.values()));
   }
   private saveMessages() {
     saveJson(MESSAGES_FILE, Array.from(this.messages.values()));
@@ -152,6 +163,30 @@ export class FileStorage implements IStorage {
   async deleteWorkout(id: string): Promise<boolean> {
     const result = this.workouts.delete(id);
     if (result) this.saveWorkouts();
+    return result;
+  }
+
+  async getFavorites(userId: string): Promise<FavoriteWorkout[]> {
+    return Array.from(this.favorites.values())
+      .filter((f) => f.userId === userId)
+      .sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
+  }
+
+  async addFavorite(input: Omit<FavoriteWorkout, "id" | "savedAt">): Promise<FavoriteWorkout> {
+    const id = randomUUID();
+    const favorite: FavoriteWorkout = {
+      ...input,
+      id,
+      savedAt: new Date().toISOString(),
+    };
+    this.favorites.set(id, favorite);
+    this.saveFavorites();
+    return favorite;
+  }
+
+  async deleteFavorite(id: string): Promise<boolean> {
+    const result = this.favorites.delete(id);
+    if (result) this.saveFavorites();
     return result;
   }
 

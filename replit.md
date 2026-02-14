@@ -19,6 +19,7 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - AI coach chat - describe workouts in natural language
 - Structured workout generation (running, cycling, swimming)
 - Push workouts to Garmin Connect / watches OR Intervals.icu (→ Zwift)
+- Favorites system — explicitly save workouts from AI chat for quick re-push
 - Automatic workout scheduling to Garmin calendar (date extracted from conversation)
 - View recent Garmin activities
 - Dark/light theme toggle
@@ -61,7 +62,7 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - `client/src/components/` - Reusable components (app-sidebar, theme-toggle)
 - `client/src/lib/` - Auth context, theme provider, query client
 - `server/routes.ts` - All API endpoints
-- `server/storage.ts` - File-based storage (users, workouts, chat messages)
+- `server/storage.ts` - File-based storage (users, favorites, workouts, chat messages)
 - `server/garmin.ts` - Garmin Connect integration (connect, activities, push workouts)
 - `server/intervals.ts` - Intervals.icu API integration (connect, activities, push workouts)
 - `server/ai.ts` - DeepSeek AI integration for workout generation
@@ -82,9 +83,12 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - `POST /api/intervals/connect` - Connect Intervals.icu account (athlete ID + API key)
 - `POST /api/intervals/disconnect` - Disconnect Intervals.icu
 - `POST /api/intervals/push-workout` - Push workout to Intervals.icu calendar
-- `GET /api/workouts` - List user workouts
-- `POST /api/workouts` - Save workout
-- `DELETE /api/workouts/:id` - Delete workout
+- `GET /api/favorites` - List user's favorite workouts
+- `POST /api/favorites` - Save workout to favorites
+- `DELETE /api/favorites/:id` - Remove from favorites
+- `GET /api/workouts` - List user workouts (legacy)
+- `POST /api/workouts` - Save workout (legacy)
+- `DELETE /api/workouts/:id` - Delete workout (legacy)
 - `GET /api/chat/messages` - Get chat history
 - `POST /api/chat/send` - Send message to AI coach
 - `DELETE /api/chat/messages` - Clear chat history
@@ -111,4 +115,4 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - Ironman preparation (triathlon)
 
 ## Date
-Last updated: February 13, 2026
+Last updated: February 14, 2026

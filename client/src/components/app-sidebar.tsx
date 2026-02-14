@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard,
   MessageSquare,
-  Dumbbell,
+  Star,
   Settings,
   LogOut,
   Watch,
@@ -31,7 +31,7 @@ import {
 const menuItems = [
   { title: "Дашборд", url: "/", icon: LayoutDashboard },
   { title: "AI Тренер", url: "/coach", icon: MessageSquare },
-  { title: "Тренировки", url: "/workouts", icon: Dumbbell },
+  { title: "Избранное", url: "/favorites", icon: Star },
   { title: "Настройки", url: "/settings", icon: Settings },
   { title: "FAQ", url: "/faq", icon: HelpCircle },
 ];

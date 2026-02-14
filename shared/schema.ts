@@ -67,6 +67,16 @@ export interface Workout {
   intervalsEventId?: string;
 }
 
+export interface FavoriteWorkout {
+  id: string;
+  userId: string;
+  name: string;
+  description: string;
+  sportType: SportType;
+  steps: WorkoutStep[];
+  savedAt: string;
+}
+
 export const fitnessLevels = ["beginner", "intermediate", "advanced", "elite"] as const;
 export type FitnessLevel = (typeof fitnessLevels)[number];
 
@@ -98,6 +108,7 @@ export interface User {
   preferences?: string;
   garminPushCount?: number;
   intervalsPushCount?: number;
+  favoritesCount?: number;
 }
 
 export interface ChatMessage {

@@ -4,12 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   Users,
   MessageSquare,
-  Dumbbell,
   Watch,
   FlaskConical,
   Activity,
   TrendingUp,
   Clock,
+  Star,
 } from "lucide-react";
 import { sportTypeLabels, fitnessLevelLabels } from "@shared/schema";
 import type { SportType, FitnessLevel } from "@shared/schema";
@@ -22,20 +22,19 @@ interface UserStat {
   fitnessLevel: FitnessLevel | null;
   messageCount: number;
   totalMessages: number;
-  workoutCount: number;
   garminPushCount: number;
   intervalsPushCount: number;
+  favoritesCount: number;
   lastMessageDate: string | null;
-  lastWorkoutDate: string | null;
 }
 
 interface AdminStats {
   totalUsers: number;
   garminConnected: number;
   intervalsConnected: number;
-  totalWorkouts: number;
   totalGarminPushes: number;
   totalIntervalsPushes: number;
+  totalFavorites: number;
   totalUserMessages: number;
   totalAiMessages: number;
   lastGlobalMessageDate: string | null;
@@ -126,10 +125,10 @@ export default function AdminPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
-              <Dumbbell className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Тренировок</span>
+              <Star className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Избранное</span>
             </div>
-            <p className="text-2xl font-bold" data-testid="text-total-workouts">{stats.totalWorkouts}</p>
+            <p className="text-2xl font-bold" data-testid="text-total-favorites">{stats.totalFavorites}</p>
           </CardContent>
         </Card>
 
@@ -272,11 +271,13 @@ export default function AdminPage() {
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-2 font-medium sticky left-0 bg-card z-10 pr-3">Пользователь</th>
-                  <th className="pb-2 font-medium text-center">Garmin</th>
-                  <th className="pb-2 font-medium text-center">Int.icu</th>
-                  <th className="pb-2 font-medium text-right">Сообщений</th>
-                  <th className="pb-2 font-medium text-right">Тренировок</th>
-                  <th className="pb-2 font-medium text-right whitespace-nowrap">Последняя активность</th>
+                  <th className="pb-2 font-medium text-center" title="Подключение Garmin">G</th>
+                  <th className="pb-2 font-medium text-center" title="Подключение Intervals.icu">I</th>
+                  <th className="pb-2 font-medium text-right">Сообщ.</th>
+                  <th className="pb-2 font-medium text-right whitespace-nowrap" title="Отправлено на Garmin">Garmin</th>
+                  <th className="pb-2 font-medium text-right whitespace-nowrap" title="Отправлено в Intervals.icu">Int.icu</th>
+                  <th className="pb-2 font-medium text-right whitespace-nowrap" title="Избранное">Избр.</th>
+                  <th className="pb-2 font-medium text-right whitespace-nowrap">Активность</th>
                 </tr>
               </thead>
               <tbody>
@@ -292,22 +293,17 @@ export default function AdminPage() {
                       <div className={`w-2 h-2 rounded-full mx-auto ${user.intervalsConnected ? "bg-status-online" : "bg-status-offline"}`} />
                     </td>
                     <td className="py-2.5 text-right tabular-nums">{user.messageCount}</td>
-                    <td className="py-2.5 text-right tabular-nums">
-                      {user.workoutCount}
-                      {(user.garminPushCount > 0 || user.intervalsPushCount > 0) && (
-                        <span className="text-xs text-muted-foreground ml-1">
-                          ({user.garminPushCount}G / {user.intervalsPushCount}I)
-                        </span>
-                      )}
-                    </td>
+                    <td className="py-2.5 text-right tabular-nums">{user.garminPushCount}</td>
+                    <td className="py-2.5 text-right tabular-nums">{user.intervalsPushCount}</td>
+                    <td className="py-2.5 text-right tabular-nums">{user.favoritesCount}</td>
                     <td className="py-2.5 text-right text-muted-foreground text-xs whitespace-nowrap">
-                      {formatDateShort(user.lastMessageDate || user.lastWorkoutDate)}
+                      {formatDateShort(user.lastMessageDate)}
                     </td>
                   </tr>
                 ))}
                 {stats.recentUsers.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-4 text-center text-muted-foreground">
+                    <td colSpan={8} className="py-4 text-center text-muted-foreground">
                       Нет пользователей
                     </td>
                   </tr>

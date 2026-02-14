@@ -344,7 +344,7 @@ export async function registerRoutes(
     }
   });
 
-  // Workout routes
+  // Workout routes (legacy, kept for compatibility)
   app.get("/api/workouts", requireAuth, async (req, res) => {
     const workouts = await storage.getWorkouts(req.session.userId!);
     res.json(workouts);
@@ -372,6 +372,57 @@ export async function registerRoutes(
   app.delete("/api/workouts/:id", requireAuth, async (req, res) => {
     const result = await storage.deleteWorkout(req.params.id as string);
     if (!result) return res.status(404).json({ message: "Тренировка не найдена" });
+    res.json({ ok: true });
+  });
+
+  // Favorites routes
+  app.get("/api/favorites", requireAuth, async (req, res) => {
+    const favorites = await storage.getFavorites(req.session.userId!);
+    res.json(favorites);
+  });
+
+  app.post("/api/favorites", requireAuth, async (req, res) => {
+    try {
+      const parsed = createWorkoutSchema.parse(req.body);
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Пользователь не найден" });
+
+      const favorite = await storage.addFavorite({
+        userId: req.session.userId!,
+        name: parsed.name,
+        description: parsed.description || "",
+        sportType: parsed.sportType,
+        steps: parsed.steps,
+      });
+
+      await storage.updateUser(req.session.userId!, {
+        favoritesCount: (user.favoritesCount || 0) + 1,
+      });
+
+      res.json(favorite);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors.map((e) => e.message).join(", ") });
+      }
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/favorites/:id", requireAuth, async (req, res) => {
+    const favorites = await storage.getFavorites(req.session.userId!);
+    const found = favorites.find((f) => f.id === req.params.id);
+    if (!found) return res.status(404).json({ message: "Тренировка не найдена" });
+
+    const result = await storage.deleteFavorite(req.params.id as string);
+    if (!result) return res.status(404).json({ message: "Ошибка удаления" });
+
+    const user = await storage.getUser(req.session.userId!);
+    if (user && (user.favoritesCount || 0) > 0) {
+      await storage.updateUser(req.session.userId!, {
+        favoritesCount: (user.favoritesCount || 0) - 1,
+      });
+    }
+
     res.json({ ok: true });
   });
 
@@ -436,17 +487,12 @@ export async function registerRoutes(
     }
 
     const allUsers = await storage.getAllUsers();
-    const allWorkouts = await storage.getAllWorkouts();
     const allMessages = await storage.getAllMessages();
 
     const userStats = allUsers.map((u) => {
       const userMessages = allMessages.filter((m) => m.userId === u.id);
-      const userWorkouts = allWorkouts.filter((w) => w.userId === u.id);
       const lastMessage = userMessages.length > 0
         ? userMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
-        : null;
-      const lastWorkout = userWorkouts.length > 0
-        ? userWorkouts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
         : null;
 
       return {
@@ -457,11 +503,10 @@ export async function registerRoutes(
         fitnessLevel: u.fitnessLevel || null,
         messageCount: userMessages.filter((m) => m.role === "user").length,
         totalMessages: userMessages.length,
-        workoutCount: userWorkouts.length,
         garminPushCount: u.garminPushCount || 0,
         intervalsPushCount: u.intervalsPushCount || 0,
+        favoritesCount: u.favoritesCount || 0,
         lastMessageDate: lastMessage?.timestamp || null,
-        lastWorkoutDate: lastWorkout?.createdAt || null,
       };
     });
 
@@ -496,9 +541,9 @@ export async function registerRoutes(
       totalUsers: allUsers.length,
       garminConnected: allUsers.filter((u) => u.garminConnected).length,
       intervalsConnected: allUsers.filter((u) => u.intervalsConnected).length,
-      totalWorkouts: allWorkouts.length,
       totalGarminPushes: allUsers.reduce((sum, u) => sum + (u.garminPushCount || 0), 0),
       totalIntervalsPushes: allUsers.reduce((sum, u) => sum + (u.intervalsPushCount || 0), 0),
+      totalFavorites: allUsers.reduce((sum, u) => sum + (u.favoritesCount || 0), 0),
       totalUserMessages,
       totalAiMessages,
       lastGlobalMessageDate: lastGlobalMessage?.timestamp || null,

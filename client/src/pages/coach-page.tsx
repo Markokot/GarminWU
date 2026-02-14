@@ -21,18 +21,19 @@ import {
   Sparkles,
   CalendarDays,
   BarChart3,
+  Star,
 } from "lucide-react";
 
 function formatTime(ts: string) {
   return new Date(ts).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-function WorkoutPreview({ workout, onSave, onPushToGarmin, onPushToIntervals, saving, pushing, pushingIntervals, showGarmin, showIntervals }: {
+function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals, savingFavorite, pushing, pushingIntervals, showGarmin, showIntervals }: {
   workout: Workout;
-  onSave: () => void;
+  onFavorite: () => void;
   onPushToGarmin: () => void;
   onPushToIntervals: () => void;
-  saving: boolean;
+  savingFavorite: boolean;
   pushing: boolean;
   pushingIntervals: boolean;
   showGarmin: boolean;
@@ -99,9 +100,9 @@ function WorkoutPreview({ workout, onSave, onPushToGarmin, onPushToIntervals, sa
           ))}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button size="sm" variant="outline" onClick={onSave} disabled={saving} data-testid="button-save-workout">
-            {saving ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Dumbbell className="w-3 h-3 mr-1" />}
-            Сохранить
+          <Button size="sm" variant="outline" onClick={onFavorite} disabled={savingFavorite} data-testid="button-save-favorite">
+            {savingFavorite ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Star className="w-3 h-3 mr-1" />}
+            В избранное
           </Button>
           {showGarmin && (
             <Button size="sm" onClick={onPushToGarmin} disabled={pushing} data-testid="button-push-garmin">
@@ -153,14 +154,14 @@ export default function CoachPage() {
     },
   });
 
-  const saveMutation = useMutation({
+  const favoriteMutation = useMutation({
     mutationFn: async (workout: Workout) => {
-      const res = await apiRequest("POST", "/api/workouts", workout);
+      const res = await apiRequest("POST", "/api/favorites", workout);
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Тренировка сохранена" });
-      queryClient.invalidateQueries({ queryKey: ["/api/workouts"] });
+      toast({ title: "Добавлено в избранное" });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка сохранения", description: error.message, variant: "destructive" });
@@ -321,10 +322,10 @@ export default function CoachPage() {
                       {msg.workoutJson && (
                         <WorkoutPreview
                           workout={msg.workoutJson}
-                          onSave={() => saveMutation.mutate(msg.workoutJson!)}
+                          onFavorite={() => favoriteMutation.mutate(msg.workoutJson!)}
                           onPushToGarmin={() => pushMutation.mutate(msg.workoutJson!)}
                           onPushToIntervals={() => pushIntervalsMutation.mutate(msg.workoutJson!)}
-                          saving={saveMutation.isPending}
+                          savingFavorite={favoriteMutation.isPending}
                           pushing={pushMutation.isPending}
                           pushingIntervals={pushIntervalsMutation.isPending}
                           showGarmin={!!user?.garminConnected}
