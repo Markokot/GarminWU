@@ -403,7 +403,7 @@ export async function chat(
       model: "deepseek-chat",
       messages,
       temperature: 0.7,
-      max_tokens: 8000,
+      max_tokens: 16000,
     });
 
     const responseText = completion.choices[0]?.message?.content || "Извините, не удалось получить ответ.";
@@ -429,17 +429,27 @@ export async function chatStream(
       model: "deepseek-chat",
       messages,
       temperature: 0.7,
-      max_tokens: 8000,
+      max_tokens: 16000,
       stream: true,
     });
 
     let responseText = "";
+    let finishReason = "";
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta?.content || "";
       if (delta) {
         responseText += delta;
         onChunk?.(delta);
       }
+      if (chunk.choices[0]?.finish_reason) {
+        finishReason = chunk.choices[0].finish_reason;
+      }
+    }
+
+    if (finishReason === "length") {
+      console.warn(`[AI] Response truncated (finish_reason=length), text length: ${responseText.length}`);
+      responseText += "\n\n⚠️ Ответ был обрезан из-за ограничения длины. Попросите создать план на меньший период или запросите продолжение.";
+      onChunk?.("\n\n⚠️ Ответ был обрезан из-за ограничения длины. Попросите создать план на меньший период или запросите продолжение.");
     }
 
     if (!responseText) {
