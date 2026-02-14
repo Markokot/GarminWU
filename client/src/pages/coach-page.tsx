@@ -65,7 +65,7 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
           </Badge>
         </div>
         {workout.description && (
-          <p className="text-xs text-muted-foreground mb-2">{workout.description}</p>
+          <p className="text-xs text-muted-foreground mb-2" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>{workout.description}</p>
         )}
         {workout.scheduledDate && (
           <div className="flex items-center gap-1.5 mb-3 text-xs text-muted-foreground">
@@ -553,8 +553,8 @@ export default function CoachPage() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1" ref={scrollRef}>
-        <div className="p-4 space-y-4 max-w-3xl mx-auto">
+      <ScrollArea className="flex-1 overflow-x-hidden" ref={scrollRef}>
+        <div className="p-4 space-y-4 max-w-full sm:max-w-3xl mx-auto">
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
@@ -609,17 +609,17 @@ export default function CoachPage() {
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] min-w-0 ${
+                  className={`max-w-[85%] sm:max-w-[80%] min-w-0 overflow-hidden ${
                     msg.role === "user"
                       ? "bg-primary text-primary-foreground rounded-md rounded-br-sm px-4 py-3"
                       : "space-y-1"
                   }`}
                 >
                   {msg.role === "user" ? (
-                    <p className="text-sm whitespace-pre-wrap break-words overflow-hidden">{msg.content}</p>
+                    <p className="text-sm whitespace-pre-wrap" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>{msg.content}</p>
                   ) : (
                     <>
-                      <div className="text-sm whitespace-pre-wrap leading-relaxed break-words overflow-hidden">{msg.content}</div>
+                      <div className="text-sm whitespace-pre-wrap leading-relaxed" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>{msg.content}</div>
                       {msg.workoutJson && !(msg.workoutsJson && msg.workoutsJson.length > 0) && (
                         <WorkoutPreview
                           workout={msg.workoutJson}
@@ -668,8 +668,8 @@ export default function CoachPage() {
                 <Bot className="w-4 h-4 text-primary-foreground" />
               </div>
               {streamingText ? (
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm whitespace-pre-wrap leading-relaxed break-words overflow-hidden">{streamingText}</div>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <div className="text-sm whitespace-pre-wrap leading-relaxed" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>{streamingText}</div>
                   <Loader2 className="w-3 h-3 animate-spin mt-1 text-muted-foreground" />
                 </div>
               ) : (
