@@ -291,12 +291,12 @@ function cleanResponseText(text: string): string {
   return text.replace(/```workout_json\s*[\s\S]*?```/g, "").replace(/```training_plan_json\s*[\s\S]*?```/g, "").trim();
 }
 
-export async function chat(
+function buildChatMessages(
   user: User,
   userMessage: string,
   history: ChatMessage[],
   activities?: GarminActivity[]
-): Promise<AiResponse> {
+): OpenAI.ChatCompletionMessageParam[] {
   const userContext = buildUserContext(user, activities);
   const todayDate = getTodayDateString();
   const todayDow = getDayOfWeek();
@@ -317,6 +317,30 @@ export async function chat(
   }
 
   messages.push({ role: "user", content: userMessage });
+  return messages;
+}
+
+export function parseAiResponse(responseText: string): AiResponse {
+  const workout = extractWorkoutJson(responseText);
+  const plan = extractTrainingPlanJson(responseText);
+  const cleanText = cleanResponseText(responseText);
+
+  return {
+    text: cleanText,
+    workout,
+    workouts: plan?.workouts || null,
+    planTitle: plan?.planTitle,
+    planDescription: plan?.planDescription,
+  };
+}
+
+export async function chat(
+  user: User,
+  userMessage: string,
+  history: ChatMessage[],
+  activities?: GarminActivity[]
+): Promise<AiResponse> {
+  const messages = buildChatMessages(user, userMessage, history, activities);
 
   try {
     const openai = getOpenAIClient();
@@ -328,17 +352,46 @@ export async function chat(
     });
 
     const responseText = completion.choices[0]?.message?.content || "Извините, не удалось получить ответ.";
-    const workout = extractWorkoutJson(responseText);
-    const plan = extractTrainingPlanJson(responseText);
-    const cleanText = cleanResponseText(responseText);
+    return parseAiResponse(responseText);
+  } catch (error: any) {
+    console.error("DeepSeek API error:", error.message);
+    throw new Error("Ошибка AI: " + (error.message || "не удалось получить ответ"));
+  }
+}
 
-    return {
-      text: cleanText,
-      workout,
-      workouts: plan?.workouts || null,
-      planTitle: plan?.planTitle,
-      planDescription: plan?.planDescription,
-    };
+export async function chatStream(
+  user: User,
+  userMessage: string,
+  history: ChatMessage[],
+  activities?: GarminActivity[],
+  onChunk?: (chunk: string) => void
+): Promise<AiResponse> {
+  const messages = buildChatMessages(user, userMessage, history, activities);
+
+  try {
+    const openai = getOpenAIClient();
+    const stream = await openai.chat.completions.create({
+      model: "deepseek-chat",
+      messages,
+      temperature: 0.7,
+      max_tokens: 8000,
+      stream: true,
+    });
+
+    let responseText = "";
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content || "";
+      if (delta) {
+        responseText += delta;
+        onChunk?.(delta);
+      }
+    }
+
+    if (!responseText) {
+      responseText = "Извините, не удалось получить ответ.";
+    }
+
+    return parseAiResponse(responseText);
   } catch (error: any) {
     console.error("DeepSeek API error:", error.message);
     throw new Error("Ошибка AI: " + (error.message || "не удалось получить ответ"));

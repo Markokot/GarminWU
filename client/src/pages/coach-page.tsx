@@ -306,18 +306,65 @@ export default function CoachPage() {
     queryKey: ["/api/chat/messages"],
   });
 
-  const sendMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const res = await apiRequest("POST", "/api/chat/send", { content });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
-    },
-    onError: (error: Error) => {
+  const [isSending, setIsSending] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
+
+  const sendMessage = async (content: string) => {
+    setIsSending(true);
+    setStreamingText("");
+
+    try {
+      const res = await fetch("/api/chat/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Ошибка сервера" }));
+        throw new Error(err.message || "Ошибка сервера");
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("Streaming not supported");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
+
+        for (const eventBlock of events) {
+          const dataLine = eventBlock.split("\n").find((l) => l.startsWith("data: "));
+          if (!dataLine) continue;
+          try {
+            const event = JSON.parse(dataLine.slice(6));
+            if (event.type === "chunk") {
+              setStreamingText((prev) => prev + event.content);
+            } else if (event.type === "done") {
+              setStreamingText("");
+              queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+            } else if (event.type === "error") {
+              throw new Error(event.message);
+            }
+          } catch (e: any) {
+            if (e.message && e.message !== "Unexpected end of JSON input") throw e;
+          }
+        }
+      }
+    } catch (error: any) {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
-    },
-  });
+    } finally {
+      setIsSending(false);
+      setStreamingText("");
+    }
+  };
 
   const favoriteMutation = useMutation({
     mutationFn: async (workout: Workout) => {
@@ -450,12 +497,12 @@ export default function CoachPage() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, sendMutation.isPending]);
+  }, [messages, isSending, streamingText]);
 
   const handleSend = () => {
     const trimmed = message.trim();
-    if (!trimmed || sendMutation.isPending) return;
-    sendMutation.mutate(trimmed);
+    if (!trimmed || isSending) return;
+    sendMessage(trimmed);
     setMessage("");
   };
 
@@ -590,15 +637,22 @@ export default function CoachPage() {
             ))
           )}
 
-          {sendMutation.isPending && (
-            <div className="flex gap-3">
+          {isSending && (
+            <div className="flex gap-3 max-w-3xl mx-auto">
               <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center flex-shrink-0">
                 <Bot className="w-4 h-4 text-primary-foreground" />
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                AI думает...
-              </div>
+              {streamingText ? (
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm whitespace-pre-wrap leading-relaxed break-words overflow-hidden">{streamingText}</div>
+                  <Loader2 className="w-3 h-3 animate-spin mt-1 text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  AI думает...
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -619,7 +673,7 @@ export default function CoachPage() {
           <Button
             size="icon"
             onClick={handleSend}
-            disabled={!message.trim() || sendMutation.isPending}
+            disabled={!message.trim() || isSending}
             data-testid="button-send-message"
           >
             <Send className="w-4 h-4" />

@@ -7,7 +7,7 @@ import { loginSchema, registerSchema, garminConnectSchema, intervalsConnectSchem
 import { z } from "zod";
 import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected } from "./garmin";
 import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities } from "./intervals";
-import { chat } from "./ai";
+import { chat, chatStream, parseAiResponse } from "./ai";
 import { encrypt, decrypt } from "./crypto";
 
 const MemStore = MemoryStore(session);
@@ -457,20 +457,42 @@ export async function registerRoutes(
         activities = result.activities;
       } catch {}
 
-      const aiResponse = await chat(user, content, history, activities);
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders();
 
-      const assistantMessage = await storage.addMessage({
-        userId: user.id,
-        role: "assistant",
-        content: aiResponse.text,
-        timestamp: new Date().toISOString(),
-        workoutJson: aiResponse.workout || undefined,
-        workoutsJson: aiResponse.workouts || undefined,
-      });
+      const heartbeat = setInterval(() => {
+        res.write(`data: ${JSON.stringify({ type: "ping" })}\n\n`);
+      }, 15000);
 
-      res.json(assistantMessage);
+      try {
+        const aiResponse = await chatStream(user, content, history, activities, (chunk) => {
+          res.write(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`);
+        });
+
+        const assistantMessage = await storage.addMessage({
+          userId: user.id,
+          role: "assistant",
+          content: aiResponse.text,
+          timestamp: new Date().toISOString(),
+          workoutJson: aiResponse.workout || undefined,
+          workoutsJson: aiResponse.workouts || undefined,
+        });
+
+        res.write(`data: ${JSON.stringify({ type: "done", message: assistantMessage })}\n\n`);
+      } finally {
+        clearInterval(heartbeat);
+      }
+      res.end();
     } catch (error: any) {
-      res.status(500).json({ message: error.message || "Ошибка AI" });
+      if (!res.headersSent) {
+        res.status(500).json({ message: error.message || "Ошибка AI" });
+      } else {
+        res.write(`data: ${JSON.stringify({ type: "error", message: error.message || "Ошибка AI" })}\n\n`);
+        res.end();
+      }
     }
   });
 
