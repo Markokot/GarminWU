@@ -24,7 +24,8 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - Automatic workout scheduling to Garmin calendar (date extracted from conversation)
 - View recent Garmin activities
 - Dark/light theme toggle
-- Expanded athlete profile (fitness level, age, weekly volume, experience, injuries, PRs, preferences)
+- Expanded athlete profile (fitness level, age, weekly volume, experience, injuries, PRs, preferences, Garmin watch model)
+- Garmin watch model in profile — AI adapts swimming workouts for incompatible watches
 - AI acts as experienced coach: analyzes Garmin data, gives recommendations, can disagree with unsafe requests
 
 ## Training Plan Generation
@@ -43,6 +44,21 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - Follows 80/20 rule (80% easy / 20% intense)
 - Will disagree with user on: excessive volume increases, daily intensity, unrealistic goals, ignoring injuries
 - Explains reasoning behind workout recommendations
+
+## Garmin Watch Compatibility
+- User can specify their Garmin watch model in profile settings
+- Watch model list defined in shared/schema.ts (garminWatchModels, garminWatchLabels)
+- swimStructuredWatchModels — list of watches that support structured swimming workouts
+- If user's watch doesn't support structured swimming, AI prompt instructs to create simple format
+- Coach page shows warning on swimming workouts for incompatible watches
+- FAQ has detailed compatibility list
+
+## AI Streaming
+- Chat endpoint uses SSE (Server-Sent Events) to stream AI responses
+- Prevents 504 Gateway Timeout on long responses (training plans)
+- Heartbeat every 15 seconds keeps connection alive
+- Client uses XMLHttpRequest for Safari compatibility (ReadableStream not supported in Safari)
+- Content-Type: text/plain (not text/event-stream) for Safari XHR compatibility
 
 ## Garmin Session Management
 - Lazy connection pattern — connects only when data is needed (activities, push, AI chat)

@@ -137,6 +137,7 @@ export async function registerRoutes(
         injuries: parsed.injuries,
         personalRecords: parsed.personalRecords,
         preferences: parsed.preferences,
+        garminWatch: parsed.garminWatch,
       });
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
       const { password: _, garminPassword: __, intervalsApiKey: ___, ...safeUser } = user;

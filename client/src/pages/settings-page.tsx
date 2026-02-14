@@ -14,7 +14,8 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
-import { garminConnectSchema, intervalsConnectSchema, sportTypes, sportTypeLabels, fitnessLevels, fitnessLevelLabels } from "@shared/schema";
+import { garminConnectSchema, intervalsConnectSchema, sportTypes, sportTypeLabels, fitnessLevels, fitnessLevelLabels, garminWatchModels, garminWatchLabels, swimStructuredWatchModels } from "@shared/schema";
+import type { GarminWatchModel } from "@shared/schema";
 import type { GarminConnectInput, IntervalsConnectInput } from "@shared/schema";
 import {
   Watch,
@@ -129,6 +130,7 @@ export default function SettingsPage() {
   const [injuries, setInjuries] = useState(user?.injuries || "");
   const [personalRecords, setPersonalRecords] = useState(user?.personalRecords || "");
   const [preferences, setPreferences] = useState(user?.preferences || "");
+  const [garminWatch, setGarminWatch] = useState(user?.garminWatch || "");
 
   const handleSaveProfile = () => {
     updateProfileMutation.mutate({
@@ -141,6 +143,7 @@ export default function SettingsPage() {
       injuries: injuries || undefined,
       personalRecords: personalRecords || undefined,
       preferences: preferences || undefined,
+      garminWatch: garminWatch || undefined,
     });
   };
 
@@ -423,6 +426,27 @@ export default function SettingsPage() {
                 </label>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Модель часов Garmin</label>
+            <Select value={garminWatch} onValueChange={setGarminWatch}>
+              <SelectTrigger data-testid="select-garmin-watch">
+                <SelectValue placeholder="Выберите модель часов" />
+              </SelectTrigger>
+              <SelectContent>
+                {garminWatchModels.map((model) => (
+                  <SelectItem key={model} value={model}>
+                    {garminWatchLabels[model]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {garminWatch && !swimStructuredWatchModels.includes(garminWatch as GarminWatchModel) && garminWatch !== "other" && selectedSports.includes("swimming") && (
+              <p className="text-xs text-muted-foreground mt-2">
+                {garminWatchLabels[garminWatch as GarminWatchModel]} не поддерживает структурированные плавательные тренировки с интервалами. AI-тренер учтёт это и создаст совместимый формат.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

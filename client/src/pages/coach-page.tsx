@@ -9,8 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { ChatMessage, Workout } from "@shared/schema";
-import { sportTypeLabels } from "@shared/schema";
+import type { ChatMessage, Workout, GarminWatchModel } from "@shared/schema";
+import { sportTypeLabels, garminWatchLabels, swimStructuredWatchModels } from "@shared/schema";
 import {
   Send,
   Bot,
@@ -25,6 +25,7 @@ import {
   ChevronDown,
   ChevronUp,
   ListChecks,
+  AlertTriangle,
 } from "lucide-react";
 
 function formatTime(ts: string) {
@@ -39,7 +40,7 @@ function formatDate(dateStr: string) {
   });
 }
 
-function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals, savingFavorite, pushing, pushingIntervals, showGarmin, showIntervals }: {
+function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals, savingFavorite, pushing, pushingIntervals, showGarmin, showIntervals, swimWarning }: {
   workout: Workout;
   onFavorite: () => void;
   onPushToGarmin: () => void;
@@ -49,6 +50,7 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
   pushingIntervals: boolean;
   showGarmin: boolean;
   showIntervals: boolean;
+  swimWarning?: string | null;
 }) {
   return (
     <Card className="mt-3">
@@ -104,6 +106,12 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
             </div>
           ))}
         </div>
+        {swimWarning && workout.sportType === "swimming" && (
+          <div className="flex items-start gap-2 mb-3 p-2 rounded-md bg-accent/50 text-xs text-muted-foreground">
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+            <span>{swimWarning}</span>
+          </div>
+        )}
         <div className="flex items-center gap-2 flex-wrap">
           <Button size="sm" variant="outline" onClick={onFavorite} disabled={savingFavorite} data-testid="button-save-favorite">
             {savingFavorite ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Star className="w-3 h-3 mr-1" />}
@@ -297,6 +305,13 @@ export default function CoachPage() {
   const { toast } = useToast();
   const [message, setMessage] = useState("");
   const [bulkPushing, setBulkPushing] = useState(false);
+
+  const swimWarning = (() => {
+    if (!user?.garminWatch || user.garminWatch === "other") return null;
+    if (swimStructuredWatchModels.includes(user.garminWatch as GarminWatchModel)) return null;
+    const watchName = garminWatchLabels[user.garminWatch as GarminWatchModel] || user.garminWatch;
+    return `${watchName} не поддерживает структурированные плавательные тренировки. Тренировка появится в Garmin Connect, но может не синхронизироваться на часы.`;
+  })();
   const [bulkPushingIntervals, setBulkPushingIntervals] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -616,6 +631,7 @@ export default function CoachPage() {
                           pushingIntervals={pushIntervalsMutation.isPending}
                           showGarmin={!!user?.garminConnected}
                           showIntervals={!!user?.intervalsConnected}
+                          swimWarning={swimWarning}
                         />
                       )}
                       {msg.workoutsJson && msg.workoutsJson.length > 0 && (

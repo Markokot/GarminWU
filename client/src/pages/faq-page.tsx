@@ -313,6 +313,43 @@ export default function FaqPage() {
                 </div>
               </AccordionContent>
             </AccordionItem>
+
+            <AccordionItem value="garmin-swim-compat">
+              <AccordionTrigger data-testid="faq-garmin-swim-compat">
+                Почему плавательная тренировка не отправляется на часы?
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>
+                    Не все часы Garmin поддерживают <strong>структурированные плавательные тренировки</strong> с
+                    интервалами. Тренировка может отображаться в Garmin Connect, но не синхронизироваться
+                    с часами (появится сообщение о несовместимом устройстве).
+                  </p>
+                  <p><strong>Часы с полной поддержкой плавательных тренировок:</strong></p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Forerunner 245, 255, 265, 745, 945, 955, 965</li>
+                    <li>Fenix 5, 6, 7, 8 серии</li>
+                    <li>Enduro, Enduro 2, Enduro 3</li>
+                    <li>Epix (Gen 2), Epix Pro</li>
+                    <li>MARQ серия</li>
+                    <li>Swim 2</li>
+                    <li>Instinct 3</li>
+                  </ul>
+                  <p><strong>Часы БЕЗ поддержки структурированного плавания:</strong></p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Venu, Venu 2, Venu 2S, Venu 3, Venu 3S, Venu Sq</li>
+                    <li>Forerunner 55, 165, 645</li>
+                    <li>Vivoactive 4, Vivoactive 5</li>
+                    <li>Instinct, Instinct 2</li>
+                    <li>Fenix E</li>
+                  </ul>
+                  <p>
+                    <strong>Решение:</strong> укажите модель часов в настройках профиля. AI-тренер автоматически
+                    создаст тренировку в совместимом формате — с текстовым описанием плана вместо структурированных интервалов.
+                  </p>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
         </CardContent>
       </Card>

@@ -77,6 +77,104 @@ export interface FavoriteWorkout {
   savedAt: string;
 }
 
+export const garminWatchModels = [
+  "forerunner_55",
+  "forerunner_165",
+  "forerunner_245",
+  "forerunner_255",
+  "forerunner_265",
+  "forerunner_645",
+  "forerunner_745",
+  "forerunner_945",
+  "forerunner_955",
+  "forerunner_965",
+  "venu",
+  "venu_2",
+  "venu_2s",
+  "venu_3",
+  "venu_3s",
+  "venu_sq",
+  "fenix_5",
+  "fenix_6",
+  "fenix_7",
+  "fenix_8",
+  "fenix_e",
+  "enduro",
+  "enduro_2",
+  "enduro_3",
+  "epix_2",
+  "epix_pro",
+  "marq",
+  "instinct",
+  "instinct_2",
+  "instinct_3",
+  "vivoactive_4",
+  "vivoactive_5",
+  "swim_2",
+  "other",
+] as const;
+
+export type GarminWatchModel = (typeof garminWatchModels)[number];
+
+export const garminWatchLabels: Record<GarminWatchModel, string> = {
+  forerunner_55: "Forerunner 55",
+  forerunner_165: "Forerunner 165",
+  forerunner_245: "Forerunner 245",
+  forerunner_255: "Forerunner 255",
+  forerunner_265: "Forerunner 265",
+  forerunner_645: "Forerunner 645",
+  forerunner_745: "Forerunner 745",
+  forerunner_945: "Forerunner 945",
+  forerunner_955: "Forerunner 955",
+  forerunner_965: "Forerunner 965",
+  venu: "Venu",
+  venu_2: "Venu 2",
+  venu_2s: "Venu 2S",
+  venu_3: "Venu 3",
+  venu_3s: "Venu 3S",
+  venu_sq: "Venu Sq",
+  fenix_5: "Fenix 5 серия",
+  fenix_6: "Fenix 6 серия",
+  fenix_7: "Fenix 7 серия",
+  fenix_8: "Fenix 8 серия",
+  fenix_e: "Fenix E",
+  enduro: "Enduro",
+  enduro_2: "Enduro 2",
+  enduro_3: "Enduro 3",
+  epix_2: "Epix (Gen 2)",
+  epix_pro: "Epix Pro",
+  marq: "MARQ серия",
+  instinct: "Instinct",
+  instinct_2: "Instinct 2",
+  instinct_3: "Instinct 3",
+  vivoactive_4: "Vivoactive 4",
+  vivoactive_5: "Vivoactive 5",
+  swim_2: "Swim 2",
+  other: "Другие / не знаю",
+};
+
+export const swimStructuredWatchModels: GarminWatchModel[] = [
+  "forerunner_245",
+  "forerunner_255",
+  "forerunner_265",
+  "forerunner_745",
+  "forerunner_945",
+  "forerunner_955",
+  "forerunner_965",
+  "fenix_5",
+  "fenix_6",
+  "fenix_7",
+  "fenix_8",
+  "enduro",
+  "enduro_2",
+  "enduro_3",
+  "epix_2",
+  "epix_pro",
+  "marq",
+  "swim_2",
+  "instinct_3",
+];
+
 export const fitnessLevels = ["beginner", "intermediate", "advanced", "elite"] as const;
 export type FitnessLevel = (typeof fitnessLevels)[number];
 
@@ -106,6 +204,7 @@ export interface User {
   injuries?: string;
   personalRecords?: string;
   preferences?: string;
+  garminWatch?: GarminWatchModel;
   garminPushCount?: number;
   intervalsPushCount?: number;
   favoritesCount?: number;
@@ -156,6 +255,7 @@ export const profileSchema = z.object({
   injuries: z.string().optional(),
   personalRecords: z.string().optional(),
   preferences: z.string().optional(),
+  garminWatch: z.enum(garminWatchModels).optional(),
 });
 
 export const garminConnectSchema = z.object({
