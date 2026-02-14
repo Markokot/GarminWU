@@ -403,7 +403,7 @@ export async function chat(
       model: "deepseek-chat",
       messages,
       temperature: 0.7,
-      max_tokens: 16000,
+      max_tokens: 8192,
     });
 
     const responseText = completion.choices[0]?.message?.content || "Извините, не удалось получить ответ.";
@@ -429,7 +429,7 @@ export async function chatStream(
       model: "deepseek-chat",
       messages,
       temperature: 0.7,
-      max_tokens: 16000,
+      max_tokens: 8192,
       stream: true,
     });
 
