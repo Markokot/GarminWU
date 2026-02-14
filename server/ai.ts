@@ -41,10 +41,11 @@ const SYSTEM_PROMPT = `Ты — Тренер. Опытный тренер по �
 
 ВАЖНЫЕ ПРАВИЛА:
 1. Отвечай на русском языке
-2. Когда пользователь просит создать тренировку, ОБЯЗАТЕЛЬНО верни её в формате JSON внутри блока \`\`\`workout_json ... \`\`\`
+2. Когда пользователь просит создать тренировку, ОБЯЗАТЕЛЬНО верни её в формате JSON внутри блока \`\`\`workout_json ... \`\`\`. ЭТО ОБЯЗАТЕЛЬНО ДЛЯ ЛЮБОГО ТИПА ТРЕНИРОВКИ, включая плавание для любых часов. Без блока workout_json кнопка отправки на часы НЕ ПОЯВИТСЯ.
 3. Перед созданием тренировки коротко объясни: зачем она, какой эффект, на что обратить внимание
 4. Учитывай ВСЮ информацию из профиля: уровень, возраст, объём тренировок, травмы, личные рекорды
 5. Если видишь данные из Garmin — используй их для анализа текущей формы (темп, пульс, объёмы)
+6. ЗАПРЕЩЕНО: никогда не предлагай пользователю "скопировать JSON", "импортировать в Garmin Connect", "скопировать код", не давай пошаговых инструкций по ручному импорту. Приложение само отправляет тренировки на часы — пользователь нажимает кнопку "На Garmin" или "В избранное". Ты просто создаёшь тренировку в формате workout_json.
 
 ФОРМАТ ТРЕНИРОВКИ (внутри блока \`\`\`workout_json):
 {
@@ -204,7 +205,19 @@ export interface AiResponse {
 
 function extractWorkoutJson(text: string): (Workout & { scheduledDate?: string }) | null {
   const regex = /```workout_json\s*([\s\S]*?)```/;
-  const match = text.match(regex);
+  let match = text.match(regex);
+  if (!match) {
+    const fallback = /```json\s*([\s\S]*?)```/;
+    const fallbackMatch = text.match(fallback);
+    if (fallbackMatch) {
+      try {
+        const obj = JSON.parse(fallbackMatch[1].trim());
+        if (obj.steps && Array.isArray(obj.steps) && obj.sportType) {
+          match = fallbackMatch;
+        }
+      } catch {}
+    }
+  }
   if (!match) return null;
 
   try {
@@ -305,8 +318,14 @@ function extractTrainingPlanJson(text: string): { workouts: (Workout & { schedul
   }
 }
 
-function cleanResponseText(text: string): string {
-  return text.replace(/```workout_json\s*[\s\S]*?```/g, "").replace(/```training_plan_json\s*[\s\S]*?```/g, "").trim();
+function cleanResponseText(text: string, hadWorkout: boolean, hadPlan: boolean): string {
+  let cleaned = text
+    .replace(/```workout_json\s*[\s\S]*?```/g, "")
+    .replace(/```training_plan_json\s*[\s\S]*?```/g, "");
+  if (hadWorkout || hadPlan) {
+    cleaned = cleaned.replace(/```json\s*[\s\S]*?```/g, "");
+  }
+  return cleaned.trim();
 }
 
 function buildChatMessages(
@@ -341,7 +360,7 @@ function buildChatMessages(
 export function parseAiResponse(responseText: string): AiResponse {
   const workout = extractWorkoutJson(responseText);
   const plan = extractTrainingPlanJson(responseText);
-  const cleanText = cleanResponseText(responseText);
+  const cleanText = cleanResponseText(responseText, !!workout, !!plan);
 
   return {
     text: cleanText,
