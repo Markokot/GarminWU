@@ -179,6 +179,7 @@ export async function pushWorkoutToIntervals(
 }
 
 function formatDuration(durationType: string, durationValue: number | null): string {
+  if (durationType === "lap.button") return "1s";
   if (!durationValue) return "";
   if (durationType === "time") {
     const totalMinutes = Math.floor(durationValue / 60);
