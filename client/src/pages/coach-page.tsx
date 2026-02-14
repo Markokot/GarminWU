@@ -409,6 +409,10 @@ export default function CoachPage() {
       return res.json();
     },
     onSuccess: (data: any) => {
+      if (data.swimIncompatible) {
+        toast({ title: "Плавание не поддерживается", description: data.message, variant: "destructive", duration: 8000 });
+        return;
+      }
       if (data.scheduled && data.scheduledDate) {
         const raw = String(data.scheduledDate).split("T")[0];
         const dateStr = new Date(raw + "T12:00:00").toLocaleDateString("ru-RU", {
@@ -453,18 +457,27 @@ export default function CoachPage() {
     setBulkPushing(true);
     let success = 0;
     let failed = 0;
+    let swimSkipped = 0;
     for (const w of workouts) {
       try {
         const res = await apiRequest("POST", "/api/garmin/push-workout", w);
-        if (!res.ok) throw new Error("push failed");
-        success++;
+        const data = await res.json();
+        if (data.swimIncompatible) {
+          swimSkipped++;
+        } else if (!data.success) {
+          failed++;
+        } else {
+          success++;
+        }
       } catch {
         failed++;
       }
     }
     setBulkPushing(false);
     queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-    if (failed > 0) {
+    if (swimSkipped > 0) {
+      toast({ title: `Garmin: ${success} отправлено, ${swimSkipped} плавательных пропущено (часы не поддерживают)`, variant: "destructive", duration: 8000 });
+    } else if (failed > 0) {
       toast({ title: `Garmin: ${success} отправлено, ${failed} с ошибкой`, variant: "destructive" });
     } else {
       toast({ title: `${success} тренировок отправлено на Garmin` });

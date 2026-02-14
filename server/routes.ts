@@ -245,36 +245,18 @@ export async function registerRoutes(
       }
       await ensureGarminSessionWithDecrypt(req.session.userId!, user);
 
-      let workoutToSend = workout;
-      if (workout.sportType === "swimming" && user.garminWatch && !swimStructuredWatchModels.includes(user.garminWatch as GarminWatchModel)) {
-        const stepLabels: Record<string, string> = {
-          warmup: "Разминка", cooldown: "Заминка", interval: "Интервал",
-          recovery: "Восстановление", rest: "Отдых", repeat: "Повтор",
-        };
-        const formatStep = (s: any): string => {
-          let desc = stepLabels[s.stepType] || s.stepType;
-          if (s.durationValue) {
-            desc += s.durationType === "time" ? ` ${Math.floor(s.durationValue / 60)}мин` : ` ${s.durationValue}м`;
-          }
-          if (s.stepType === "repeat" && s.repeatCount && s.childSteps) {
-            desc += ` x${s.repeatCount}: [${s.childSteps.map(formatStep).join(" → ")}]`;
-          }
-          return desc;
-        };
-        const stepsText = workout.steps.map(formatStep).join("\n");
-        const fullDescription = workout.description
-          ? `${workout.description}\n\n--- План ---\n${stepsText}`
-          : `План тренировки:\n${stepsText}`;
-        workoutToSend = {
-          ...workout,
-          description: fullDescription,
-          steps: [
-            { stepId: 1, stepOrder: 1, stepType: "warmup" as const, durationType: "lap.button" as const, durationValue: null, targetType: "no.target" as const, targetValueLow: null, targetValueHigh: null, intensity: "active" as const },
-          ],
-        };
-        console.log(`[Garmin] Simplified swimming workout to single step for incompatible watch: ${user.garminWatch}`);
+      const isSwimIncompat = workout.sportType === "swimming" && user.garminWatch && !swimStructuredWatchModels.includes(user.garminWatch as GarminWatchModel);
+
+      if (isSwimIncompat) {
+        console.log(`[Garmin] Blocked swimming workout push for incompatible watch: ${user.garminWatch}`);
+        return res.json({
+          success: false,
+          swimIncompatible: true,
+          message: `${user.garminWatch?.replace(/_/g, ' ')} не поддерживает плавательные тренировки через Garmin Connect. Тренировка сохранена в описании — откройте план на экране телефона и выполняйте по нему.`,
+        });
       }
-      const result = await pushWorkoutToGarmin(req.session.userId!, workoutToSend);
+
+      const result = await pushWorkoutToGarmin(req.session.userId!, workout);
 
       if (workout.id) {
         await storage.updateWorkout(workout.id, {
