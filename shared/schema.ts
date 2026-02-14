@@ -175,6 +175,23 @@ export const swimStructuredWatchModels: GarminWatchModel[] = [
   "instinct_3",
 ];
 
+export const nativeRunningPowerWatchModels: GarminWatchModel[] = [
+  "forerunner_255",
+  "forerunner_265",
+  "forerunner_955",
+  "forerunner_965",
+  "fenix_7",
+  "fenix_8",
+  "enduro_2",
+  "enduro_3",
+  "epix_2",
+  "epix_pro",
+  "marq",
+  "instinct_3",
+  "venu_3",
+  "venu_3s",
+];
+
 export const fitnessLevels = ["beginner", "intermediate", "advanced", "elite"] as const;
 export type FitnessLevel = (typeof fitnessLevels)[number];
 

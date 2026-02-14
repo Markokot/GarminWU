@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import type { User, Workout, ChatMessage, GarminActivity, FitnessLevel, GarminWatchModel } from "@shared/schema";
-import { fitnessLevelLabels, garminWatchLabels, swimStructuredWatchModels } from "@shared/schema";
+import { fitnessLevelLabels, garminWatchLabels, swimStructuredWatchModels, nativeRunningPowerWatchModels } from "@shared/schema";
 
 function getOpenAIClient(): OpenAI {
   if (!process.env.DEEPSEEK_API_KEY) {
@@ -150,9 +150,13 @@ function buildUserContext(user: User, activities?: GarminActivity[]): string {
   if (user.garminWatch) {
     const watchLabel = garminWatchLabels[user.garminWatch as GarminWatchModel] || user.garminWatch;
     const supportsSwimStructured = swimStructuredWatchModels.includes(user.garminWatch as GarminWatchModel);
+    const hasNativeRunningPower = nativeRunningPowerWatchModels.includes(user.garminWatch as GarminWatchModel);
     context += `\n- Часы Garmin: ${watchLabel}`;
     if (!supportsSwimStructured) {
       context += ` (НЕ поддерживает структурированные плавательные тренировки с интервалами — для плавания создавай только простую тренировку без repeat-блоков, опиши план в описании текстом)`;
+    }
+    if (!hasNativeRunningPower) {
+      context += ` (НЕ имеет встроенного датчика мощности бега — для беговых тренировок используй targetType "pace.zone" или "heart.rate.zone", НЕ используй "power.zone" если пользователь не упоминает внешний датчик мощности типа Stryd или Garmin RDP)`;
     }
   }
   context += `\n- Garmin: ${user.garminConnected ? "подключён" : "не подключён"}`;

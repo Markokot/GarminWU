@@ -49,7 +49,9 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - User can specify their Garmin watch model in profile settings
 - Watch model list defined in shared/schema.ts (garminWatchModels, garminWatchLabels)
 - swimStructuredWatchModels — list of watches that support structured swimming workouts
+- nativeRunningPowerWatchModels — list of watches with built-in running power sensor
 - If user's watch doesn't support structured swimming, AI prompt instructs to create simple format
+- If user's watch lacks native running power, AI uses pace/HR zones instead of power zones
 - Coach page shows warning on swimming workouts for incompatible watches
 - FAQ has detailed compatibility list
 
