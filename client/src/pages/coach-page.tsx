@@ -349,10 +349,12 @@ export default function CoachPage() {
 
   const [isSending, setIsSending] = useState(false);
   const [streamingText, setStreamingText] = useState("");
+  const streamDoneRef = useRef(false);
 
   const sendMessage = async (content: string) => {
     setIsSending(true);
     setStreamingText("");
+    streamDoneRef.current = false;
 
     try {
       const xhr = new XMLHttpRequest();
@@ -377,9 +379,7 @@ export default function CoachPage() {
               if (event.type === "chunk") {
                 setStreamingText((prev) => prev + event.content);
               } else if (event.type === "done") {
-                queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] }).then(() => {
-                  setStreamingText("");
-                });
+                streamDoneRef.current = true;
               } else if (event.type === "error") {
                 streamError = event.message;
               }
@@ -409,6 +409,11 @@ export default function CoachPage() {
         xhr.timeout = 300000;
         xhr.send(JSON.stringify({ content }));
       });
+
+      if (streamDoneRef.current) {
+        await queryClient.refetchQueries({ queryKey: ["/api/chat/messages"] });
+        setStreamingText("");
+      }
     } catch (error: any) {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
     } finally {
