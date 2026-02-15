@@ -233,14 +233,18 @@ export async function registerRoutes(
   });
 
   app.post("/api/garmin/push-workout", requireAuth, async (req, res) => {
+    const startTime = Date.now();
+    const user = await storage.getUser(req.session.userId!);
+    const username = user?.username || req.session.userId;
     try {
       const pushSchema = createWorkoutSchema.extend({
         id: z.string().optional(),
       });
       const workout = pushSchema.parse(req.body);
+      console.log(`[Garmin Push] user=${username} workout="${workout.name}" sport=${workout.sportType} steps=${workout.steps.length} date=${workout.scheduledDate || 'none'}`);
 
-      const user = await storage.getUser(req.session.userId!);
       if (!user || !user.garminConnected) {
+        console.log(`[Garmin Push] FAIL user=${username} reason=not_connected`);
         return res.status(400).json({ message: "Garmin не подключён. Подключите аккаунт в настройках." });
       }
       await ensureGarminSessionWithDecrypt(req.session.userId!, user);
@@ -248,7 +252,7 @@ export async function registerRoutes(
       const isSwimIncompat = workout.sportType === "swimming" && user.garminWatch && !swimStructuredWatchModels.includes(user.garminWatch as GarminWatchModel);
 
       if (isSwimIncompat) {
-        console.log(`[Garmin] Blocked swimming workout push for incompatible watch: ${user.garminWatch}`);
+        console.log(`[Garmin Push] BLOCKED user=${username} reason=swim_incompatible watch=${user.garminWatch}`);
         return res.json({
           success: false,
           swimIncompatible: true,
@@ -257,6 +261,8 @@ export async function registerRoutes(
       }
 
       const result = await pushWorkoutToGarmin(req.session.userId!, workout);
+      const elapsed = Date.now() - startTime;
+      console.log(`[Garmin Push] OK user=${username} workout="${workout.name}" workoutId=${result.workoutId} scheduled=${result.scheduled} date=${result.scheduledDate || 'none'} time=${elapsed}ms`);
 
       if (workout.id) {
         await storage.updateWorkout(workout.id, {
@@ -276,9 +282,12 @@ export async function registerRoutes(
         scheduledDate: result.scheduledDate,
       });
     } catch (error: any) {
+      const elapsed = Date.now() - startTime;
       if (error instanceof z.ZodError) {
+        console.log(`[Garmin Push] FAIL user=${username} reason=validation error="${error.errors.map((e) => e.message).join(", ")}" time=${elapsed}ms`);
         return res.status(400).json({ message: "Некорректный формат тренировки: " + error.errors.map((e) => e.message).join(", ") });
       }
+      console.log(`[Garmin Push] FAIL user=${username} reason=error error="${error.message}" stack="${error.stack?.split('\n').slice(0,3).join(' | ')}" time=${elapsed}ms`);
       res.status(400).json({ message: error.message });
     }
   });

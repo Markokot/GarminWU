@@ -518,9 +518,7 @@ export default function CoachPage() {
     let success = 0;
     let failed = 0;
     let swimSkipped = 0;
-    for (let i = 0; i < workouts.length; i++) {
-      const w = workouts[i];
-      if (i > 0) await new Promise(r => setTimeout(r, 2000));
+    for (const w of workouts) {
       try {
         const res = await apiRequest("POST", "/api/garmin/push-workout", w);
         const data = await res.json();
@@ -550,9 +548,7 @@ export default function CoachPage() {
     setBulkPushingIntervals(true);
     let success = 0;
     let failed = 0;
-    for (let i = 0; i < workouts.length; i++) {
-      const w = workouts[i];
-      if (i > 0) await new Promise(r => setTimeout(r, 1000));
+    for (const w of workouts) {
       try {
         const res = await apiRequest("POST", "/api/intervals/push-workout", w);
         if (!res.ok) throw new Error("push failed");
