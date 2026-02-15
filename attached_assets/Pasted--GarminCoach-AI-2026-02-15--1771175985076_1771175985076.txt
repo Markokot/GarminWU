@@ -1,0 +1,256 @@
+# GarminCoach AI — актуальный архитектурный обзор (обновлено)
+
+> Дата ревью: 2026-02-15  
+> Скоуп: текущее состояние репозитория `client/`, `server/`, `shared/`, build/tooling и продуктовые флоу.
+
+## 1) Executive summary
+
+Проект остается **single-repo fullstack монолитом** с четким разделением слоев:
+- `client/` — React SPA,
+- `server/` — Express API + интеграции,
+- `shared/` — доменные типы и Zod-контракты.
+
+Это хороший pragmatic setup для небольшого продукта: быстрый цикл доставки, простая эксплуатация, минимальная инфраструктура.  
+Ключевые сильные стороны сейчас: единый контракт данных, продуманный UX вокруг AI-коуча и интеграций, и внятный продуктовый периметр (Garmin + Intervals + чат + личный кабинет).
+
+Главные ограничения: монолитный API-слой (`server/routes.ts`), файловое хранилище вместо транзакционной БД, слабая role model (админ по username), и не полностью «зеленая» типизация (`npm run check` сейчас падает на `server/ai.ts`).
+
+---
+
+## 2) Текущая high-level архитектура
+
+```text
+[React SPA / Vite]
+      |
+      | HTTP + cookie session
+      v
+[Express API]
+  ├─ Auth/Profile
+  ├─ Workouts CRUD
+  ├─ AI Chat
+  ├─ Garmin integration
+  ├─ Intervals.icu integration
+  └─ Admin stats
+      |
+      v
+[FileStorage .data/*.json]   +   [In-memory Garmin sessions]
+      |
+      +----> [DeepSeek API via OpenAI SDK]
+      +----> [Garmin Connect API]
+      +----> [Intervals.icu API]
+```
+
+### Монолитный деплой
+Сервер в production раздает и API, и фронтовую статику (единой точкой входа), в development подключает Vite middleware. Это упрощает инфраструктуру, но усложняет горизонтальное масштабирование без дополнительной работы с сессиями/кэшем.
+
+---
+
+## 3) Backend: подробный разбор
+
+## 3.1 Entry point и runtime pipeline
+Файл `server/index.ts` делает следующие шаги:
+1. Проверка env (`SESSION_SECRET` mandatory, `DEEPSEEK_API_KEY` optional warning).
+2. Создание Express + HTTP server.
+3. Подключение body middleware (включая `rawBody` в `req`).
+4. Request logging для всех `/api/*` с временем выполнения и JSON-ответом.
+5. `registerRoutes(...)`.
+6. Глобальный error-handler.
+7. Dev: `setupVite(...)`; Prod: `serveStatic(...)`.
+8. Listen на `PORT` (default 5000).
+
+**Оценка:** pipeline понятный и production-friendly для небольшого сервиса.
+
+## 3.2 API-слой (`server/routes.ts`)
+Сейчас это центральный orchestrator всей backend-логики.
+
+### Что внутри
+- Session middleware (`memorystore`) и cookie-конфиг.
+- Auth: register/login/me/logout.
+- User profile patch.
+- Garmin connect/disconnect/activities/push.
+- Intervals connect/disconnect/push.
+- Workouts CRUD.
+- Chat messages CRUD + отправка в AI.
+- Admin stats endpoint.
+
+### Плюсы
+- Весь продуктовый API в одном месте легко проследить end-to-end.
+- Практически везде есть валидация входа через Zod.
+- Секреты интеграций перед сохранением шифруются.
+
+### Минусы
+- Один файл берет на себя и transport, и orchestration, и часть domain logic.
+- Много `any` и повторений паттернов обработки ошибок.
+- Масштабирование команды/фич будет дорожать из-за связности.
+
+**Рекомендация:** выделить `modules` (`auth`, `profile`, `workouts`, `chat`, `integrations`, `admin`) + service-слой.
+
+## 3.3 Persistence layer (`server/storage.ts`)
+`FileStorage` хранит данные в памяти (`Map`) и синхронно сериализует в JSON-файлы:
+- `users.json`
+- `workouts.json`
+- `messages.json`
+
+### Плюсы
+- Минимальная сложность и быстрый старт.
+- Нет внешней инфраструктуры.
+
+### Риски
+- Нет транзакций и гарантий целостности при сложных race-сценариях.
+- Синхронный FS I/O в request-path.
+- Слабая история для multi-instance и больших объемов.
+
+Важно: в проекте уже есть `drizzle.config.ts` и зависимости PostgreSQL/Drizzle, но runtime пока на file storage. Это архитектурный «полупереход».
+
+## 3.4 Интеграции
+
+### Garmin (`server/garmin.ts`)
+- Логин и хранение активной сессии в `Map`.
+- Кэш credentials в памяти для reconnect.
+- Health-check сессии и retry на fetch/push.
+- Конвертация workout steps во внутренний DTO Garmin API.
+
+**Сильная сторона:** надежный happy path + retry/reconnect.  
+**Ограничение:** in-memory nature (перезапуск процесса теряет сессии/кэш).
+
+### Intervals (`server/intervals.ts`)
+- Verify API key и athlete id.
+- Push workout как `WORKOUT` event.
+- Маппинг sport type, формирование step description.
+
+**Сильная сторона:** прозрачная и простая интеграция.  
+**Ограничение:** нет сложной синхронизации статусов, только fire-and-check.
+
+## 3.5 AI subsystem (`server/ai.ts`)
+- DeepSeek через OpenAI-compatible client.
+- Большой системный промпт с правилами тренера.
+- Добавление контекста пользователя + последних активностей Garmin.
+- История диалога (последние 30 сообщений).
+- Извлечение workout JSON из markdown-блока `workout_json`.
+
+### Наблюдение по качеству
+Есть **типовой дефект**: `extractWorkoutJson` возвращает объект, несовместимый с `Workout` (не хватает `sentToIntervals`), из-за чего `tsc` падает.
+
+---
+
+## 4) Frontend: подробный разбор
+
+## 4.1 App shell и инфраструктурные провайдеры
+`client/src/App.tsx` собирает:
+- `QueryClientProvider`
+- `ThemeProvider`
+- `TooltipProvider`
+- `AuthProvider`
+- `Toaster`
+
+Далее — gate по авторизации: `AuthPage` или основной layout с `AppSidebar` + `ThemeToggle` + wouter routing.
+
+## 4.2 State management
+- Серверный state: TanStack Query (`queryClient.ts`), централизованный fetch + error-throw.
+- Auth state: контекст `auth.tsx` + bootstrap через `/api/auth/me`.
+- Локальный UI state: hooks в страницах.
+
+Подход аккуратный и достаточно легкий для текущего масштаба.
+
+## 4.3 Экранная модель продукта (что изменилось/актуально)
+Сейчас у приложения полноценный пользовательский контур:
+- `auth-page`: login/register, выбор sport types.
+- `dashboard-page`: summary по Garmin активностям + последним тренировкам.
+- `coach-page`: чат с AI, quick prompts, preview, сохранение/пуш.
+- `workouts-page`: список тренировок, удаление, отправка в Garmin/Intervals.
+- `settings-page`: расширенный профиль + подключения Garmin/Intervals.
+- `faq-page`: продуктовый onboarding по Garmin/Intervals.
+- `admin-page`: продуктовая аналитика по пользователям/сообщениям/конверсиям.
+
+Интерфейс стал заметно шире, чем базовый MVP, особенно по админке и FAQ.
+
+## 4.4 UI система
+- shadcn/ui + Radix primitives.
+- Единый визуальный язык карточек, badge, skeleton, dialog.
+- Много `data-testid` (хорошо для будущих e2e/интеграционных тестов).
+
+---
+
+## 5) Security и эксплуатация
+
+## 5.1 Что сделано хорошо
+- Пароли пользователей хешируются (`bcrypt`).
+- Garmin/Intervals секреты шифруются (`AES-256-GCM`) с ключом от `SESSION_SECRET`.
+- Cookie `httpOnly`, `sameSite=lax`, сессионная авторизация.
+
+## 5.2 Что требует усиления
+- `secure: false` в cookie-конфиге — нужно включать `secure: true` под HTTPS в production.
+- Админ-доступ по `username === "Andrey"` — слабая role model.
+- Логи API могут содержать избыточный response payload (в т.ч. потенциально чувствительный контент).
+
+---
+
+## 6) Build, tooling, DX
+
+- Vite-конфиг и aliases настроены чисто.
+- Отдельный build script собирает client + server bundle (`esbuild`).
+- Есть Drizzle toolchain, но фактически runtime на JSON storage.
+
+DX в целом хороший, но на уровне engineering quality есть явный blocker: `tsc` не проходит.
+
+---
+
+## 7) Качество архитектуры и кода: оценка
+
+## 7.1 Качество кода — **7.2 / 10**
+**Плюсы:**
+- читаемые файлы,
+- понятные naming conventions,
+- общий schema слой,
+- хороший UI consistency.
+
+**Минусы:**
+- концентрация логики в `routes.ts`,
+- локальные `any` в критичных местах,
+- отсутствие «зеленого» type-check в текущем состоянии.
+
+## 7.2 Архитектура — **6.8 / 10**
+**Плюсы:**
+- прозрачный монолит, легко понимать и развивать на ранней стадии,
+- clear separation client/server/shared.
+
+**Минусы:**
+- persistence и session model не готовы к росту нагрузки,
+- роли/авторизация не формализованы,
+- внешние интеграции тесно связаны с transport-слоем.
+
+## 7.3 Интерфейс (UX/UI) — **8.3 / 10**
+**Плюсы:**
+- хороший продуктовый флоу,
+- аккуратный визуальный слой,
+- полезные состояния загрузки/ошибок,
+- FAQ и админка повышают зрелость продукта.
+
+**Минусы:**
+- настройки перегружены по плотности формы,
+- не хватает guided onboarding/wizard для сложных интеграций.
+
+---
+
+## 8) Технический долг (приоритетный backlog)
+
+### P0 (исправить сразу)
+1. Починить типизацию `server/ai.ts` (ошибка `Workout` shape).
+2. Прогонять `npm run check` в CI как обязательный gate.
+
+### P1 (ближайший цикл)
+3. Разбить `server/routes.ts` на модульные роутеры + service-слой.
+4. Ввести role-based авторизацию (RBAC), убрать admin-by-username.
+5. Переключить persistence на Postgres/Drizzle (миграции, индексы, ограничения).
+
+### P2 (рост и надежность)
+6. Вынести session/cache слой (Redis) для multi-instance сценария.
+7. Добавить structured logging + базовые метрики (latency/error rate для DeepSeek/Garmin/Intervals).
+8. Добавить e2e smoke tests на core journey: register → chat → save workout → push.
+
+---
+
+## 9) Вывод
+
+Проект заметно эволюционировал и уже выглядит как **функциональный продукт**, а не просто прототип: есть core user journey, интеграции, админская аналитика и FAQ.  
+Следующий логичный этап — перевести архитектуру из «быстрого монолита» в более устойчивую форму: модульный backend, формальные роли, транзакционное хранилище и обязательные quality gates в CI.
