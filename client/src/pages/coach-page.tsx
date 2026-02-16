@@ -423,7 +423,8 @@ export default function CoachPage() {
         xhr.onerror = () => reject(new Error("Ошибка сети"));
         xhr.ontimeout = () => reject(new Error("Время ожидания истекло"));
         xhr.timeout = 300000;
-        xhr.send(JSON.stringify({ content }));
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      xhr.send(JSON.stringify({ content, timezone }));
       });
 
       await queryClient.refetchQueries({ queryKey: ["/api/chat/messages"] });

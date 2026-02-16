@@ -12,16 +12,29 @@ function getOpenAIClient(): OpenAI {
   });
 }
 
-function getTodayDateString(): string {
+function getTodayDateString(timezone?: string): string {
   const now = new Date();
+  if (timezone) {
+    try {
+      const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+      return parts;
+    } catch {}
+  }
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
 
-function getDayOfWeek(): string {
+function getDayOfWeek(timezone?: string): string {
   const days = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
+  if (timezone) {
+    try {
+      const dow = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(new Date());
+      const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+      return days[map[dow] ?? new Date().getDay()];
+    } catch {}
+  }
   return days[new Date().getDay()];
 }
 
@@ -377,11 +390,12 @@ function buildChatMessages(
   user: User,
   userMessage: string,
   history: ChatMessage[],
-  activities?: GarminActivity[]
+  activities?: GarminActivity[],
+  timezone?: string
 ): OpenAI.ChatCompletionMessageParam[] {
   const userContext = buildUserContext(user, activities);
-  const todayDate = getTodayDateString();
-  const todayDow = getDayOfWeek();
+  const todayDate = getTodayDateString(timezone);
+  const todayDow = getDayOfWeek(timezone);
 
   const systemPrompt = SYSTEM_PROMPT
     .replace(/\{TODAY_DATE\}/g, todayDate)
@@ -452,9 +466,10 @@ export async function chatStream(
   userMessage: string,
   history: ChatMessage[],
   activities?: GarminActivity[],
-  onChunk?: (chunk: string) => void
+  onChunk?: (chunk: string) => void,
+  timezone?: string
 ): Promise<AiResponse> {
-  const messages = buildChatMessages(user, userMessage, history, activities);
+  const messages = buildChatMessages(user, userMessage, history, activities, timezone);
 
   try {
     const openai = getOpenAIClient();

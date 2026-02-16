@@ -455,7 +455,7 @@ export async function registerRoutes(
 
   app.post("/api/chat/send", requireAuth, async (req, res) => {
     try {
-      const { content } = req.body;
+      const { content, timezone } = req.body;
       if (!content || typeof content !== "string") {
         return res.status(400).json({ message: "Сообщение не может быть пустым" });
       }
@@ -489,9 +489,10 @@ export async function registerRoutes(
       }, 15000);
 
       try {
+        const userTimezone = typeof timezone === "string" ? timezone : undefined;
         const aiResponse = await chatStream(user, content, history, activities, (chunk) => {
           res.write(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`);
-        });
+        }, userTimezone);
 
         const assistantMessage = await storage.addMessage({
           userId: user.id,
