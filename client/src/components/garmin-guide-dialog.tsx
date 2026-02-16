@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, X, Watch, Smartphone, Calendar } from "lucide-react";
@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, X, Watch, Smartphone, Calendar } from "lucid
 import garminCalendar from "@assets/IMAGE_2026-02-16_23:43:51_1771274633188.jpg";
 import garminDaily from "@assets/IMAGE_2026-02-16_23:43:42_1771274623997.jpg";
 import garminWorkout from "@assets/IMAGE_2026-02-16_23:43:36_1771274617930.jpg";
-import garminWatch from "@assets/images/garmin-watch-workout.png";
+import garminWatch from "@assets/garmin-watch-workout.png";
 
 const steps = [
   {
@@ -42,6 +42,10 @@ interface GarminGuideDialogProps {
 
 export function GarminGuideDialog({ open, onClose }: GarminGuideDialogProps) {
   const [currentStep, setCurrentStep] = useState(0);
+
+  useEffect(() => {
+    if (open) setCurrentStep(0);
+  }, [open]);
 
   if (!open) return null;
 

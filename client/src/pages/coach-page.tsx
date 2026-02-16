@@ -26,7 +26,9 @@ import {
   ListChecks,
   AlertTriangle,
   Trash2,
+  HelpCircle,
 } from "lucide-react";
+import { GarminGuideDialog } from "@/components/garmin-guide-dialog";
 
 function formatTime(ts: string) {
   return new Date(ts).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
@@ -349,6 +351,16 @@ export default function CoachPage() {
 
   const [isSending, setIsSending] = useState(false);
   const [streamingText, setStreamingText] = useState("");
+  const [showGarminGuide, setShowGarminGuide] = useState(false);
+  const garminGuideShown = useRef(!!localStorage.getItem("garminGuideShown"));
+
+  const triggerGarminGuide = () => {
+    if (!garminGuideShown.current) {
+      setShowGarminGuide(true);
+      garminGuideShown.current = true;
+      localStorage.setItem("garminGuideShown", "1");
+    }
+  };
   const streamDoneRef = useRef(false);
 
   const sendMessage = async (content: string) => {
@@ -474,17 +486,11 @@ export default function CoachPage() {
         toast({ title: "Плавание не поддерживается", description: data.message, variant: "destructive", duration: 8000 });
         return;
       }
-      if (data.scheduled && data.scheduledDate) {
-        const raw = String(data.scheduledDate).split("T")[0];
-        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString("ru-RU", {
-          day: "numeric",
-          month: "long",
-          weekday: "long",
-        });
-        toast({ title: "Тренировка отправлена на Garmin", description: `Запланирована на ${dateStr}` });
-      } else {
-        toast({ title: "Тренировка отправлена на Garmin" });
-      }
+      const desc = data.scheduled && data.scheduledDate
+        ? `Запланирована на ${new Date(String(data.scheduledDate).split("T")[0] + "T12:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long", weekday: "long" })}`
+        : undefined;
+      toast({ title: "Тренировка отправлена на Garmin", description: desc });
+      triggerGarminGuide();
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка отправки", description: error.message, variant: "destructive" });
@@ -543,6 +549,7 @@ export default function CoachPage() {
     } else {
       toast({ title: `${success} тренировок отправлено на Garmin` });
     }
+    if (success > 0) triggerGarminGuide();
   };
 
   const handleBulkPushIntervals = async (workouts: Workout[]) => {
@@ -604,6 +611,7 @@ export default function CoachPage() {
       } else {
         toast({ title: `${workout.name} → Garmin` });
       }
+      if (!data.swimIncompatible) triggerGarminGuide();
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     } catch (error: any) {
       toast({ title: "Ошибка отправки", description: error.message, variant: "destructive" });
@@ -856,6 +864,7 @@ export default function CoachPage() {
           </Button>
         </div>
       </div>
+      <GarminGuideDialog open={showGarminGuide} onClose={() => setShowGarminGuide(false)} />
     </div>
   );
 }
