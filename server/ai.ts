@@ -12,30 +12,48 @@ function getOpenAIClient(): OpenAI {
   });
 }
 
-function getTodayDateString(timezone?: string): string {
+function getServerDate(): { dateStr: string; dayIndex: number } {
   const now = new Date();
-  if (timezone) {
-    try {
-      const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-      return parts;
-    } catch {}
-  }
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return { dateStr: `${y}-${m}-${d}`, dayIndex: now.getDay() };
+}
+
+function getUserDate(timezone: string): { dateStr: string; dayIndex: number } | null {
+  try {
+    const now = new Date();
+    const dateStr = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+    const dow = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(now);
+    const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return { dateStr, dayIndex: map[dow] ?? 0 };
+  } catch {
+    return null;
+  }
+}
+
+function getResolvedDate(timezone?: string): { dateStr: string; dayIndex: number } {
+  const server = getServerDate();
+  if (!timezone) return server;
+  const user = getUserDate(timezone);
+  if (!user) return server;
+  const serverMs = new Date(server.dateStr + "T12:00:00Z").getTime();
+  const userMs = new Date(user.dateStr + "T12:00:00Z").getTime();
+  const diffDays = Math.abs(userMs - serverMs) / (1000 * 60 * 60 * 24);
+  if (diffDays > 1) {
+    console.log(`[AI] Timezone sanity check FAILED: user=${user.dateStr} server=${server.dateStr} tz=${timezone} diff=${diffDays}d — using server date`);
+    return server;
+  }
+  return user;
+}
+
+function getTodayDateString(timezone?: string): string {
+  return getResolvedDate(timezone).dateStr;
 }
 
 function getDayOfWeek(timezone?: string): string {
   const days = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
-  if (timezone) {
-    try {
-      const dow = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(new Date());
-      const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-      return days[map[dow] ?? new Date().getDay()];
-    } catch {}
-  }
-  return days[new Date().getDay()];
+  return days[getResolvedDate(timezone).dayIndex];
 }
 
 const SYSTEM_PROMPT = `Ты — Тренер. Опытный тренер по триатлону, бегу, велоспорту и плаванию с 20-летним стажем. Ты подготовил десятки спортсменов от новичков до Ironman-финишеров.
