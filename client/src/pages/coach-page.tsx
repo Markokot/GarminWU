@@ -42,7 +42,7 @@ function formatDate(dateStr: string) {
   });
 }
 
-function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals, savingFavorite, pushing, pushingIntervals, showGarmin, showIntervals, swimWarning }: {
+function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals, savingFavorite, pushing, pushingIntervals, showGarmin, showIntervals, swimWarning, onShowGuide }: {
   workout: Workout;
   onFavorite: () => void;
   onPushToGarmin: () => void;
@@ -53,6 +53,7 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
   showGarmin: boolean;
   showIntervals: boolean;
   swimWarning?: string | null;
+  onShowGuide?: () => void;
 }) {
   return (
     <Card className="mt-3">
@@ -132,12 +133,22 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
             </Button>
           )}
         </div>
+        {showGarmin && onShowGuide && (
+          <button
+            onClick={onShowGuide}
+            className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            data-testid="link-garmin-guide"
+          >
+            <HelpCircle className="w-3 h-3" />
+            <span>Как найти тренировку на часах?</span>
+          </button>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGarmin, onBulkPushIntervals, onBulkFavorite, onPushGarmin, onPushIntervals, onFavorite, bulkPushing, bulkPushingIntervals, bulkSaving, pushingIdx, pushingIntervalsIdx, savingIdx }: {
+function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGarmin, onBulkPushIntervals, onBulkFavorite, onPushGarmin, onPushIntervals, onFavorite, bulkPushing, bulkPushingIntervals, bulkSaving, pushingIdx, pushingIntervalsIdx, savingIdx, onShowGuide }: {
   workouts: Workout[];
   showGarmin: boolean;
   showIntervals: boolean;
@@ -153,6 +164,7 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
   pushingIdx: number | null;
   pushingIntervalsIdx: number | null;
   savingIdx: number | null;
+  onShowGuide?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -222,6 +234,16 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
             </Button>
           )}
         </div>
+        {showGarmin && onShowGuide && (
+          <button
+            onClick={onShowGuide}
+            className="mb-3 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            data-testid="link-plan-garmin-guide"
+          >
+            <HelpCircle className="w-3 h-3" />
+            <span>Как найти тренировку на часах?</span>
+          </button>
+        )}
 
         <Button
           variant="ghost"
@@ -785,6 +807,7 @@ export default function CoachPage() {
                           showGarmin={!!user?.garminConnected}
                           showIntervals={!!user?.intervalsConnected}
                           swimWarning={swimWarning}
+                          onShowGuide={() => setShowGarminGuide(true)}
                         />
                       )}
                       {msg.workoutsJson && msg.workoutsJson.length > 0 && (
@@ -804,6 +827,7 @@ export default function CoachPage() {
                           pushingIdx={singlePushIdx}
                           pushingIntervalsIdx={singlePushIntervalsIdx}
                           savingIdx={singleSaveIdx}
+                          onShowGuide={() => setShowGarminGuide(true)}
                         />
                       )}
                     </>
