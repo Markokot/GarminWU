@@ -10,28 +10,32 @@ import garminWatch from "@assets/garmin-watch-workout.png";
 
 const steps = [
   {
-    title: "Календарь Garmin Connect",
-    description: "Откройте приложение Garmin Connect на телефоне. Перейдите в раздел «Календарь». Тренировка появится в виде цветной полоски на запланированную дату.",
+    title: "Календарь",
+    description: "В Garmin Connect откройте «Календарь» — тренировка будет на нужную дату.",
     image: garminCalendar,
     icon: Calendar,
+    isPhone: true,
   },
   {
     title: "Нажмите на дату",
-    description: "Нажмите на день, на который запланирована тренировка. Внизу экрана появится карточка с названием тренировки. Нажмите на неё, чтобы увидеть детали.",
+    description: "Внизу появится карточка тренировки — нажмите на неё для деталей.",
     image: garminDaily,
     icon: Smartphone,
+    isPhone: true,
   },
   {
     title: "Детали тренировки",
-    description: "Здесь вы увидите все шаги тренировки: разминку, основной блок, заминку. Все целевые пульсовые зоны и интервалы настроены автоматически.",
+    description: "Все шаги, пульсовые зоны и интервалы уже настроены.",
     image: garminWorkout,
     icon: Smartphone,
+    isPhone: true,
   },
   {
     title: "На часах",
-    description: "Если тренировка назначена на сегодня — просто выберите активность на часах (например, «Бег»). Часы автоматически предложат запланированную тренировку. Также тренировку можно найти: Часы → Тренировки → Мои тренировки.",
+    description: "Выберите активность (например, «Бег») — часы предложат тренировку. Или: Тренировки → Мои тренировки.",
     image: garminWatch,
     icon: Watch,
+    isPhone: false,
   },
 ];
 
@@ -53,38 +57,39 @@ export function GarminGuideDialog({ open, onClose }: GarminGuideDialogProps) {
   const StepIcon = step.icon;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <Card
-        className="relative z-10 w-full max-w-md max-h-[90vh] overflow-y-auto"
+        className="relative z-10 w-full max-w-sm flex flex-col"
+        style={{ maxHeight: "calc(100vh - 1rem)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-4">
-          <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="p-3 sm:p-4 flex flex-col min-h-0">
+          <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
-              <StepIcon className="h-5 w-5 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">
-                Шаг {currentStep + 1} из {steps.length}
-              </h3>
+              <StepIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="font-semibold text-xs text-muted-foreground">
+                {currentStep + 1} / {steps.length}
+              </span>
             </div>
             <Button size="icon" variant="ghost" onClick={onClose} data-testid="button-close-guide">
               <X className="h-4 w-4" />
             </Button>
           </div>
 
-          <h2 className="text-lg font-bold mb-2" data-testid="text-guide-title">{step.title}</h2>
-          <p className="text-sm text-muted-foreground mb-4" data-testid="text-guide-description">{step.description}</p>
+          <h2 className="text-base font-bold mb-1" data-testid="text-guide-title">{step.title}</h2>
+          <p className="text-xs text-muted-foreground mb-2" data-testid="text-guide-description">{step.description}</p>
 
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center flex-1 min-h-0 mb-2">
             <img
               src={step.image}
               alt={step.title}
-              className="max-h-[400px] w-auto rounded-lg object-contain"
+              className={`rounded-lg object-contain ${step.isPhone ? "max-h-[45vh] sm:max-h-[50vh]" : "max-h-[35vh] sm:max-h-[40vh]"}`}
               data-testid={`img-guide-step-${currentStep}`}
             />
           </div>
 
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 flex-shrink-0">
             <Button
               variant="outline"
               size="sm"
@@ -100,7 +105,7 @@ export function GarminGuideDialog({ open, onClose }: GarminGuideDialogProps) {
               {steps.map((_, i) => (
                 <div
                   key={i}
-                  className={`h-1.5 w-6 rounded-full transition-colors ${
+                  className={`h-1.5 w-4 rounded-full transition-colors ${
                     i === currentStep ? "bg-primary" : "bg-muted"
                   }`}
                 />
