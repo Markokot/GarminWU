@@ -346,6 +346,46 @@ export async function getGarminCalendar(userId: string, year?: number, month?: n
   }
 }
 
+async function findScheduleIdFromCalendar(
+  c: any,
+  workoutId: string,
+  currentDate?: string
+): Promise<number | null> {
+  try {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const calendar = await c.getCalendar(year, month);
+    const items = calendar?.calendarItems || [];
+
+    let nextMonthItems: any[] = [];
+    try {
+      const nextMonth = month === 11 ? 0 : month + 1;
+      const nextYear = month === 11 ? year + 1 : year;
+      const cal2 = await c.getCalendar(nextYear, nextMonth);
+      nextMonthItems = cal2?.calendarItems || [];
+    } catch {}
+
+    const allItems = [...items, ...nextMonthItems];
+    const wId = Number(workoutId);
+
+    for (const item of allItems) {
+      if (item.itemType === "workout" && item.workoutId === wId) {
+        if (currentDate && item.date !== currentDate) continue;
+        if (item.id) {
+          console.log(`[Garmin] Found scheduleId=${item.id} for workoutId=${workoutId} on ${item.date}`);
+          return item.id;
+        }
+      }
+    }
+    console.log(`[Garmin] No scheduleId found for workoutId=${workoutId}${currentDate ? ` on ${currentDate}` : ''}`);
+    return null;
+  } catch (err: any) {
+    console.log(`[Garmin] Error searching calendar for scheduleId: ${err.message}`);
+    return null;
+  }
+}
+
 export async function rescheduleGarminWorkout(
   userId: string,
   workoutId: string,
@@ -358,18 +398,21 @@ export async function rescheduleGarminWorkout(
   const doReschedule = async (c: any) => {
     console.log(`[Garmin] Rescheduling workout ${workoutId}: ${currentDate || '?'} → ${newDate}`);
 
-    if (currentDate) {
+    const scheduleId = await findScheduleIdFromCalendar(c, workoutId, currentDate);
+    if (scheduleId) {
       try {
         const scheduleUrl = (c as any).url?.SCHEDULE_WORKOUTS;
         if (scheduleUrl) {
-          const deleteUrl = `${scheduleUrl}${workoutId}/${currentDate}`;
+          const deleteUrl = `${scheduleUrl}${scheduleId}`;
           console.log(`[Garmin] Removing old schedule: DELETE ${deleteUrl}`);
           await (c as any).client.delete(deleteUrl);
-          console.log(`[Garmin] Old schedule removed for ${currentDate}`);
+          console.log(`[Garmin] Old schedule removed (scheduleId=${scheduleId})`);
         }
       } catch (delErr: any) {
-        console.log(`[Garmin] Could not remove old schedule (non-critical): ${delErr.message}`);
+        console.log(`[Garmin] Could not remove old schedule (scheduleId=${scheduleId}): ${delErr.message}`);
       }
+    } else {
+      console.log(`[Garmin] No old schedule found to remove, will just create new one`);
     }
 
     const scheduleDate = new Date(newDate + "T12:00:00");
