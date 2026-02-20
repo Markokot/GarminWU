@@ -10,7 +10,7 @@ import stepChat from "@assets/onboarding-step3-chat.png";
 import stepPush from "@assets/onboarding-step4-push.png";
 import stepPlan from "@assets/onboarding-step5-plan.png";
 
-const STORAGE_KEY = "onboarding_dismissed";
+const STORAGE_KEY = "onboarding_dismissed_v2";
 
 const steps = [
   {
