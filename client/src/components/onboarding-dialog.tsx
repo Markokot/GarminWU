@@ -63,10 +63,16 @@ export function OnboardingDialog({ open, onClose }: OnboardingDialogProps) {
   const step = steps[currentStep];
   const StepIcon = step.icon;
 
-  const handleClose = () => {
-    if (dontShowAgain) {
+  const handleToggleDismiss = (checked: boolean) => {
+    setDontShowAgain(checked);
+    if (checked) {
       localStorage.setItem(STORAGE_KEY, "true");
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
     }
+  };
+
+  const handleClose = () => {
     onClose();
   };
 
@@ -107,7 +113,7 @@ export function OnboardingDialog({ open, onClose }: OnboardingDialogProps) {
             <label className="flex items-center gap-2 mb-3 cursor-pointer" data-testid="checkbox-dont-show">
               <Checkbox
                 checked={dontShowAgain}
-                onCheckedChange={(checked) => setDontShowAgain(checked === true)}
+                onCheckedChange={(checked) => handleToggleDismiss(checked === true)}
               />
               <span className="text-xs text-muted-foreground">Больше не показывать</span>
             </label>
@@ -158,5 +164,6 @@ export function OnboardingDialog({ open, onClose }: OnboardingDialogProps) {
 }
 
 export function shouldShowOnboarding(): boolean {
+  if (typeof window === "undefined") return false;
   return localStorage.getItem(STORAGE_KEY) !== "true";
 }

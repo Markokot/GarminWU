@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import type { GarminActivity, FavoriteWorkout } from "@shared/schema";
 import { sportTypeLabels } from "@shared/schema";
+import { OnboardingDialog, shouldShowOnboarding } from "@/components/onboarding-dialog";
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -39,6 +41,13 @@ function formatPace(secondsPerKm: number | undefined): string {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (user && shouldShowOnboarding()) {
+      setShowOnboarding(true);
+    }
+  }, [user]);
 
   const hasAnyConnection = !!user?.garminConnected || !!user?.intervalsConnected;
 
@@ -240,6 +249,7 @@ export default function DashboardPage() {
           </Card>
         )}
       </div>
+      <OnboardingDialog open={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </div>
   );
 }
