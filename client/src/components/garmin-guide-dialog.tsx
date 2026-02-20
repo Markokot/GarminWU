@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, X, Watch, Smartphone, Calendar } from "lucid
 import garminCalendar from "@assets/IMAGE_2026-02-16_23:43:51_1771274633188.jpg";
 import garminDaily from "@assets/IMAGE_2026-02-16_23:43:42_1771274623997.jpg";
 import garminWorkout from "@assets/IMAGE_2026-02-16_23:43:36_1771274617930.jpg";
-import garminWatch from "@assets/image_1771604083553.png";
+import garminWatch from "@assets/garmin-watch-clean.png";
 
 const steps = [
   {
@@ -89,18 +89,12 @@ export function GarminGuideDialog({ open, onClose }: GarminGuideDialogProps) {
                 data-testid={`img-guide-step-${currentStep}`}
               />
             ) : (
-              <div
-                className="rounded-full overflow-hidden border-2 border-muted flex-shrink-0"
-                style={{ width: "min(55vw, 220px)", height: "min(55vw, 220px)" }}
-              >
-                <img
-                  src={step.image}
-                  alt={step.title}
-                  className="w-full h-full object-cover"
-                  style={{ objectPosition: "50% 35%" }}
-                  data-testid={`img-guide-step-${currentStep}`}
-                />
-              </div>
+              <img
+                src={step.image}
+                alt={step.title}
+                className="object-contain max-h-[40vh] sm:max-h-[45vh]"
+                data-testid={`img-guide-step-${currentStep}`}
+              />
             )}
           </div>
 
