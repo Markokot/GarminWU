@@ -444,8 +444,14 @@ function buildChatMessages(
     .replace(/\{TODAY_DATE\}/g, todayDate)
     .replace(/\{TODAY_DOW\}/g, todayDow);
 
+  const fullSystemContent = systemPrompt + userContext + (weatherContext || "");
+  console.log(`[AI] System prompt length: ${fullSystemContent.length} chars`);
+  if (weatherContext) {
+    console.log(`[AI] Extra context included (${weatherContext.length} chars), starts with: ${weatherContext.substring(0, 200)}`);
+  }
+
   const messages: OpenAI.ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt + userContext + (weatherContext || "") },
+    { role: "system", content: fullSystemContent },
   ];
 
   const recentHistory = history.slice(-10);
