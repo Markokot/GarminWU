@@ -461,9 +461,11 @@ function buildChatMessages(
       const content = msg.content.length > 300 ? msg.content.substring(0, 300) + "..." : msg.content;
       messages.push({ role: "user", content });
     } else if (msg.role === "assistant") {
-      const content = compressAssistantMessage(msg.content);
+      let content = compressAssistantMessage(msg.content);
       if (content) {
-        messages.push({ role: "assistant", content });
+        content = content.replace(/я не вижу данных.*?календар[яьей].*?(?:\.|$)/gi, "[данные календаря доступны в контексте]");
+        content = content.replace(/информация о запланированных тренировках должна подгружаться.*?(?:\.|$)/gi, "");
+        messages.push({ role: "assistant", content: content.trim() });
       }
     }
   }
