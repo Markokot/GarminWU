@@ -311,10 +311,18 @@ export async function getGarminCalendar(userId: string, year?: number, month?: n
 
   const now = new Date();
   const y = year ?? now.getFullYear();
-  const m = month ?? now.getMonth() + 1;
+  const m = month ?? now.getMonth();
 
   const fetchCalendar = async (c: any) => {
+    console.log(`[Garmin] Fetching calendar for ${y}-${String(m).padStart(2, '0')}`);
     const calendar = await c.getCalendar(y, m);
+    const itemCount = calendar?.calendarItems?.length ?? 0;
+    const workoutCount = calendar?.calendarItems?.filter((i: any) => i.itemType === "workout")?.length ?? 0;
+    console.log(`[Garmin] Calendar ${y}-${String(m).padStart(2, '0')}: ${itemCount} total items, ${workoutCount} workouts`);
+    if (workoutCount > 0) {
+      const workouts = calendar.calendarItems.filter((i: any) => i.itemType === "workout");
+      console.log(`[Garmin] Calendar workouts:`, JSON.stringify(workouts.slice(0, 3).map((w: any) => ({ date: w.date, title: w.title, workoutId: w.workoutId, itemType: w.itemType }))));
+    }
     return calendar;
   };
 

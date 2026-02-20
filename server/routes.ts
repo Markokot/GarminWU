@@ -492,6 +492,10 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/intervals/reschedule-workout", requireAuth, async (_req, res) => {
+    res.status(501).json({ message: "Перенос тренировок через Intervals.icu пока не поддерживается. Подключите Garmin для этой функции." });
+  });
+
   // Workout routes (legacy, kept for compatibility)
   app.get("/api/workouts", requireAuth, async (req, res) => {
     const workouts = await storage.getWorkouts(req.session.userId!);
@@ -624,9 +628,9 @@ export async function registerRoutes(
           await ensureGarminSessionWithDecrypt(user.id, user);
           const now = new Date();
           const currentYear = now.getFullYear();
-          const currentMonth = now.getMonth() + 1;
-          const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
-          const nextMonthYear = currentMonth === 12 ? currentYear + 1 : currentYear;
+          const currentMonth = now.getMonth();
+          const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
+          const nextMonthYear = currentMonth === 11 ? currentYear + 1 : currentYear;
 
           const [cal1, cal2] = await Promise.all([
             getGarminCalendar(user.id, currentYear, currentMonth).catch(() => null),
@@ -662,6 +666,7 @@ export async function registerRoutes(
       try {
         const userTimezone = typeof timezone === "string" ? timezone : undefined;
         const extraContext = weatherCtx + calendarCtx;
+        console.log(`[Chat] user=${user.username} weatherCtx=${weatherCtx.length}chars calendarCtx=${calendarCtx.length}chars extraContext=${extraContext.length}chars`);
         const aiResponse = await chatStream(user, content, history, activities, (chunk) => {
           res.write(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`);
         }, userTimezone, extraContext);
