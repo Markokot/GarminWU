@@ -496,7 +496,7 @@ export async function registerRoutes(
           const likelyCity = detectLikelyCity(activities);
           if (likelyCity) {
             const forecast = await getWeatherForecast(likelyCity.lat, likelyCity.lon, 3);
-            weatherCtx = buildWeatherContext(likelyCity.city, forecast);
+            weatherCtx = buildWeatherContext(likelyCity.city, forecast, !!likelyCity.recentCity);
           }
         } catch (err: any) {
           console.log("[Weather] Failed to get forecast for AI:", err.message);

@@ -143,25 +143,73 @@ export async function enrichActivitiesWithCity(activities: GarminActivity[]): Pr
   return enriched;
 }
 
-export function detectLikelyCity(activities: GarminActivity[]): { city: string; lat: number; lon: number } | null {
-  const cityCount = new Map<string, { count: number; lat: number; lon: number }>();
+export function detectLikelyCity(activities: GarminActivity[]): { city: string; lat: number; lon: number; recentCity?: string } | null {
+  if (activities.length === 0) return null;
 
-  for (const a of activities) {
+  const recentActivities = activities.slice(0, 3);
+  const recentCityCount = new Map<string, { count: number; lat: number; lon: number }>();
+  for (const a of recentActivities) {
     if (a.locationName && a.startLatitude && a.startLongitude) {
-      const existing = cityCount.get(a.locationName);
+      const existing = recentCityCount.get(a.locationName);
       if (existing) {
         existing.count++;
       } else {
-        cityCount.set(a.locationName, { count: 1, lat: a.startLatitude, lon: a.startLongitude });
+        recentCityCount.set(a.locationName, { count: 1, lat: a.startLatitude, lon: a.startLongitude });
       }
     }
   }
 
-  if (cityCount.size === 0) return null;
+  let recentCity = "";
+  let recentData = { count: 0, lat: 0, lon: 0 };
+  recentCityCount.forEach((data, city) => {
+    if (data.count > recentData.count) {
+      recentCity = city;
+      recentData = data;
+    }
+  });
+
+  if (recentCity && recentData.count >= 2) {
+    const allCityCount = new Map<string, number>();
+    for (const a of activities) {
+      if (a.locationName) {
+        allCityCount.set(a.locationName, (allCityCount.get(a.locationName) || 0) + 1);
+      }
+    }
+    let homeCity = "";
+    let homeCount = 0;
+    allCityCount.forEach((count, city) => {
+      if (count > homeCount) {
+        homeCity = city;
+        homeCount = count;
+      }
+    });
+
+    if (recentCity !== homeCity && homeCount > recentData.count) {
+      return { city: recentCity, lat: recentData.lat, lon: recentData.lon, recentCity };
+    }
+  }
+
+  if (recentCity) {
+    return { city: recentCity, lat: recentData.lat, lon: recentData.lon };
+  }
+
+  const allCityCount = new Map<string, { count: number; lat: number; lon: number }>();
+  for (const a of activities) {
+    if (a.locationName && a.startLatitude && a.startLongitude) {
+      const existing = allCityCount.get(a.locationName);
+      if (existing) {
+        existing.count++;
+      } else {
+        allCityCount.set(a.locationName, { count: 1, lat: a.startLatitude, lon: a.startLongitude });
+      }
+    }
+  }
+
+  if (allCityCount.size === 0) return null;
 
   let maxCity = "";
   let maxData = { count: 0, lat: 0, lon: 0 };
-  cityCount.forEach((data, city) => {
+  allCityCount.forEach((data, city) => {
     if (data.count > maxData.count) {
       maxCity = city;
       maxData = data;
@@ -171,10 +219,14 @@ export function detectLikelyCity(activities: GarminActivity[]): { city: string; 
   return { city: maxCity, lat: maxData.lat, lon: maxData.lon };
 }
 
-export function buildWeatherContext(city: string, forecast: WeatherForecast[]): string {
+export function buildWeatherContext(city: string, forecast: WeatherForecast[], isRecentTravel?: boolean): string {
   if (forecast.length === 0) return "";
 
-  let ctx = `\n\n===== ПРОГНОЗ ПОГОДЫ (${city}) =====`;
+  const travelNote = isRecentTravel
+    ? `\nПоследние тренировки были в ${city} — вероятно, пользователь сейчас в поездке/отпуске. Используй погоду ${city}.`
+    : "";
+
+  let ctx = `\n\n===== ПРОГНОЗ ПОГОДЫ (${city}) =====${travelNote}`;
   const daysToShow = Math.min(forecast.length, 3);
   for (let i = 0; i < daysToShow; i++) {
     const f = forecast[i];
@@ -187,15 +239,26 @@ export function buildWeatherContext(city: string, forecast: WeatherForecast[]): 
       ctx += `, ветер до ${Math.round(f.windSpeedMax)} км/ч`;
     }
   }
-  ctx += `\n\nИспользуй эти данные, чтобы рекомендовать одежду и условия для тренировки. Предполагай, что пользователь тренируется в ${city}, если он не указал другой город. Давай конкретные рекомендации по экипировке:
-- При температуре ниже -5°C: термобельё, утеплённые тайтсы, балаклава, перчатки, шапка
-- При -5..+5°C: лонгслив, тайтсы, перчатки, шапка/бафф
-- При +5..+15°C: футболка с длинным рукавом или лёгкая куртка, тайтсы или шорты
-- При +15°C и выше: футболка, шорты, кепка от солнца
+  ctx += `\n\nПРАВИЛА ПОГОДНЫХ РЕКОМЕНДАЦИЙ:
+Предполагай, что пользователь тренируется в ${city}, если он не указал другой город.
+
+ИСКЛЮЧЕНИЯ — когда НЕ НАДО давать рекомендации по погоде/одежде:
+- Если пользователь упоминает "манеж", "зал", "тренажёр", "дорожка", "indoor", "крытый" — это тренировка в помещении, погода не важна. Не рекомендуй одежду.
+
+ЭКИПИРОВКА по температуре (только для уличных тренировок):
+- Ниже -15°C: РЕКОМЕНДУЙ МАНЕЖ. Если пользователь настаивает на улице — термобельё, утеплённые тайтсы, балаклава, перчатки, шапка, ветрозащита. Предупреди об опасности обморожения.
+- -15..-5°C: термобельё, утеплённые тайтсы, балаклава, перчатки, шапка. Предложи манеж как альтернативу.
+- -5..+5°C: лонгслив, тайтсы, перчатки, шапка/бафф
+- +5..+15°C: футболка с длинным рукавом или лёгкая куртка, тайтсы или шорты
+- +15..+25°C: футболка, шорты, кепка от солнца
+- Выше +30°C: РЕКОМЕНДУЙ бегать рано утром (до 7-8 утра) или после заката. Лёгкая светлая одежда, кепка, обязательно вода. Предупреди о перегреве.
+- +25..+30°C: лёгкая одежда, кепка, вода. Предложи утреннюю или вечернюю тренировку.
 - При дожде: непромокаемая куртка, трейловые кроссовки
 - При снеге: гамаши, трейловые кроссовки с шипами, яркая одежда
 - При сильном ветре (>25 км/ч): ветровка, защита лица
-Рекомендуй экипировку КРАТКО, 1-2 предложения, только когда создаёшь тренировку или пользователь спрашивает о погоде/одежде.`;
+- При гололёде/изморози: трейловые кроссовки с шипами или манеж
+
+Рекомендуй экипировку КРАТКО, 1-2 предложения, только когда создаёшь тренировку или пользователь спрашивает о погоде/одежде. Формат: "Если ты будешь в ${city}, то сегодня/завтра [погода] — рекомендую [одежда/обувь]."`;
 
   return ctx;
 }
