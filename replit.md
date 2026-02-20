@@ -27,6 +27,8 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - Expanded athlete profile (fitness level, age, weekly volume, experience, injuries, PRs, preferences, Garmin watch model)
 - Garmin watch model in profile — AI adapts swimming workouts for incompatible watches
 - AI acts as experienced coach: analyzes Garmin data, gives recommendations, can disagree with unsafe requests
+- Onboarding guide — 5-step walkthrough shown on first login (connect Garmin, fill profile, describe workout, push to watch, request plan); "don't show again" checkbox persists to localStorage
+- Garmin guide — 4-step visual guide "How to find workout on watch?" accessible from workout cards and training plans
 
 ## Training Plan Generation
 - User asks for multi-week plan (e.g., "план на 4 недели для полумарафона")
