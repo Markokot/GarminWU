@@ -147,6 +147,16 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/auth/onboarding-shown", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.updateUser(req.session.userId!, { onboardingShown: true });
+      if (!user) return res.status(404).json({ message: "Пользователь не найден" });
+      res.json({ ok: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Garmin routes
   app.post("/api/garmin/connect", requireAuth, async (req, res) => {
     try {

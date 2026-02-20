@@ -3,14 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronLeft, ChevronRight, X, Settings, User, MessageSquare, Watch, CalendarDays } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 import stepConnect from "@assets/onboarding-step1-connect.png";
 import stepProfile from "@assets/onboarding-step2-profile.png";
 import stepChat from "@assets/onboarding-step3-chat.png";
 import stepPush from "@assets/onboarding-step4-push.png";
 import stepPlan from "@assets/onboarding-step5-plan.png";
-
-const STORAGE_KEY = "onboarding_dismissed_v2";
 
 const steps = [
   {
@@ -55,7 +54,10 @@ export function OnboardingDialog({ open, onClose }: OnboardingDialogProps) {
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
   useEffect(() => {
-    if (open) setCurrentStep(0);
+    if (open) {
+      setCurrentStep(0);
+      setDontShowAgain(false);
+    }
   }, [open]);
 
   if (!open) return null;
@@ -63,16 +65,10 @@ export function OnboardingDialog({ open, onClose }: OnboardingDialogProps) {
   const step = steps[currentStep];
   const StepIcon = step.icon;
 
-  const handleToggleDismiss = (checked: boolean) => {
-    setDontShowAgain(checked);
-    if (checked) {
-      localStorage.setItem(STORAGE_KEY, "true");
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  };
-
   const handleClose = () => {
+    if (dontShowAgain) {
+      apiRequest("POST", "/api/auth/onboarding-shown").catch(() => {});
+    }
     onClose();
   };
 
@@ -113,7 +109,7 @@ export function OnboardingDialog({ open, onClose }: OnboardingDialogProps) {
             <label className="flex items-center gap-2 mb-3 cursor-pointer" data-testid="checkbox-dont-show">
               <Checkbox
                 checked={dontShowAgain}
-                onCheckedChange={(checked) => handleToggleDismiss(checked === true)}
+                onCheckedChange={(checked) => setDontShowAgain(checked === true)}
               />
               <span className="text-xs text-muted-foreground">Больше не показывать</span>
             </label>
@@ -161,9 +157,4 @@ export function OnboardingDialog({ open, onClose }: OnboardingDialogProps) {
       </Card>
     </div>
   );
-}
-
-export function shouldShowOnboarding(): boolean {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem(STORAGE_KEY) !== "true";
 }

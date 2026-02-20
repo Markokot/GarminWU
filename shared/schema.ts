@@ -225,6 +225,7 @@ export interface User {
   garminPushCount?: number;
   intervalsPushCount?: number;
   favoritesCount?: number;
+  onboardingShown?: boolean;
 }
 
 export interface ChatMessage {

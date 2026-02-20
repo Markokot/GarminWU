@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import type { GarminActivity, FavoriteWorkout } from "@shared/schema";
 import { sportTypeLabels } from "@shared/schema";
-import { OnboardingDialog, shouldShowOnboarding } from "@/components/onboarding-dialog";
+import { OnboardingDialog } from "@/components/onboarding-dialog";
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -44,7 +44,7 @@ export default function DashboardPage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
-    if (user && shouldShowOnboarding()) {
+    if (user && !user.onboardingShown) {
       setShowOnboarding(true);
     }
   }, [user]);
