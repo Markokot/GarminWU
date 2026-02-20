@@ -349,16 +349,32 @@ export async function getGarminCalendar(userId: string, year?: number, month?: n
 export async function rescheduleGarminWorkout(
   userId: string,
   workoutId: string,
-  newDate: string
+  newDate: string,
+  currentDate?: string
 ): Promise<{ success: boolean; scheduledDate: string }> {
   const client = garminSessions.get(userId);
   if (!client) throw new Error("Garmin не подключён");
 
   const doReschedule = async (c: any) => {
+    console.log(`[Garmin] Rescheduling workout ${workoutId}: ${currentDate || '?'} → ${newDate}`);
+
+    if (currentDate) {
+      try {
+        const scheduleUrl = (c as any).url?.SCHEDULE_WORKOUTS;
+        if (scheduleUrl) {
+          const deleteUrl = `${scheduleUrl}${workoutId}/${currentDate}`;
+          console.log(`[Garmin] Removing old schedule: DELETE ${deleteUrl}`);
+          await (c as any).client.delete(deleteUrl);
+          console.log(`[Garmin] Old schedule removed for ${currentDate}`);
+        }
+      } catch (delErr: any) {
+        console.log(`[Garmin] Could not remove old schedule (non-critical): ${delErr.message}`);
+      }
+    }
+
     const scheduleDate = new Date(newDate + "T12:00:00");
-    console.log(`[Garmin] Rescheduling workout ${workoutId} to ${newDate}`);
     await c.scheduleWorkout({ workoutId }, scheduleDate);
-    console.log(`[Garmin] Workout ${workoutId} rescheduled to ${newDate}`);
+    console.log(`[Garmin] Workout ${workoutId} scheduled to ${newDate}`);
     return { success: true, scheduledDate: newDate };
   };
 
