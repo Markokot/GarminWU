@@ -623,9 +623,26 @@ export async function registerRoutes(
         try {
           await ensureGarminSessionWithDecrypt(user.id, user);
           const now = new Date();
-          const calendar = await getGarminCalendar(user.id, now.getFullYear(), now.getMonth() + 1);
-          if (calendar) {
-            calendarCtx = buildCalendarContext(calendar, now);
+          const currentYear = now.getFullYear();
+          const currentMonth = now.getMonth() + 1;
+          const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+          const nextMonthYear = currentMonth === 12 ? currentYear + 1 : currentYear;
+
+          const [cal1, cal2] = await Promise.all([
+            getGarminCalendar(user.id, currentYear, currentMonth).catch(() => null),
+            getGarminCalendar(user.id, nextMonthYear, nextMonth).catch(() => null),
+          ]);
+
+          const mergedItems = [
+            ...(cal1?.calendarItems || []),
+            ...(cal2?.calendarItems || []),
+          ];
+
+          if (mergedItems.length > 0) {
+            calendarCtx = buildCalendarContext({ calendarItems: mergedItems }, now);
+            console.log(`[Calendar] Injected ${mergedItems.filter((i: any) => i.itemType === "workout").length} workout items into AI context for user=${user.username}`);
+          } else {
+            console.log(`[Calendar] No calendar items found for user=${user.username}`);
           }
         } catch (err: any) {
           console.log("[Calendar] Failed to get Garmin calendar for AI:", err.message);

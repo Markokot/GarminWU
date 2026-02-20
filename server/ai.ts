@@ -428,31 +428,13 @@ function compressAssistantMessage(content: string): string {
   return compressed;
 }
 
-export interface CalendarWorkout {
-  workoutId: string;
-  workoutName: string;
-  date: string;
-  sportType?: string;
-}
-
-function buildCalendarContext(calendarWorkouts?: CalendarWorkout[]): string {
-  if (!calendarWorkouts || calendarWorkouts.length === 0) return "";
-  let ctx = "\n\n===== КАЛЕНДАРЬ ТРЕНИРОВОК (запланированные) =====\n";
-  for (const w of calendarWorkouts) {
-    ctx += `- ${w.date}: "${w.workoutName}" (workoutId: ${w.workoutId}${w.sportType ? `, ${w.sportType}` : ""})\n`;
-  }
-  ctx += "Используй workoutId из этого списка, если пользователь просит перенести тренировку.\n";
-  return ctx;
-}
-
 function buildChatMessages(
   user: User,
   userMessage: string,
   history: ChatMessage[],
   activities?: GarminActivity[],
   timezone?: string,
-  weatherContext?: string,
-  calendarWorkouts?: CalendarWorkout[]
+  weatherContext?: string
 ): OpenAI.ChatCompletionMessageParam[] {
   const userContext = buildUserContext(user, activities);
   const todayDate = getTodayDateString(timezone);
@@ -462,10 +444,8 @@ function buildChatMessages(
     .replace(/\{TODAY_DATE\}/g, todayDate)
     .replace(/\{TODAY_DOW\}/g, todayDow);
 
-  const calendarCtx = buildCalendarContext(calendarWorkouts);
-
   const messages: OpenAI.ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt + userContext + (weatherContext || "") + calendarCtx },
+    { role: "system", content: systemPrompt + userContext + (weatherContext || "") },
   ];
 
   const recentHistory = history.slice(-10);
@@ -556,10 +536,9 @@ export async function chatStream(
   activities?: GarminActivity[],
   onChunk?: (chunk: string) => void,
   timezone?: string,
-  weatherContext?: string,
-  calendarWorkouts?: CalendarWorkout[]
+  weatherContext?: string
 ): Promise<AiResponse> {
-  const messages = buildChatMessages(user, userMessage, history, activities, timezone, weatherContext, calendarWorkouts);
+  const messages = buildChatMessages(user, userMessage, history, activities, timezone, weatherContext);
 
   try {
     const openai = getOpenAIClient();
