@@ -305,6 +305,85 @@ export function convertToGarminWorkout(workout: { name: string; description?: st
   return garminWorkout;
 }
 
+export async function getGarminCalendar(userId: string, year?: number, month?: number): Promise<any> {
+  const client = garminSessions.get(userId);
+  if (!client) throw new Error("Garmin не подключён");
+
+  const now = new Date();
+  const y = year ?? now.getFullYear();
+  const m = month ?? now.getMonth() + 1;
+
+  const fetchCalendar = async (c: any) => {
+    const calendar = await c.getCalendar(y, m);
+    return calendar;
+  };
+
+  try {
+    return await fetchCalendar(client);
+  } catch (error: any) {
+    console.log("[Garmin] Calendar fetch failed, attempting reconnect:", error.message);
+    garminSessions.delete(userId);
+    if (await reconnectFromCredentials(userId)) {
+      const newClient = garminSessions.get(userId);
+      if (newClient) return await fetchCalendar(newClient);
+    }
+    throw new Error("Ошибка получения календаря Garmin.");
+  }
+}
+
+export async function rescheduleGarminWorkout(
+  userId: string,
+  workoutId: string,
+  newDate: string
+): Promise<{ success: boolean; scheduledDate: string }> {
+  const client = garminSessions.get(userId);
+  if (!client) throw new Error("Garmin не подключён");
+
+  const doReschedule = async (c: any) => {
+    const scheduleDate = new Date(newDate + "T12:00:00");
+    console.log(`[Garmin] Rescheduling workout ${workoutId} to ${newDate}`);
+    await c.scheduleWorkout({ workoutId }, scheduleDate);
+    console.log(`[Garmin] Workout ${workoutId} rescheduled to ${newDate}`);
+    return { success: true, scheduledDate: newDate };
+  };
+
+  try {
+    return await doReschedule(client);
+  } catch (error: any) {
+    console.log("[Garmin] Reschedule failed, attempting reconnect:", error.message);
+    garminSessions.delete(userId);
+    if (await reconnectFromCredentials(userId)) {
+      const newClient = garminSessions.get(userId);
+      if (newClient) return await doReschedule(newClient);
+    }
+    throw new Error("Ошибка переноса тренировки в Garmin Connect.");
+  }
+}
+
+export async function deleteGarminWorkout(userId: string, workoutId: string): Promise<boolean> {
+  const client = garminSessions.get(userId);
+  if (!client) throw new Error("Garmin не подключён");
+
+  const doDelete = async (c: any) => {
+    console.log(`[Garmin] Deleting workout ${workoutId}`);
+    await c.deleteWorkout({ workoutId });
+    console.log(`[Garmin] Workout ${workoutId} deleted`);
+    return true;
+  };
+
+  try {
+    return await doDelete(client);
+  } catch (error: any) {
+    console.log("[Garmin] Delete failed, attempting reconnect:", error.message);
+    garminSessions.delete(userId);
+    if (await reconnectFromCredentials(userId)) {
+      const newClient = garminSessions.get(userId);
+      if (newClient) return await doDelete(newClient);
+    }
+    throw new Error("Ошибка удаления тренировки из Garmin Connect.");
+  }
+}
+
 async function doPushAndSchedule(
   client: any,
   garminWorkout: any,

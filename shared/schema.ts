@@ -228,6 +228,13 @@ export interface User {
   onboardingShown?: boolean;
 }
 
+export interface RescheduleData {
+  workoutId: string;
+  currentDate: string;
+  newDate: string;
+  reason?: string;
+}
+
 export interface ChatMessage {
   id: string;
   userId: string;
@@ -236,6 +243,7 @@ export interface ChatMessage {
   timestamp: string;
   workoutJson?: Workout;
   workoutsJson?: Workout[];
+  rescheduleData?: RescheduleData;
 }
 
 export interface GarminActivity {

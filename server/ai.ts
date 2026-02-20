@@ -170,6 +170,20 @@ const SYSTEM_PROMPT = `Ты — Тренер. Опытный тренер по �
 - Если пользователь просит ОДНУ тренировку — используй формат workout_json (как описано выше)
 - Если пользователь просит ПЛАН/РАСПИСАНИЕ на период — используй формат training_plan_json
 
+ПЕРЕНОС ТРЕНИРОВОК:
+Когда пользователь просит перенести запланированную тренировку (например, "перенеси тренировку на завтра", "сдвинь пробежку на пятницу", "не смогу сегодня, перенеси на другой день"), и в контексте есть информация о календаре Garmin с workoutId — создай блок \`\`\`reschedule_json\`\`\`:
+{
+  "workoutId": "ID тренировки из календаря",
+  "currentDate": "YYYY-MM-DD",
+  "newDate": "YYYY-MM-DD",
+  "reason": "Краткая причина переноса"
+}
+- workoutId берётся из данных календаря Garmin (если они предоставлены в контексте)
+- currentDate — текущая дата тренировки
+- newDate — новая дата
+- reason — необязательное поле, краткое объяснение
+- Если нет данных календаря или workoutId — просто объясни текстом, что для переноса нужно подключить Garmin
+
 АНАЛИЗ ТРЕНИРОВОЧНЫХ ДАННЫХ:
 - Если есть данные Garmin, оцени текущую нагрузку и форму
 - Обрати внимание на соотношение пульса и темпа — это показатель формы
@@ -235,12 +249,20 @@ function buildUserContext(user: User, activities?: GarminActivity[]): string {
   return context;
 }
 
+export interface RescheduleData {
+  workoutId: string;
+  currentDate: string;
+  newDate: string;
+  reason?: string;
+}
+
 export interface AiResponse {
   text: string;
   workout: (Workout & { scheduledDate?: string }) | null;
   workouts: (Workout & { scheduledDate?: string })[] | null;
   planTitle?: string;
   planDescription?: string;
+  reschedule?: RescheduleData;
 }
 
 function extractWorkoutJson(text: string): (Workout & { scheduledDate?: string }) | null {
@@ -386,6 +408,7 @@ function compressAssistantMessage(content: string): string {
   compressed = compressed
     .replace(/```workout_json\s*[\s\S]*?```/g, "[тренировка создана]")
     .replace(/```training_plan_json\s*[\s\S]*?```/g, "[план тренировок создан]")
+    .replace(/```reschedule_json\s*[\s\S]*?```/g, "[перенос тренировки]")
     .replace(/```json\s*[\s\S]*?```/g, "");
 
   const lines = compressed.split("\n");
@@ -405,13 +428,31 @@ function compressAssistantMessage(content: string): string {
   return compressed;
 }
 
+export interface CalendarWorkout {
+  workoutId: string;
+  workoutName: string;
+  date: string;
+  sportType?: string;
+}
+
+function buildCalendarContext(calendarWorkouts?: CalendarWorkout[]): string {
+  if (!calendarWorkouts || calendarWorkouts.length === 0) return "";
+  let ctx = "\n\n===== КАЛЕНДАРЬ ТРЕНИРОВОК (запланированные) =====\n";
+  for (const w of calendarWorkouts) {
+    ctx += `- ${w.date}: "${w.workoutName}" (workoutId: ${w.workoutId}${w.sportType ? `, ${w.sportType}` : ""})\n`;
+  }
+  ctx += "Используй workoutId из этого списка, если пользователь просит перенести тренировку.\n";
+  return ctx;
+}
+
 function buildChatMessages(
   user: User,
   userMessage: string,
   history: ChatMessage[],
   activities?: GarminActivity[],
   timezone?: string,
-  weatherContext?: string
+  weatherContext?: string,
+  calendarWorkouts?: CalendarWorkout[]
 ): OpenAI.ChatCompletionMessageParam[] {
   const userContext = buildUserContext(user, activities);
   const todayDate = getTodayDateString(timezone);
@@ -421,8 +462,10 @@ function buildChatMessages(
     .replace(/\{TODAY_DATE\}/g, todayDate)
     .replace(/\{TODAY_DOW\}/g, todayDow);
 
+  const calendarCtx = buildCalendarContext(calendarWorkouts);
+
   const messages: OpenAI.ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt + userContext + (weatherContext || "") },
+    { role: "system", content: systemPrompt + userContext + (weatherContext || "") + calendarCtx },
   ];
 
   const recentHistory = history.slice(-10);
@@ -442,10 +485,34 @@ function buildChatMessages(
   return messages;
 }
 
+function extractRescheduleJson(text: string): RescheduleData | null {
+  const regex = /```reschedule_json\s*([\s\S]*?)```/;
+  const match = text.match(regex);
+  if (!match) return null;
+
+  try {
+    const parsed = JSON.parse(match[1].trim());
+    if (!parsed.workoutId || !parsed.newDate) return null;
+    return {
+      workoutId: String(parsed.workoutId),
+      currentDate: parsed.currentDate || "",
+      newDate: parsed.newDate,
+      reason: parsed.reason || undefined,
+    };
+  } catch (e) {
+    console.error("Failed to parse reschedule JSON:", e);
+    return null;
+  }
+}
+
 export function parseAiResponse(responseText: string): AiResponse {
   const workout = extractWorkoutJson(responseText);
   const plan = extractTrainingPlanJson(responseText);
-  const cleanText = cleanResponseText(responseText, !!workout, !!plan);
+  const reschedule = extractRescheduleJson(responseText);
+  let cleanText = cleanResponseText(responseText, !!workout, !!plan);
+  if (reschedule) {
+    cleanText = cleanText.replace(/```reschedule_json\s*[\s\S]*?```/g, "").trim();
+  }
 
   return {
     text: cleanText,
@@ -453,6 +520,7 @@ export function parseAiResponse(responseText: string): AiResponse {
     workouts: plan?.workouts || null,
     planTitle: plan?.planTitle,
     planDescription: plan?.planDescription,
+    reschedule: reschedule || undefined,
   };
 }
 
@@ -488,9 +556,10 @@ export async function chatStream(
   activities?: GarminActivity[],
   onChunk?: (chunk: string) => void,
   timezone?: string,
-  weatherContext?: string
+  weatherContext?: string,
+  calendarWorkouts?: CalendarWorkout[]
 ): Promise<AiResponse> {
-  const messages = buildChatMessages(user, userMessage, history, activities, timezone, weatherContext);
+  const messages = buildChatMessages(user, userMessage, history, activities, timezone, weatherContext, calendarWorkouts);
 
   try {
     const openai = getOpenAIClient();

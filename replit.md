@@ -40,6 +40,14 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - Bulk save: all workouts saved to favorites at once
 - UI groups workouts by week with collapsible view
 
+## Workout Rescheduling
+- User asks AI to reschedule a workout (e.g., "перенеси тренировку на завтра")
+- AI outputs `reschedule_json` block with workoutId, currentDate, newDate, reason
+- Calendar context (scheduled workouts with workoutIds) injected into AI prompt via buildCalendarContext
+- Frontend shows ReschedulePreview card with "Перенести" button
+- Button calls POST /api/garmin/reschedule-workout or /api/intervals/reschedule-workout
+- RescheduleData stored in ChatMessage.rescheduleData for persistence
+
 ## AI Coach Behavior
 - Analyzes last 10 Garmin activities for training load assessment
 - Uses full athlete profile (level, age, injuries, PRs) for personalized recommendations

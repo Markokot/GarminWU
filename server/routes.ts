@@ -5,13 +5,69 @@ import MemoryStore from "memorystore";
 import { storage } from "./storage";
 import { loginSchema, registerSchema, garminConnectSchema, intervalsConnectSchema, createWorkoutSchema, workoutStepSchema, swimStructuredWatchModels, type GarminWatchModel } from "@shared/schema";
 import { z } from "zod";
-import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected } from "./garmin";
+import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected, getGarminCalendar, rescheduleGarminWorkout, deleteGarminWorkout } from "./garmin";
 import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities } from "./intervals";
 import { chat, chatStream, parseAiResponse } from "./ai";
 import { encrypt, decrypt } from "./crypto";
 import { enrichActivitiesWithCity, detectLikelyCity, getWeatherForecast, buildWeatherContext, reverseGeocode } from "./weather";
 
 const MemStore = MemoryStore(session);
+
+function buildCalendarContext(calendar: any, now: Date): string {
+  const scheduledWorkouts: { date: string; name: string; workoutId?: string; sportType?: string }[] = [];
+
+  if (calendar?.calendarItems) {
+    for (const item of calendar.calendarItems) {
+      if (item.itemType === "workout" && item.date) {
+        scheduledWorkouts.push({
+          date: item.date,
+          name: item.title || item.workoutName || "Тренировка",
+          workoutId: item.workoutId ? String(item.workoutId) : undefined,
+          sportType: item.sportTypeKey || undefined,
+        });
+      }
+    }
+  }
+
+  if (scheduledWorkouts.length === 0) return "";
+
+  scheduledWorkouts.sort((a, b) => a.date.localeCompare(b.date));
+
+  const today = now.toISOString().split("T")[0];
+  const upcoming = scheduledWorkouts.filter((w) => w.date >= today);
+  const past = scheduledWorkouts.filter((w) => w.date < today);
+
+  let ctx = "\n\n===== ЗАПЛАНИРОВАННЫЕ ТРЕНИРОВКИ В GARMIN =====";
+  if (upcoming.length > 0) {
+    ctx += "\nПредстоящие:";
+    for (const w of upcoming.slice(0, 14)) {
+      const label = w.date === today ? "(СЕГОДНЯ)" : "";
+      ctx += `\n- ${w.date} ${label}: ${w.name}${w.workoutId ? ` [ID:${w.workoutId}]` : ""}`;
+    }
+  }
+  if (past.length > 0) {
+    const recentPast = past.slice(-3);
+    ctx += "\nНедавно прошедшие:";
+    for (const w of recentPast) {
+      ctx += `\n- ${w.date}: ${w.name}${w.workoutId ? ` [ID:${w.workoutId}]` : ""}`;
+    }
+  }
+
+  ctx += `\n\nЕсли пользователь просит перенести тренировку — создай блок \`\`\`reschedule_json с данными:
+{
+  "workoutId": "ID тренировки из списка выше",
+  "currentDate": "текущая дата тренировки YYYY-MM-DD",
+  "newDate": "новая дата YYYY-MM-DD",
+  "reason": "причина переноса"
+}
+\`\`\`
+Если пользователь говорит "перенеси на завтра" или "не могу сегодня" — вычисли новую дату от текущей и создай reschedule_json.
+Если пользователь заболел — предложи удалить ближайшие тренировки и создать восстановительный план после выздоровления.
+Если пропустил тренировку — не просто переноси, а адаптируй: лёгкая тренировка могла быть пропущена без последствий, а ключевую интервальную лучше перенести.`;
+
+  return ctx;
+}
+
 
 async function ensureGarminSessionWithDecrypt(userId: string, user: any): Promise<void> {
   if (isGarminConnected(userId)) return;
@@ -377,6 +433,65 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/garmin/calendar", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || !user.garminConnected) {
+        return res.status(400).json({ message: "Garmin не подключён" });
+      }
+      await ensureGarminSessionWithDecrypt(req.session.userId!, user);
+
+      const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+      const month = req.query.month ? parseInt(req.query.month as string) : undefined;
+      const calendar = await getGarminCalendar(req.session.userId!, year, month);
+      res.json(calendar);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/garmin/reschedule-workout", requireAuth, async (req, res) => {
+    try {
+      const schema = z.object({
+        workoutId: z.string(),
+        newDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      });
+      const { workoutId, newDate } = schema.parse(req.body);
+
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || !user.garminConnected) {
+        return res.status(400).json({ message: "Garmin не подключён" });
+      }
+      await ensureGarminSessionWithDecrypt(req.session.userId!, user);
+
+      const result = await rescheduleGarminWorkout(req.session.userId!, workoutId, newDate);
+      console.log(`[Garmin Reschedule] user=${user.username} workoutId=${workoutId} newDate=${newDate}`);
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Некорректные данные: " + error.errors.map((e) => e.message).join(", ") });
+      }
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/garmin/workout/:workoutId", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || !user.garminConnected) {
+        return res.status(400).json({ message: "Garmin не подключён" });
+      }
+      await ensureGarminSessionWithDecrypt(req.session.userId!, user);
+
+      const workoutId = req.params.workoutId as string;
+      await deleteGarminWorkout(req.session.userId!, workoutId);
+      console.log(`[Garmin Delete] user=${user.username} workoutId=${req.params.workoutId}`);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   // Workout routes (legacy, kept for compatibility)
   app.get("/api/workouts", requireAuth, async (req, res) => {
     const workouts = await storage.getWorkouts(req.session.userId!);
@@ -503,6 +618,20 @@ export async function registerRoutes(
         }
       }
 
+      let calendarCtx = "";
+      if (user.garminConnected) {
+        try {
+          await ensureGarminSessionWithDecrypt(user.id, user);
+          const now = new Date();
+          const calendar = await getGarminCalendar(user.id, now.getFullYear(), now.getMonth() + 1);
+          if (calendar) {
+            calendarCtx = buildCalendarContext(calendar, now);
+          }
+        } catch (err: any) {
+          console.log("[Calendar] Failed to get Garmin calendar for AI:", err.message);
+        }
+      }
+
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
@@ -515,9 +644,10 @@ export async function registerRoutes(
 
       try {
         const userTimezone = typeof timezone === "string" ? timezone : undefined;
+        const extraContext = weatherCtx + calendarCtx;
         const aiResponse = await chatStream(user, content, history, activities, (chunk) => {
           res.write(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`);
-        }, userTimezone, weatherCtx);
+        }, userTimezone, extraContext);
 
         const assistantMessage = await storage.addMessage({
           userId: user.id,
@@ -526,6 +656,7 @@ export async function registerRoutes(
           timestamp: new Date().toISOString(),
           workoutJson: aiResponse.workout || undefined,
           workoutsJson: aiResponse.workouts || undefined,
+          rescheduleData: aiResponse.reschedule || undefined,
         });
 
         res.write(`data: ${JSON.stringify({ type: "done", message: assistantMessage })}\n\n`);

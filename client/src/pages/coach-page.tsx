@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { ChatMessage, Workout, GarminWatchModel } from "@shared/schema";
+import type { ChatMessage, Workout, GarminWatchModel, RescheduleData } from "@shared/schema";
 import { sportTypeLabels, garminWatchLabels, swimStructuredWatchModels } from "@shared/schema";
 import {
   Send,
@@ -27,6 +27,8 @@ import {
   AlertTriangle,
   Trash2,
   HelpCircle,
+  CalendarClock,
+  Check,
 } from "lucide-react";
 import { GarminGuideDialog } from "@/components/garmin-guide-dialog";
 
@@ -347,6 +349,44 @@ const quickPrompts = [
   "План на 2 недели для подготовки к забегу на 10 км",
 ];
 
+function ReschedulePreview({ data, onConfirm, confirming, confirmed }: {
+  data: RescheduleData;
+  onConfirm: () => void;
+  confirming: boolean;
+  confirmed: boolean;
+}) {
+  return (
+    <Card className="mt-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30" data-testid="reschedule-preview">
+      <CardContent className="p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <CalendarClock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Перенос тренировки</span>
+        </div>
+        <div className="text-xs text-muted-foreground space-y-0.5 mb-2">
+          <p>{data.currentDate ? `${formatDate(data.currentDate)} → ${formatDate(data.newDate)}` : `Новая дата: ${formatDate(data.newDate)}`}</p>
+          {data.reason && <p className="italic">{data.reason}</p>}
+        </div>
+        <Button
+          size="sm"
+          variant={confirmed ? "outline" : "default"}
+          onClick={onConfirm}
+          disabled={confirming || confirmed}
+          className="h-7 text-xs gap-1"
+          data-testid="button-confirm-reschedule"
+        >
+          {confirming ? (
+            <><Loader2 className="h-3 w-3 animate-spin" /> Переношу...</>
+          ) : confirmed ? (
+            <><Check className="h-3 w-3" /> Перенесено</>
+          ) : (
+            <><CalendarClock className="h-3 w-3" /> Перенести</>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function CoachPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -374,6 +414,8 @@ export default function CoachPage() {
   const [isSending, setIsSending] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [showGarminGuide, setShowGarminGuide] = useState(false);
+  const [reschedulingMsgId, setReschedulingMsgId] = useState<string | null>(null);
+  const [rescheduledMsgIds, setRescheduledMsgIds] = useState<Set<string>>(new Set());
   const garminGuideShown = useRef(!!localStorage.getItem("garminGuideShown"));
 
   const triggerGarminGuide = () => {
@@ -674,6 +716,28 @@ export default function CoachPage() {
     }
   };
 
+  const handleReschedule = async (msgId: string, data: RescheduleData) => {
+    setReschedulingMsgId(msgId);
+    try {
+      const source = user?.garminConnected ? "garmin" : user?.intervalsConnected ? "intervals" : null;
+      if (!source) {
+        toast({ title: "Нет подключённого аккаунта", description: "Подключите Garmin или Intervals.icu для переноса", variant: "destructive" });
+        return;
+      }
+      await apiRequest("POST", `/api/${source}/reschedule-workout`, {
+        workoutId: data.workoutId,
+        currentDate: data.currentDate,
+        newDate: data.newDate,
+      });
+      setRescheduledMsgIds(prev => new Set(prev).add(msgId));
+      toast({ title: "Тренировка перенесена", description: `${data.currentDate ? formatDate(data.currentDate) + " → " : ""}${formatDate(data.newDate)}` });
+    } catch (error: any) {
+      toast({ title: "Ошибка переноса", description: error.message, variant: "destructive" });
+    } finally {
+      setReschedulingMsgId(null);
+    }
+  };
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -828,6 +892,14 @@ export default function CoachPage() {
                           pushingIntervalsIdx={singlePushIntervalsIdx}
                           savingIdx={singleSaveIdx}
                           onShowGuide={() => setShowGarminGuide(true)}
+                        />
+                      )}
+                      {msg.rescheduleData && (
+                        <ReschedulePreview
+                          data={msg.rescheduleData}
+                          onConfirm={() => handleReschedule(msg.id, msg.rescheduleData!)}
+                          confirming={reschedulingMsgId === msg.id}
+                          confirmed={rescheduledMsgIds.has(msg.id)}
                         />
                       )}
                     </>
