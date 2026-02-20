@@ -314,14 +314,21 @@ export async function getGarminCalendar(userId: string, year?: number, month?: n
   const m = month ?? now.getMonth();
 
   const fetchCalendar = async (c: any) => {
-    console.log(`[Garmin] Fetching calendar for ${y}-${String(m).padStart(2, '0')}`);
+    console.log(`[Garmin] Fetching calendar for year=${y} month=${m} (0-based, real month=${m + 1})`);
     const calendar = await c.getCalendar(y, m);
+    const topKeys = calendar ? Object.keys(calendar) : [];
+    console.log(`[Garmin] Calendar response keys: [${topKeys.join(', ')}]`);
     const itemCount = calendar?.calendarItems?.length ?? 0;
     const workoutCount = calendar?.calendarItems?.filter((i: any) => i.itemType === "workout")?.length ?? 0;
-    console.log(`[Garmin] Calendar ${y}-${String(m).padStart(2, '0')}: ${itemCount} total items, ${workoutCount} workouts`);
+    console.log(`[Garmin] Calendar ${y}-${String(m + 1).padStart(2, '0')}: ${itemCount} total items, ${workoutCount} workouts`);
+    if (itemCount > 0 && workoutCount === 0) {
+      const itemTypes = [...new Set(calendar.calendarItems.map((i: any) => i.itemType))];
+      console.log(`[Garmin] Calendar item types found: [${itemTypes.join(', ')}]`);
+      console.log(`[Garmin] First 3 items:`, JSON.stringify(calendar.calendarItems.slice(0, 3).map((i: any) => ({ itemType: i.itemType, date: i.date, title: i.title, workoutId: i.workoutId }))));
+    }
     if (workoutCount > 0) {
       const workouts = calendar.calendarItems.filter((i: any) => i.itemType === "workout");
-      console.log(`[Garmin] Calendar workouts:`, JSON.stringify(workouts.slice(0, 3).map((w: any) => ({ date: w.date, title: w.title, workoutId: w.workoutId, itemType: w.itemType }))));
+      console.log(`[Garmin] Calendar workouts:`, JSON.stringify(workouts.slice(0, 5).map((w: any) => ({ date: w.date, title: w.title, workoutId: w.workoutId, sportTypeKey: w.sportTypeKey }))));
     }
     return calendar;
   };
