@@ -136,11 +136,11 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
         {showGarmin && onShowGuide && (
           <button
             onClick={onShowGuide}
-            className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             data-testid="link-garmin-guide"
           >
-            <HelpCircle className="w-3 h-3" />
-            <span>Как найти тренировку на часах?</span>
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span className="underline underline-offset-2">Как найти тренировку на часах?</span>
           </button>
         )}
       </CardContent>
@@ -237,11 +237,11 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
         {showGarmin && onShowGuide && (
           <button
             onClick={onShowGuide}
-            className="mb-3 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             data-testid="link-plan-garmin-guide"
           >
-            <HelpCircle className="w-3 h-3" />
-            <span>Как найти тренировку на часах?</span>
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span className="underline underline-offset-2">Как найти тренировку на часах?</span>
           </button>
         )}
 

@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, X, Watch, Smartphone, Calendar } from "lucid
 import garminCalendar from "@assets/IMAGE_2026-02-16_23:43:51_1771274633188.jpg";
 import garminDaily from "@assets/IMAGE_2026-02-16_23:43:42_1771274623997.jpg";
 import garminWorkout from "@assets/IMAGE_2026-02-16_23:43:36_1771274617930.jpg";
-import garminWatch from "@assets/garmin-watch-workout.png";
+import garminWatch from "@assets/image_1771604083553.png";
 
 const steps = [
   {
@@ -81,12 +81,27 @@ export function GarminGuideDialog({ open, onClose }: GarminGuideDialogProps) {
           <p className="text-xs text-muted-foreground mb-2" data-testid="text-guide-description">{step.description}</p>
 
           <div className="flex justify-center flex-1 min-h-0 mb-2">
-            <img
-              src={step.image}
-              alt={step.title}
-              className={`rounded-lg object-contain ${step.isPhone ? "max-h-[45vh] sm:max-h-[50vh]" : "max-h-[35vh] sm:max-h-[40vh]"}`}
-              data-testid={`img-guide-step-${currentStep}`}
-            />
+            {step.isPhone ? (
+              <img
+                src={step.image}
+                alt={step.title}
+                className="rounded-lg object-contain max-h-[45vh] sm:max-h-[50vh]"
+                data-testid={`img-guide-step-${currentStep}`}
+              />
+            ) : (
+              <div
+                className="rounded-full overflow-hidden border-2 border-muted flex-shrink-0"
+                style={{ width: "min(55vw, 220px)", height: "min(55vw, 220px)" }}
+              >
+                <img
+                  src={step.image}
+                  alt={step.title}
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: "50% 35%" }}
+                  data-testid={`img-guide-step-${currentStep}`}
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-between gap-2 flex-shrink-0">
