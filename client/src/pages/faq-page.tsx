@@ -20,6 +20,7 @@ import {
   Star,
   ListChecks,
   CalendarDays,
+  ArrowRightLeft,
 } from "lucide-react";
 
 export default function FaqPage() {
@@ -219,6 +220,41 @@ export default function FaqPage() {
                   <p>
                     Для планов на период AI автоматически распределяет тренировки по дням, учитывая дни отдыха
                     и правильное чередование нагрузки.
+                  </p>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="reschedule">
+              <AccordionTrigger data-testid="faq-reschedule">
+                <div className="flex items-center gap-2">
+                  <ArrowRightLeft className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span>Как перенести тренировку на другой день?</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>
+                    Если тренировка уже запланирована в Garmin или Intervals.icu, вы можете попросить AI перенести
+                    её на другую дату прямо в чате. Примеры запросов:
+                  </p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>«Перенеси тренировку на завтра»</li>
+                    <li>«Перенеси завтрашнюю тренировку на пятницу»</li>
+                    <li>«Передвинь длительную пробежку с субботы на воскресенье»</li>
+                  </ul>
+                  <div className="bg-muted rounded-md p-3 space-y-2">
+                    <p className="font-medium text-foreground">Как это работает:</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li>AI видит ваш календарь запланированных тренировок в Garmin</li>
+                      <li>Находит нужную тренировку и предлагает перенос</li>
+                      <li>Вы подтверждаете перенос кнопкой «Перенести»</li>
+                      <li>Тренировка автоматически удаляется со старой даты и появляется на новой</li>
+                    </ul>
+                  </div>
+                  <p>
+                    Перенос работает без дублирования — старая запись удаляется, новая создаётся. На часах
+                    тренировка появится на обновлённую дату после синхронизации.
                   </p>
                 </div>
               </AccordionContent>

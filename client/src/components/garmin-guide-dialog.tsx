@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, X, Watch, Smartphone, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Watch, Smartphone, Calendar, ArrowRightLeft } from "lucide-react";
 
 import garminCalendar from "@assets/IMAGE_2026-02-16_23:43:51_1771274633188.jpg";
 import garminDaily from "@assets/IMAGE_2026-02-16_23:43:42_1771274623997.jpg";
@@ -28,6 +28,13 @@ const steps = [
     description: "Все шаги, пульсовые зоны и интервалы уже настроены.",
     image: garminWorkout,
     icon: Smartphone,
+    isPhone: true,
+  },
+  {
+    title: "Перенос тренировки",
+    description: "Нужно перенести? Напишите AI: «перенеси тренировку на пятницу». Тренировка переместится на новую дату без дублирования.",
+    image: garminCalendar,
+    icon: ArrowRightLeft,
     isPhone: true,
   },
   {

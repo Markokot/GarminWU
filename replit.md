@@ -47,6 +47,9 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - Frontend shows ReschedulePreview card with "Перенести" button
 - Button calls POST /api/garmin/reschedule-workout or /api/intervals/reschedule-workout
 - RescheduleData stored in ChatMessage.rescheduleData for persistence
+- Garmin reschedule uses findScheduleIdFromCalendar() to locate the scheduleId (calendarItem.id) and DELETE /workout-service/schedule/{scheduleId} before creating new schedule
+- FAQ has section on rescheduling with example prompts
+- Garmin guide dialog includes reschedule step (step 4 of 5)
 
 ## AI Coach Behavior
 - Analyzes last 10 Garmin activities for training load assessment
