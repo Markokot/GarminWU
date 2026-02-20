@@ -216,7 +216,8 @@ function buildUserContext(user: User, activities?: GarminActivity[]): string {
       const durMin = a.duration / 60;
       totalDistKm += distKm;
       totalDurMin += durMin;
-      context += `\n- ${a.startTimeLocal?.split("T")[0] || "?"} | ${a.activityName} (${a.activityType}): ${distKm.toFixed(1)} км, ${Math.round(durMin)} мин`;
+      const location = a.locationName ? ` [${a.locationName}]` : "";
+      context += `\n- ${a.startTimeLocal?.split("T")[0] || "?"} | ${a.activityName} (${a.activityType})${location}: ${distKm.toFixed(1)} км, ${Math.round(durMin)} мин`;
       if (a.averageHR) context += `, ср.пульс ${a.averageHR}`;
       if (a.maxHR) context += `, макс.пульс ${a.maxHR}`;
       if (a.averagePace) {
@@ -409,7 +410,8 @@ function buildChatMessages(
   userMessage: string,
   history: ChatMessage[],
   activities?: GarminActivity[],
-  timezone?: string
+  timezone?: string,
+  weatherContext?: string
 ): OpenAI.ChatCompletionMessageParam[] {
   const userContext = buildUserContext(user, activities);
   const todayDate = getTodayDateString(timezone);
@@ -420,7 +422,7 @@ function buildChatMessages(
     .replace(/\{TODAY_DOW\}/g, todayDow);
 
   const messages: OpenAI.ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt + userContext },
+    { role: "system", content: systemPrompt + userContext + (weatherContext || "") },
   ];
 
   const recentHistory = history.slice(-10);
@@ -485,9 +487,10 @@ export async function chatStream(
   history: ChatMessage[],
   activities?: GarminActivity[],
   onChunk?: (chunk: string) => void,
-  timezone?: string
+  timezone?: string,
+  weatherContext?: string
 ): Promise<AiResponse> {
-  const messages = buildChatMessages(user, userMessage, history, activities, timezone);
+  const messages = buildChatMessages(user, userMessage, history, activities, timezone, weatherContext);
 
   try {
     const openai = getOpenAIClient();

@@ -22,7 +22,8 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - Favorites system — explicitly save workouts from AI chat for quick re-push
 - Training plan generation — multi-week plans (up to 12 weeks) with bulk push to devices
 - Automatic workout scheduling to Garmin calendar (date extracted from conversation)
-- View recent Garmin activities
+- View recent Garmin activities with city/location names (GPS reverse geocoding via Nominatim)
+- Weather-aware AI coach — analyzes forecast for user's training city, recommends clothing/gear
 - Dark/light theme toggle
 - Expanded athlete profile (fitness level, age, weekly volume, experience, injuries, PRs, preferences, Garmin watch model)
 - Garmin watch model in profile — AI adapts swimming workouts for incompatible watches
@@ -96,6 +97,7 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - `server/garmin.ts` - Garmin Connect integration (connect, activities, push workouts)
 - `server/intervals.ts` - Intervals.icu API integration (connect, activities, push workouts)
 - `server/ai.ts` - DeepSeek AI integration for workout generation
+- `server/weather.ts` - Weather forecast (Open-Meteo) and reverse geocoding (Nominatim) for city detection
 - `server/crypto.ts` - AES-256-GCM encryption for credentials
 - `shared/schema.ts` - Shared TypeScript types and Zod schemas
 - `.data/` - JSON data files for persistence
@@ -145,4 +147,4 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - Ironman preparation (triathlon)
 
 ## Date
-Last updated: February 14, 2026
+Last updated: February 20, 2026

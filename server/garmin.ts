@@ -89,6 +89,9 @@ export async function getGarminActivities(userId: string, count: number = 10) {
       averageHR: a.averageHR || null,
       maxHR: a.maxHR || null,
       averagePace: a.averageSpeed ? (1000 / a.averageSpeed) : null,
+      startLatitude: a.startLatitude || null,
+      startLongitude: a.startLongitude || null,
+      locationName: a.locationName || null,
     }));
   };
 

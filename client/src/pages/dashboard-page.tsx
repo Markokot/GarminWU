@@ -15,6 +15,7 @@ import {
   Watch,
   ArrowRight,
   Star,
+  MapPin,
 } from "lucide-react";
 import type { GarminActivity, FavoriteWorkout } from "@shared/schema";
 import { sportTypeLabels } from "@shared/schema";
@@ -141,12 +142,20 @@ export default function DashboardPage() {
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div className="min-w-0">
                         <h3 className="font-medium text-sm truncate">{activity.activityName}</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(activity.startTimeLocal).toLocaleDateString("ru-RU", {
-                            day: "numeric",
-                            month: "short",
-                          })}
-                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(activity.startTimeLocal).toLocaleDateString("ru-RU", {
+                              day: "numeric",
+                              month: "short",
+                            })}
+                          </p>
+                          {activity.locationName && (
+                            <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                              <MapPin className="w-3 h-3" />
+                              {activity.locationName}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <Badge variant="outline" className="text-xs flex-shrink-0">
                         {activity.activityType}

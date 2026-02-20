@@ -248,6 +248,9 @@ export interface GarminActivity {
   averageHR?: number;
   maxHR?: number;
   averagePace?: number;
+  startLatitude?: number;
+  startLongitude?: number;
+  locationName?: string;
 }
 
 export const loginSchema = z.object({

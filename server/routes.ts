@@ -9,6 +9,7 @@ import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarm
 import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities } from "./intervals";
 import { chat, chatStream, parseAiResponse } from "./ai";
 import { encrypt, decrypt } from "./crypto";
+import { enrichActivitiesWithCity, detectLikelyCity, getWeatherForecast, buildWeatherContext, reverseGeocode } from "./weather";
 
 const MemStore = MemoryStore(session);
 
@@ -224,7 +225,8 @@ export async function registerRoutes(
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
 
       const result = await fetchActivitiesWithFallback(req.session.userId!, user);
-      res.json({ activities: result.activities, source: result.source });
+      const enriched = await enrichActivitiesWithCity(result.activities);
+      res.json({ activities: enriched, source: result.source });
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
@@ -485,8 +487,21 @@ export async function registerRoutes(
       let activities: any[] | undefined;
       try {
         const result = await fetchActivitiesWithFallback(user.id, user, 10);
-        activities = result.activities;
+        activities = await enrichActivitiesWithCity(result.activities);
       } catch {}
+
+      let weatherCtx = "";
+      if (activities && activities.length > 0) {
+        try {
+          const likelyCity = detectLikelyCity(activities);
+          if (likelyCity) {
+            const forecast = await getWeatherForecast(likelyCity.lat, likelyCity.lon, 3);
+            weatherCtx = buildWeatherContext(likelyCity.city, forecast);
+          }
+        } catch (err: any) {
+          console.log("[Weather] Failed to get forecast for AI:", err.message);
+        }
+      }
 
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache");
@@ -502,7 +517,7 @@ export async function registerRoutes(
         const userTimezone = typeof timezone === "string" ? timezone : undefined;
         const aiResponse = await chatStream(user, content, history, activities, (chunk) => {
           res.write(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`);
-        }, userTimezone);
+        }, userTimezone, weatherCtx);
 
         const assistantMessage = await storage.addMessage({
           userId: user.id,
