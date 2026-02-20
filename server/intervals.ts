@@ -178,6 +178,107 @@ export async function pushWorkoutToIntervals(
   };
 }
 
+export async function getIntervalsCalendarEvents(
+  athleteId: string,
+  apiKey: string
+): Promise<any[]> {
+  const now = new Date();
+  const oldest = new Date();
+  oldest.setDate(oldest.getDate() - 7);
+  const newest = new Date();
+  newest.setDate(newest.getDate() + 90);
+
+  const params = new URLSearchParams({
+    oldest: oldest.toISOString().split("T")[0],
+    newest: newest.toISOString().split("T")[0],
+  });
+
+  const res = await fetch(`${INTERVALS_API}/athlete/${athleteId}/events?${params}`, {
+    headers: {
+      Authorization: authHeader(apiKey),
+    },
+  });
+
+  if (!res.ok) {
+    console.log(`[Intervals] Calendar events fetch failed: ${res.status}`);
+    return [];
+  }
+
+  const events: any[] = await res.json();
+  console.log(`[Intervals] Fetched ${events.length} calendar events`);
+  return events;
+}
+
+export async function rescheduleIntervalsWorkout(
+  athleteId: string,
+  apiKey: string,
+  workoutId: string,
+  newDate: string,
+  currentDate?: string
+): Promise<{ success: boolean; scheduledDate: string }> {
+  console.log(`[Intervals] Rescheduling workout ${workoutId}: ${currentDate || '?'} → ${newDate}`);
+
+  const events = await getIntervalsCalendarEvents(athleteId, apiKey);
+
+  let targetEvent: any = null;
+  for (const ev of events) {
+    if (ev.category === "WORKOUT") {
+      const evId = String(ev.id);
+      if (evId === workoutId) {
+        if (currentDate) {
+          const evDate = (ev.start_date_local || "").split("T")[0];
+          if (evDate !== currentDate) continue;
+        }
+        targetEvent = ev;
+        break;
+      }
+    }
+  }
+
+  if (!targetEvent) {
+    console.log(`[Intervals] Event not found by id=${workoutId}, searching by name on date ${currentDate}`);
+    if (currentDate) {
+      for (const ev of events) {
+        if (ev.category === "WORKOUT") {
+          const evDate = (ev.start_date_local || "").split("T")[0];
+          if (evDate === currentDate) {
+            targetEvent = ev;
+            console.log(`[Intervals] Found event by date match: id=${ev.id}, name=${ev.name}`);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (targetEvent) {
+    const updatedEvent = {
+      ...targetEvent,
+      start_date_local: newDate + "T00:00:00",
+    };
+
+    const res = await fetch(`${INTERVALS_API}/athlete/${athleteId}/events/${targetEvent.id}`, {
+      method: "PUT",
+      headers: {
+        Authorization: authHeader(apiKey),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updatedEvent),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error(`[Intervals] Reschedule PUT failed (${res.status}): ${text}`);
+      throw new Error(`Ошибка переноса тренировки в Intervals.icu (${res.status})`);
+    }
+
+    console.log(`[Intervals] Workout rescheduled to ${newDate} via PUT`);
+    return { success: true, scheduledDate: newDate };
+  }
+
+  throw new Error("Тренировка не найдена в календаре Intervals.icu. Убедитесь, что она запланирована.");
+}
+
 function formatDuration(durationType: string, durationValue: number | null): string {
   if (durationType === "lap.button") return "1s";
   if (!durationValue) return "";

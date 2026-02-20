@@ -6,7 +6,7 @@ import { storage } from "./storage";
 import { loginSchema, registerSchema, garminConnectSchema, intervalsConnectSchema, createWorkoutSchema, workoutStepSchema, swimStructuredWatchModels, type GarminWatchModel } from "@shared/schema";
 import { z } from "zod";
 import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected, getGarminCalendar, rescheduleGarminWorkout, deleteGarminWorkout } from "./garmin";
-import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities } from "./intervals";
+import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities, rescheduleIntervalsWorkout } from "./intervals";
 import { chat, chatStream, parseAiResponse } from "./ai";
 import { encrypt, decrypt } from "./crypto";
 import { enrichActivitiesWithCity, detectLikelyCity, getWeatherForecast, buildWeatherContext, reverseGeocode } from "./weather";
@@ -493,8 +493,31 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/intervals/reschedule-workout", requireAuth, async (_req, res) => {
-    res.status(501).json({ message: "Перенос тренировок через Intervals.icu пока не поддерживается. Подключите Garmin для этой функции." });
+  app.post("/api/intervals/reschedule-workout", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.intervalsAthleteId || !user?.intervalsApiKey) {
+        return res.status(400).json({ message: "Intervals.icu не подключён" });
+      }
+
+      const { workoutId, newDate, currentDate } = req.body;
+      if (!workoutId || !newDate) {
+        return res.status(400).json({ message: "Требуется workoutId и newDate" });
+      }
+
+      const apiKey = decrypt(user.intervalsApiKey);
+      const result = await rescheduleIntervalsWorkout(
+        user.intervalsAthleteId,
+        apiKey,
+        workoutId,
+        newDate,
+        currentDate
+      );
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Intervals] Reschedule error:", error.message);
+      res.status(500).json({ message: error.message || "Ошибка переноса тренировки" });
+    }
   });
 
   // Workout routes (legacy, kept for compatibility)
