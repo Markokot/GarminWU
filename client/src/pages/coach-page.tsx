@@ -719,18 +719,55 @@ export default function CoachPage() {
   const handleReschedule = async (msgId: string, data: RescheduleData) => {
     setReschedulingMsgId(msgId);
     try {
-      const source = user?.garminConnected ? "garmin" : user?.intervalsConnected ? "intervals" : null;
-      if (!source) {
+      const garmin = user?.garminConnected;
+      const intervals = user?.intervalsConnected;
+      if (!garmin && !intervals) {
         toast({ title: "Нет подключённого аккаунта", description: "Подключите Garmin или Intervals.icu для переноса", variant: "destructive" });
         return;
       }
-      await apiRequest("POST", `/api/${source}/reschedule-workout`, {
+
+      const payload = {
         workoutId: data.workoutId,
         currentDate: data.currentDate,
         newDate: data.newDate,
-      });
+      };
+
+      const results: string[] = [];
+      const errors: string[] = [];
+
+      if (garmin) {
+        try {
+          await apiRequest("POST", "/api/garmin/reschedule-workout", payload);
+          results.push("Garmin");
+        } catch (e: any) {
+          if (intervals) {
+            console.log("Garmin reschedule failed (will try Intervals):", e.message);
+          } else {
+            throw e;
+          }
+        }
+      }
+
+      if (intervals) {
+        try {
+          await apiRequest("POST", "/api/intervals/reschedule-workout", payload);
+          results.push("Intervals.icu");
+        } catch (e: any) {
+          if (garmin && results.length > 0) {
+            console.log("Intervals reschedule failed (Garmin succeeded):", e.message);
+          } else if (!garmin) {
+            throw e;
+          }
+        }
+      }
+
+      if (results.length === 0) {
+        throw new Error("Тренировка не найдена ни в Garmin, ни в Intervals.icu");
+      }
+
       setRescheduledMsgIds(prev => new Set(prev).add(msgId));
-      toast({ title: "Тренировка перенесена", description: `${data.currentDate ? formatDate(data.currentDate) + " → " : ""}${formatDate(data.newDate)}` });
+      const dateStr = `${data.currentDate ? formatDate(data.currentDate) + " → " : ""}${formatDate(data.newDate)}`;
+      toast({ title: "Тренировка перенесена", description: `${dateStr} (${results.join(" + ")})` });
     } catch (error: any) {
       toast({ title: "Ошибка переноса", description: error.message, variant: "destructive" });
     } finally {
