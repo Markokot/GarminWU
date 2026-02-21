@@ -56,7 +56,7 @@ function getDayOfWeek(timezone?: string): string {
   return days[getResolvedDate(timezone).dayIndex];
 }
 
-function buildWeekCalendar(todayStr: string): string {
+export function buildWeekCalendar(todayStr: string): string {
   const days = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
   const today = new Date(todayStr + "T12:00:00Z");
   const parts: string[] = [];

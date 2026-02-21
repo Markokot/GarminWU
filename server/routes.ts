@@ -8,12 +8,13 @@ import { z } from "zod";
 import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected, getGarminCalendar, rescheduleGarminWorkout, deleteGarminWorkout } from "./garmin";
 import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities, rescheduleIntervalsWorkout } from "./intervals";
 import { chat, chatStream, parseAiResponse } from "./ai";
+import { runAllTests } from "./tests";
 import { encrypt, decrypt } from "./crypto";
 import { enrichActivitiesWithCity, detectLikelyCity, getWeatherForecast, buildWeatherContext, reverseGeocode } from "./weather";
 
 const MemStore = MemoryStore(session);
 
-function buildCalendarContext(calendar: any, now: Date): string {
+export function buildCalendarContext(calendar: any, now: Date): string {
   const scheduledWorkouts: { date: string; name: string; workoutId?: string; sportType?: string }[] = [];
 
   if (calendar?.calendarItems) {
@@ -798,6 +799,21 @@ export async function registerRoutes(
       fitnessDistribution,
       recentUsers,
     });
+  });
+
+  app.post("/api/admin/run-tests", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+
+    try {
+      const includeLive = req.body?.includeLive === true;
+      const results = await runAllTests(includeLive);
+      res.json(results);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
   });
 
   return httpServer;

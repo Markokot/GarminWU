@@ -104,7 +104,19 @@ export function AppSidebar() {
                     >
                       <Link href="/test-workouts" onClick={handleNavClick}>
                         <FlaskConical className="w-4 h-4" />
-                        <span>Тесты</span>
+                        <span>Push-тесты</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === "/auto-tests"}
+                      data-testid="nav-auto-tests"
+                    >
+                      <Link href="/auto-tests" onClick={handleNavClick}>
+                        <FlaskConical className="w-4 h-4" />
+                        <span>Автотесты</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

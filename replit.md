@@ -110,6 +110,7 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - `server/ai.ts` - DeepSeek AI integration for workout generation
 - `server/weather.ts` - Weather forecast (Open-Meteo) and reverse geocoding (Nominatim) for city detection
 - `server/crypto.ts` - AES-256-GCM encryption for credentials
+- `server/tests.ts` - Auto-test runner (AI parsing, dates, encryption, calendar context, live DeepSeek)
 - `shared/schema.ts` - Shared TypeScript types and Zod schemas
 - `.data/` - JSON data files for persistence
 
@@ -135,6 +136,7 @@ AI-powered training coach web application with Garmin Connect and Intervals.icu 
 - `GET /api/chat/messages` - Get chat history
 - `POST /api/chat/send` - Send message to AI coach
 - `DELETE /api/chat/messages` - Clear chat history
+- `POST /api/admin/run-tests` - Run auto-tests (admin only)
 
 ## Environment Variables
 - `DEEPSEEK_API_KEY` - DeepSeek API key (secret, optional — AI features disabled without it)
