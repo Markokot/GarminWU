@@ -846,6 +846,17 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  app.delete("/api/admin/bug-reports/:id", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    const reportId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const deleted = await storage.deleteBugReport(reportId);
+    if (!deleted) return res.status(404).json({ message: "Отчёт не найден" });
+    res.json({ success: true });
+  });
+
   app.post("/api/admin/run-tests", requireAuth, async (req, res) => {
     const currentUser = await storage.getUser(req.session.userId!);
     if (!currentUser || currentUser.username !== ADMIN_USERNAME) {

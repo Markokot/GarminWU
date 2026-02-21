@@ -59,6 +59,7 @@ export interface IStorage {
   addBugReport(report: Omit<BugReport, "id" | "timestamp" | "status">): Promise<BugReport>;
   getAllBugReports(): Promise<BugReport[]>;
   updateBugReport(id: string, updates: Partial<BugReport>): Promise<BugReport | undefined>;
+  deleteBugReport(id: string): Promise<boolean>;
 }
 
 export class FileStorage implements IStorage {
@@ -261,6 +262,12 @@ export class FileStorage implements IStorage {
     this.bugReports.set(id, updated);
     this.saveBugReports();
     return updated;
+  }
+
+  async deleteBugReport(id: string): Promise<boolean> {
+    const existed = this.bugReports.delete(id);
+    if (existed) this.saveBugReports();
+    return existed;
   }
 }
 
