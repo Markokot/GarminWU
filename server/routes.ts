@@ -154,8 +154,10 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Неверное имя пользователя или пароль" });
       }
       req.session.userId = user.id;
+      await storage.updateUser(user.id, { lastLogin: new Date().toISOString() });
 
-      const { password: _, garminPassword: __, intervalsApiKey: ___, ...safeUser } = user;
+      const updatedUser = await storage.getUser(user.id);
+      const { password: _, garminPassword: __, intervalsApiKey: ___, ...safeUser } = updatedUser!;
       res.json(safeUser);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Ошибка входа" });
@@ -755,16 +757,16 @@ export async function registerRoutes(
         intervalsPushCount: u.intervalsPushCount || 0,
         favoritesCount: u.favoritesCount || 0,
         lastMessageDate: lastMessage?.timestamp || null,
+        lastLogin: u.lastLogin || null,
       };
     });
 
     const recentUsers = [...userStats]
       .sort((a, b) => {
-        const dateA = a.lastMessageDate || "1970-01-01";
-        const dateB = b.lastMessageDate || "1970-01-01";
+        const dateA = a.lastLogin || a.lastMessageDate || "1970-01-01";
+        const dateB = b.lastLogin || b.lastMessageDate || "1970-01-01";
         return new Date(dateB).getTime() - new Date(dateA).getTime();
-      })
-      .slice(0, 10);
+      });
 
     const totalUserMessages = allMessages.filter((m) => m.role === "user").length;
     const totalAiMessages = allMessages.filter((m) => m.role === "assistant").length;

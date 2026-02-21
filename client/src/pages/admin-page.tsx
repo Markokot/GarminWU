@@ -26,6 +26,7 @@ interface UserStat {
   intervalsPushCount: number;
   favoritesCount: number;
   lastMessageDate: string | null;
+  lastLogin: string | null;
 }
 
 interface AdminStats {
@@ -262,7 +263,7 @@ export default function AdminPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-sm">Последние активные пользователи</h2>
+            <h2 className="font-semibold text-sm">Все пользователи</h2>
           </div>
         </CardHeader>
         <CardContent>
@@ -277,6 +278,7 @@ export default function AdminPage() {
                   <th className="pb-2 font-medium text-right whitespace-nowrap" title="Отправлено на Garmin">Garmin</th>
                   <th className="pb-2 font-medium text-right whitespace-nowrap" title="Отправлено в Intervals.icu">Int.icu</th>
                   <th className="pb-2 font-medium text-right whitespace-nowrap" title="Избранное">Избр.</th>
+                  <th className="pb-2 font-medium text-right whitespace-nowrap">Логин</th>
                   <th className="pb-2 font-medium text-right whitespace-nowrap">Активность</th>
                 </tr>
               </thead>
@@ -297,13 +299,16 @@ export default function AdminPage() {
                     <td className="py-2.5 text-right tabular-nums">{user.intervalsPushCount}</td>
                     <td className="py-2.5 text-right tabular-nums">{user.favoritesCount}</td>
                     <td className="py-2.5 text-right text-muted-foreground text-xs whitespace-nowrap">
+                      {formatDateShort(user.lastLogin)}
+                    </td>
+                    <td className="py-2.5 text-right text-muted-foreground text-xs whitespace-nowrap">
                       {formatDateShort(user.lastMessageDate)}
                     </td>
                   </tr>
                 ))}
                 {stats.recentUsers.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-4 text-center text-muted-foreground">
+                    <td colSpan={9} className="py-4 text-center text-muted-foreground">
                       Нет пользователей
                     </td>
                   </tr>

@@ -226,6 +226,7 @@ export interface User {
   intervalsPushCount?: number;
   favoritesCount?: number;
   onboardingShown?: boolean;
+  lastLogin?: string;
 }
 
 export interface RescheduleData {
