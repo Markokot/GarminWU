@@ -479,10 +479,10 @@ function buildChatMessages(
     { role: "system", content: fullSystemContent },
   ];
 
-  const recentHistory = history.slice(-30);
+  const recentHistory = history.slice(-10);
   for (const msg of recentHistory) {
     if (msg.role === "user") {
-      const content = msg.content.length > 500 ? msg.content.substring(0, 500) + "..." : msg.content;
+      const content = msg.content.length > 300 ? msg.content.substring(0, 300) + "..." : msg.content;
       messages.push({ role: "user", content });
     } else if (msg.role === "assistant") {
       let content = compressAssistantMessage(msg.content);
