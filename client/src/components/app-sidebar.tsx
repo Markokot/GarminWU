@@ -1,4 +1,5 @@
 import { useLocation, Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { BugReportDialog } from "@/components/bug-report-dialog";
 import {
@@ -27,7 +28,9 @@ import {
   HelpCircle,
   FlaskConical,
   BarChart3,
+  Bug,
 } from "lucide-react";
+import type { BugReport } from "@shared/schema";
 
 const menuItems = [
   { title: "Дашборд", url: "/", icon: LayoutDashboard },
@@ -41,6 +44,14 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { setOpenMobile, isMobile } = useSidebar();
+
+  const isAdmin = user?.username === "Andrey";
+  const { data: bugReports } = useQuery<BugReport[]>({
+    queryKey: ["/api/admin/bug-reports"],
+    enabled: isAdmin,
+    refetchInterval: 30000,
+  });
+  const newBugCount = bugReports?.filter((r) => r.status === "new").length || 0;
 
   const handleNavClick = () => {
     if (isMobile) {
@@ -83,7 +94,7 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
-              {user?.username === "Andrey" && (
+              {isAdmin && (
                 <>
                   <SidebarMenuItem>
                     <SidebarMenuButton
@@ -94,6 +105,29 @@ export function AppSidebar() {
                       <Link href="/admin" onClick={handleNavClick}>
                         <BarChart3 className="w-4 h-4" />
                         <span>Статистика</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === "/bug-reports"}
+                      data-testid="nav-bug-reports"
+                    >
+                      <Link href="/bug-reports" onClick={handleNavClick} className="relative">
+                        <Bug className="w-4 h-4" />
+                        <span>Ошибки</span>
+                        {newBugCount > 0 && (
+                          <span className="ml-auto flex items-center gap-1.5" data-testid="status-bug-report-count">
+                            <span className="relative flex h-2.5 w-2.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive" />
+                            </span>
+                            <Badge variant="destructive" className="text-[10px] leading-none">
+                              {newBugCount}
+                            </Badge>
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

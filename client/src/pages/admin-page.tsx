@@ -1,8 +1,6 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Users,
   MessageSquare,
@@ -12,13 +10,9 @@ import {
   TrendingUp,
   Clock,
   Star,
-  Bug,
-  CheckCircle,
-  Eye,
 } from "lucide-react";
 import { sportTypeLabels, fitnessLevelLabels } from "@shared/schema";
-import type { SportType, FitnessLevel, BugReport } from "@shared/schema";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { SportType, FitnessLevel } from "@shared/schema";
 
 interface UserStat {
   username: string;
@@ -92,20 +86,6 @@ export default function AdminPage() {
   const { data: stats, isLoading, error } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
   });
-  const { data: bugReports } = useQuery<BugReport[]>({
-    queryKey: ["/api/admin/bug-reports"],
-    enabled: !!stats,
-  });
-  const [updatingReport, setUpdatingReport] = useState<string | null>(null);
-
-  const updateReportStatus = async (id: string, status: "read" | "resolved") => {
-    setUpdatingReport(id);
-    try {
-      await apiRequest("PATCH", `/api/admin/bug-reports/${id}`, { status });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/bug-reports"] });
-    } catch {}
-    setUpdatingReport(null);
-  };
 
   if (isLoading) {
     return (
@@ -278,86 +258,6 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
-
-      {bugReports && bugReports.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Bug className="w-5 h-5 text-destructive" />
-              <h2 className="font-semibold text-sm">Сообщения об ошибках</h2>
-              {bugReports.filter((r) => r.status === "new").length > 0 && (
-                <Badge variant="destructive" className="text-xs">
-                  {bugReports.filter((r) => r.status === "new").length} новых
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {bugReports.map((report) => (
-                <div
-                  key={report.id}
-                  className={`p-3 rounded-lg border ${
-                    report.status === "new"
-                      ? "border-destructive/30 bg-destructive/5"
-                      : report.status === "read"
-                        ? "border-yellow-500/30 bg-yellow-500/5"
-                        : "border-green-500/30 bg-green-500/5"
-                  }`}
-                  data-testid={`bug-report-${report.id}`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="font-medium text-sm">{report.username}</span>
-                        <span className="text-xs text-muted-foreground">{formatDateShort(report.timestamp)}</span>
-                        {report.page && (
-                          <span className="text-xs text-muted-foreground">@ {report.page}</span>
-                        )}
-                        <Badge
-                          variant={report.status === "new" ? "destructive" : report.status === "read" ? "secondary" : "outline"}
-                          className="text-xs"
-                        >
-                          {report.status === "new" ? "Новое" : report.status === "read" ? "Прочитано" : "Решено"}
-                        </Badge>
-                      </div>
-                      <p className="text-sm whitespace-pre-wrap break-words">{report.message}</p>
-                    </div>
-                    <div className="flex gap-1 flex-shrink-0">
-                      {report.status === "new" && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          disabled={updatingReport === report.id}
-                          onClick={() => updateReportStatus(report.id, "read")}
-                          title="Прочитано"
-                          data-testid={`button-mark-read-${report.id}`}
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
-                      {report.status !== "resolved" && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          disabled={updatingReport === report.id}
-                          onClick={() => updateReportStatus(report.id, "resolved")}
-                          title="Решено"
-                          data-testid={`button-mark-resolved-${report.id}`}
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardHeader className="pb-3">

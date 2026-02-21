@@ -18,6 +18,7 @@ import FaqPage from "@/pages/faq-page";
 import AdminPage from "@/pages/admin-page";
 import TestWorkoutsPage from "@/pages/test-workouts-page";
 import AutoTestsPage from "@/pages/auto-tests-page";
+import BugReportsPage from "@/pages/bug-reports-page";
 import { Loader2 } from "lucide-react";
 
 function Router() {
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/admin" component={AdminPage} />
       <Route path="/test-workouts" component={TestWorkoutsPage} />
       <Route path="/auto-tests" component={AutoTestsPage} />
+      <Route path="/bug-reports" component={BugReportsPage} />
       <Route component={NotFound} />
     </Switch>
   );
