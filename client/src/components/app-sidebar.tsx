@@ -1,5 +1,6 @@
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth";
+import { BugReportDialog } from "@/components/bug-report-dialog";
 import {
   Sidebar,
   SidebarContent,
@@ -168,7 +169,8 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
       </SidebarContent>
-      <SidebarFooter className="p-3">
+      <SidebarFooter className="p-3 space-y-2">
+        {user && <BugReportDialog />}
         {user && (
           <div className="flex items-center gap-3">
             <Avatar className="w-8 h-8 flex-shrink-0">

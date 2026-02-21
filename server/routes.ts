@@ -803,6 +803,49 @@ export async function registerRoutes(
     });
   });
 
+  app.post("/api/bug-reports", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser) return res.status(401).json({ message: "Не авторизован" });
+
+    const { message, page } = req.body;
+    if (!message || typeof message !== "string" || message.trim().length === 0) {
+      return res.status(400).json({ message: "Сообщение не может быть пустым" });
+    }
+
+    const report = await storage.addBugReport({
+      userId: currentUser.id,
+      username: currentUser.username,
+      message: message.trim().slice(0, 2000),
+      page: page || "",
+    });
+
+    res.json(report);
+  });
+
+  app.get("/api/admin/bug-reports", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    const reports = await storage.getAllBugReports();
+    res.json(reports);
+  });
+
+  app.patch("/api/admin/bug-reports/:id", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    const { status } = req.body;
+    if (!status || !["read", "resolved"].includes(status)) {
+      return res.status(400).json({ message: "Некорректный статус" });
+    }
+    const reportId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const updated = await storage.updateBugReport(reportId, { status });
+    if (!updated) return res.status(404).json({ message: "Отчёт не найден" });
+    res.json(updated);
+  });
+
   app.post("/api/admin/run-tests", requireAuth, async (req, res) => {
     const currentUser = await storage.getUser(req.session.userId!);
     if (!currentUser || currentUser.username !== ADMIN_USERNAME) {

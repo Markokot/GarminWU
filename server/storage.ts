@@ -1,4 +1,4 @@
-import type { User, Workout, ChatMessage, FavoriteWorkout, SportType, FitnessLevel } from "@shared/schema";
+import type { User, Workout, ChatMessage, FavoriteWorkout, SportType, FitnessLevel, BugReport } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 import * as fs from "fs";
@@ -9,6 +9,7 @@ const USERS_FILE = path.join(DATA_DIR, "users.json");
 const WORKOUTS_FILE = path.join(DATA_DIR, "workouts.json");
 const FAVORITES_FILE = path.join(DATA_DIR, "favorites.json");
 const MESSAGES_FILE = path.join(DATA_DIR, "messages.json");
+const BUG_REPORTS_FILE = path.join(DATA_DIR, "bug-reports.json");
 
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -54,6 +55,10 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   getAllWorkouts(): Promise<Workout[]>;
   getAllMessages(): Promise<ChatMessage[]>;
+
+  addBugReport(report: Omit<BugReport, "id" | "timestamp" | "status">): Promise<BugReport>;
+  getAllBugReports(): Promise<BugReport[]>;
+  updateBugReport(id: string, updates: Partial<BugReport>): Promise<BugReport | undefined>;
 }
 
 export class FileStorage implements IStorage {
@@ -61,6 +66,7 @@ export class FileStorage implements IStorage {
   private workouts: Map<string, Workout>;
   private favorites: Map<string, FavoriteWorkout>;
   private messages: Map<string, ChatMessage>;
+  private bugReports: Map<string, BugReport>;
 
   constructor() {
     ensureDataDir();
@@ -68,11 +74,13 @@ export class FileStorage implements IStorage {
     const workoutsArr: Workout[] = loadJson(WORKOUTS_FILE, []);
     const favoritesArr: FavoriteWorkout[] = loadJson(FAVORITES_FILE, []);
     const messagesArr: ChatMessage[] = loadJson(MESSAGES_FILE, []);
+    const bugReportsArr: BugReport[] = loadJson(BUG_REPORTS_FILE, []);
 
     this.users = new Map(usersArr.map((u) => [u.id, u]));
     this.workouts = new Map(workoutsArr.map((w) => [w.id, w]));
     this.favorites = new Map(favoritesArr.map((f) => [f.id, f]));
     this.messages = new Map(messagesArr.map((m) => [m.id, m]));
+    this.bugReports = new Map(bugReportsArr.map((r) => [r.id, r]));
   }
 
   private saveUsers() {
@@ -222,6 +230,37 @@ export class FileStorage implements IStorage {
 
   async getAllMessages(): Promise<ChatMessage[]> {
     return Array.from(this.messages.values());
+  }
+
+  private saveBugReports() {
+    saveJson(BUG_REPORTS_FILE, Array.from(this.bugReports.values()));
+  }
+
+  async addBugReport(input: Omit<BugReport, "id" | "timestamp" | "status">): Promise<BugReport> {
+    const id = randomUUID();
+    const report: BugReport = {
+      ...input,
+      id,
+      timestamp: new Date().toISOString(),
+      status: "new",
+    };
+    this.bugReports.set(id, report);
+    this.saveBugReports();
+    return report;
+  }
+
+  async getAllBugReports(): Promise<BugReport[]> {
+    return Array.from(this.bugReports.values())
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  async updateBugReport(id: string, updates: Partial<BugReport>): Promise<BugReport | undefined> {
+    const report = this.bugReports.get(id);
+    if (!report) return undefined;
+    const updated = { ...report, ...updates };
+    this.bugReports.set(id, updated);
+    this.saveBugReports();
+    return updated;
   }
 }
 

@@ -229,6 +229,16 @@ export interface User {
   lastLogin?: string;
 }
 
+export interface BugReport {
+  id: string;
+  userId: string;
+  username: string;
+  message: string;
+  page: string;
+  timestamp: string;
+  status: "new" | "read" | "resolved";
+}
+
 export interface RescheduleData {
   workoutId: string;
   currentDate: string;
