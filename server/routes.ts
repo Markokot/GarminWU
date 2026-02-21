@@ -7,7 +7,7 @@ import { loginSchema, registerSchema, garminConnectSchema, intervalsConnectSchem
 import { z } from "zod";
 import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected, getGarminCalendar, rescheduleGarminWorkout, deleteGarminWorkout } from "./garmin";
 import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities, rescheduleIntervalsWorkout } from "./intervals";
-import { chat, chatStream, parseAiResponse } from "./ai";
+import { chat, chatStream, parseAiResponse, pickPromptVariant } from "./ai";
 import { runAllTests } from "./tests";
 import { encrypt, decrypt } from "./crypto";
 import { enrichActivitiesWithCity, detectLikelyCity, getWeatherForecast, buildWeatherContext, reverseGeocode } from "./weather";
@@ -694,9 +694,16 @@ export async function registerRoutes(
         const userTimezone = typeof timezone === "string" ? timezone : undefined;
         const extraContext = weatherCtx + calendarCtx;
         console.log(`[Chat] user=${user.username} weatherCtx=${weatherCtx.length}chars calendarCtx=${calendarCtx.length}chars extraContext=${extraContext.length}chars`);
+
+        const variants = await storage.getPromptVariants();
+        const selectedVariant = pickPromptVariant(variants);
+        console.log(`[Chat] prompt variant: ${selectedVariant.name} (id=${selectedVariant.id})`);
+
+        const startTime = Date.now();
         const aiResponse = await chatStream(user, content, history, activities, (chunk) => {
           res.write(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`);
-        }, userTimezone, extraContext);
+        }, userTimezone, extraContext, selectedVariant.instructions || undefined);
+        const responseTimeMs = Date.now() - startTime;
 
         const assistantMessage = await storage.addMessage({
           userId: user.id,
@@ -706,6 +713,19 @@ export async function registerRoutes(
           workoutJson: aiResponse.workout || undefined,
           workoutsJson: aiResponse.workouts || undefined,
           rescheduleData: aiResponse.reschedule || undefined,
+        });
+
+        await storage.addAiLog({
+          userId: user.id,
+          username: user.username,
+          timestamp: new Date().toISOString(),
+          userMessage: content.length > 200 ? content.substring(0, 200) + "..." : content,
+          responseLength: aiResponse.text.length,
+          hadWorkout: !!aiResponse.workout,
+          hadPlan: !!(aiResponse.workouts && aiResponse.workouts.length > 0),
+          responseTimeMs,
+          promptVariantId: selectedVariant.id,
+          promptVariantName: selectedVariant.name,
         });
 
         res.write(`data: ${JSON.stringify({ type: "done", message: assistantMessage })}\n\n`);
@@ -855,6 +875,129 @@ export async function registerRoutes(
     const deleted = await storage.deleteBugReport(reportId);
     if (!deleted) return res.status(404).json({ message: "Отчёт не найден" });
     res.json({ success: true });
+  });
+
+  app.get("/api/admin/ai-logs", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    const logs = await storage.getAllAiLogs();
+    res.json(logs);
+  });
+
+  app.patch("/api/admin/ai-logs/:id", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    const logId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const { rating, notes } = req.body;
+    const updates: any = {};
+    if (rating !== undefined) updates.rating = rating;
+    if (notes !== undefined) updates.notes = notes;
+    const updated = await storage.updateAiLog(logId, updates);
+    if (!updated) return res.status(404).json({ message: "Лог не найден" });
+    res.json(updated);
+  });
+
+  app.get("/api/admin/prompt-variants", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    const variants = await storage.getPromptVariants();
+    res.json(variants);
+  });
+
+  app.post("/api/admin/prompt-variants", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    const { name, instructions, weight, isActive } = req.body;
+    if (!name || typeof name !== "string") {
+      return res.status(400).json({ message: "Название обязательно" });
+    }
+    const variant = await storage.addPromptVariant({
+      name,
+      instructions: instructions || "",
+      weight: typeof weight === "number" ? weight : 1,
+      isActive: isActive !== false,
+    });
+    res.json(variant);
+  });
+
+  app.patch("/api/admin/prompt-variants/:id", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    const variantId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const { name, instructions, weight, isActive } = req.body;
+    const updates: any = {};
+    if (name !== undefined) updates.name = name;
+    if (instructions !== undefined) updates.instructions = instructions;
+    if (weight !== undefined) updates.weight = weight;
+    if (isActive !== undefined) updates.isActive = isActive;
+    const updated = await storage.updatePromptVariant(variantId, updates);
+    if (!updated) return res.status(404).json({ message: "Вариант не найден" });
+    res.json(updated);
+  });
+
+  app.delete("/api/admin/prompt-variants/:id", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    const variantId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const deleted = await storage.deletePromptVariant(variantId);
+    if (!deleted) return res.status(404).json({ message: "Вариант не найден" });
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/prompt-variants/metrics", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    const logs = await storage.getAllAiLogs();
+    const variants = await storage.getPromptVariants();
+    const metricsMap = new Map<string, { name: string; totalRequests: number; totalRated: number; ratingSum: number; workoutCount: number; planCount: number; totalResponseTime: number }>();
+
+    for (const v of variants) {
+      metricsMap.set(v.id, { name: v.name, totalRequests: 0, totalRated: 0, ratingSum: 0, workoutCount: 0, planCount: 0, totalResponseTime: 0 });
+    }
+    metricsMap.set("base", { name: "Базовый", totalRequests: 0, totalRated: 0, ratingSum: 0, workoutCount: 0, planCount: 0, totalResponseTime: 0 });
+
+    for (const log of logs) {
+      let m = metricsMap.get(log.promptVariantId);
+      if (!m) {
+        m = { name: log.promptVariantName, totalRequests: 0, totalRated: 0, ratingSum: 0, workoutCount: 0, planCount: 0, totalResponseTime: 0 };
+        metricsMap.set(log.promptVariantId, m);
+      }
+      m.totalRequests++;
+      m.totalResponseTime += log.responseTimeMs;
+      if (log.hadWorkout) m.workoutCount++;
+      if (log.hadPlan) m.planCount++;
+      if (log.rating) {
+        m.totalRated++;
+        m.ratingSum += log.rating;
+      }
+    }
+
+    const metrics = Array.from(metricsMap.entries()).map(([id, m]) => ({
+      variantId: id,
+      variantName: m.name,
+      totalRequests: m.totalRequests,
+      avgRating: m.totalRated > 0 ? Math.round((m.ratingSum / m.totalRated) * 10) / 10 : null,
+      ratedCount: m.totalRated,
+      workoutRate: m.totalRequests > 0 ? Math.round((m.workoutCount / m.totalRequests) * 100) : 0,
+      planRate: m.totalRequests > 0 ? Math.round((m.planCount / m.totalRequests) * 100) : 0,
+      avgResponseTime: m.totalRequests > 0 ? Math.round(m.totalResponseTime / m.totalRequests) : 0,
+    })).filter(m => m.totalRequests > 0);
+
+    res.json(metrics);
   });
 
   app.post("/api/admin/run-tests", requireAuth, async (req, res) => {

@@ -239,6 +239,31 @@ export interface BugReport {
   status: "new" | "read" | "resolved";
 }
 
+export interface AiPromptVariant {
+  id: string;
+  name: string;
+  instructions: string;
+  weight: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AiRequestLog {
+  id: string;
+  userId: string;
+  username: string;
+  timestamp: string;
+  userMessage: string;
+  responseLength: number;
+  hadWorkout: boolean;
+  hadPlan: boolean;
+  responseTimeMs: number;
+  promptVariantId: string;
+  promptVariantName: string;
+  rating?: number;
+  notes?: string;
+}
+
 export interface RescheduleData {
   workoutId: string;
   currentDate: string;

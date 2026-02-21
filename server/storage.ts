@@ -1,4 +1,4 @@
-import type { User, Workout, ChatMessage, FavoriteWorkout, SportType, FitnessLevel, BugReport } from "@shared/schema";
+import type { User, Workout, ChatMessage, FavoriteWorkout, SportType, FitnessLevel, BugReport, AiPromptVariant, AiRequestLog } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 import * as fs from "fs";
@@ -10,6 +10,8 @@ const WORKOUTS_FILE = path.join(DATA_DIR, "workouts.json");
 const FAVORITES_FILE = path.join(DATA_DIR, "favorites.json");
 const MESSAGES_FILE = path.join(DATA_DIR, "messages.json");
 const BUG_REPORTS_FILE = path.join(DATA_DIR, "bug-reports.json");
+const AI_LOGS_FILE = path.join(DATA_DIR, "ai-logs.json");
+const PROMPT_VARIANTS_FILE = path.join(DATA_DIR, "prompt-variants.json");
 
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -60,6 +62,15 @@ export interface IStorage {
   getAllBugReports(): Promise<BugReport[]>;
   updateBugReport(id: string, updates: Partial<BugReport>): Promise<BugReport | undefined>;
   deleteBugReport(id: string): Promise<boolean>;
+
+  getPromptVariants(): Promise<AiPromptVariant[]>;
+  addPromptVariant(variant: Omit<AiPromptVariant, "id" | "createdAt">): Promise<AiPromptVariant>;
+  updatePromptVariant(id: string, updates: Partial<AiPromptVariant>): Promise<AiPromptVariant | undefined>;
+  deletePromptVariant(id: string): Promise<boolean>;
+
+  getAllAiLogs(): Promise<AiRequestLog[]>;
+  addAiLog(log: Omit<AiRequestLog, "id">): Promise<AiRequestLog>;
+  updateAiLog(id: string, updates: Partial<AiRequestLog>): Promise<AiRequestLog | undefined>;
 }
 
 export class FileStorage implements IStorage {
@@ -68,6 +79,8 @@ export class FileStorage implements IStorage {
   private favorites: Map<string, FavoriteWorkout>;
   private messages: Map<string, ChatMessage>;
   private bugReports: Map<string, BugReport>;
+  private aiLogs: Map<string, AiRequestLog>;
+  private promptVariants: Map<string, AiPromptVariant>;
 
   constructor() {
     ensureDataDir();
@@ -76,12 +89,16 @@ export class FileStorage implements IStorage {
     const favoritesArr: FavoriteWorkout[] = loadJson(FAVORITES_FILE, []);
     const messagesArr: ChatMessage[] = loadJson(MESSAGES_FILE, []);
     const bugReportsArr: BugReport[] = loadJson(BUG_REPORTS_FILE, []);
+    const aiLogsArr: AiRequestLog[] = loadJson(AI_LOGS_FILE, []);
+    const promptVariantsArr: AiPromptVariant[] = loadJson(PROMPT_VARIANTS_FILE, []);
 
     this.users = new Map(usersArr.map((u) => [u.id, u]));
     this.workouts = new Map(workoutsArr.map((w) => [w.id, w]));
     this.favorites = new Map(favoritesArr.map((f) => [f.id, f]));
     this.messages = new Map(messagesArr.map((m) => [m.id, m]));
     this.bugReports = new Map(bugReportsArr.map((r) => [r.id, r]));
+    this.aiLogs = new Map(aiLogsArr.map((l) => [l.id, l]));
+    this.promptVariants = new Map(promptVariantsArr.map((v) => [v.id, v]));
   }
 
   private saveUsers() {
@@ -268,6 +285,68 @@ export class FileStorage implements IStorage {
     const existed = this.bugReports.delete(id);
     if (existed) this.saveBugReports();
     return existed;
+  }
+
+  private saveAiLogs() {
+    saveJson(AI_LOGS_FILE, Array.from(this.aiLogs.values()));
+  }
+
+  private savePromptVariants() {
+    saveJson(PROMPT_VARIANTS_FILE, Array.from(this.promptVariants.values()));
+  }
+
+  async getPromptVariants(): Promise<AiPromptVariant[]> {
+    return Array.from(this.promptVariants.values())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async addPromptVariant(input: Omit<AiPromptVariant, "id" | "createdAt">): Promise<AiPromptVariant> {
+    const id = randomUUID();
+    const variant: AiPromptVariant = {
+      ...input,
+      id,
+      createdAt: new Date().toISOString(),
+    };
+    this.promptVariants.set(id, variant);
+    this.savePromptVariants();
+    return variant;
+  }
+
+  async updatePromptVariant(id: string, updates: Partial<AiPromptVariant>): Promise<AiPromptVariant | undefined> {
+    const variant = this.promptVariants.get(id);
+    if (!variant) return undefined;
+    const updated = { ...variant, ...updates };
+    this.promptVariants.set(id, updated);
+    this.savePromptVariants();
+    return updated;
+  }
+
+  async deletePromptVariant(id: string): Promise<boolean> {
+    const existed = this.promptVariants.delete(id);
+    if (existed) this.savePromptVariants();
+    return existed;
+  }
+
+  async getAllAiLogs(): Promise<AiRequestLog[]> {
+    return Array.from(this.aiLogs.values())
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  async addAiLog(input: Omit<AiRequestLog, "id">): Promise<AiRequestLog> {
+    const id = randomUUID();
+    const log: AiRequestLog = { ...input, id };
+    this.aiLogs.set(id, log);
+    this.saveAiLogs();
+    return log;
+  }
+
+  async updateAiLog(id: string, updates: Partial<AiRequestLog>): Promise<AiRequestLog | undefined> {
+    const log = this.aiLogs.get(id);
+    if (!log) return undefined;
+    const updated = { ...log, ...updates };
+    this.aiLogs.set(id, updated);
+    this.saveAiLogs();
+    return updated;
   }
 }
 

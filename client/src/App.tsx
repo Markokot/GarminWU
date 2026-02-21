@@ -19,6 +19,8 @@ import AdminPage from "@/pages/admin-page";
 import TestWorkoutsPage from "@/pages/test-workouts-page";
 import AutoTestsPage from "@/pages/auto-tests-page";
 import BugReportsPage from "@/pages/bug-reports-page";
+import AiLogsPage from "@/pages/ai-logs-page";
+import PromptVariantsPage from "@/pages/prompt-variants-page";
 import { Loader2 } from "lucide-react";
 
 function Router() {
@@ -33,6 +35,8 @@ function Router() {
       <Route path="/test-workouts" component={TestWorkoutsPage} />
       <Route path="/auto-tests" component={AutoTestsPage} />
       <Route path="/bug-reports" component={BugReportsPage} />
+      <Route path="/ai-logs" component={AiLogsPage} />
+      <Route path="/prompt-variants" component={PromptVariantsPage} />
       <Route component={NotFound} />
     </Switch>
   );

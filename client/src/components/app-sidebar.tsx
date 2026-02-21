@@ -29,6 +29,8 @@ import {
   FlaskConical,
   BarChart3,
   Bug,
+  Brain,
+  ScrollText,
 } from "lucide-react";
 import type { BugReport } from "@shared/schema";
 
@@ -128,6 +130,30 @@ export function AppSidebar() {
                             </Badge>
                           </span>
                         )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === "/ai-logs"}
+                      data-testid="nav-ai-logs"
+                    >
+                      <Link href="/ai-logs" onClick={handleNavClick}>
+                        <ScrollText className="w-4 h-4" />
+                        <span>Логи AI</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === "/prompt-variants"}
+                      data-testid="nav-prompt-variants"
+                    >
+                      <Link href="/prompt-variants" onClick={handleNavClick}>
+                        <Brain className="w-4 h-4" />
+                        <span>A/B промпты</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

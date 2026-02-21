@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { User, Workout, ChatMessage, GarminActivity, FitnessLevel, GarminWatchModel } from "@shared/schema";
+import type { User, Workout, ChatMessage, GarminActivity, FitnessLevel, GarminWatchModel, AiPromptVariant } from "@shared/schema";
 import { fitnessLevelLabels, garminWatchLabels, swimStructuredWatchModels, nativeRunningPowerWatchModels } from "@shared/schema";
 
 function getOpenAIClient(): OpenAI {
@@ -216,6 +216,20 @@ const SYSTEM_PROMPT = `Ты — Тренер. Опытный тренер по �
 - Если пользователь тренировался интенсивно последние дни — предложи восстановительную тренировку
 - Следи за балансом интенсивности: 80% лёгких / 20% интенсивных (правило 80/20)`;
 
+
+export function pickPromptVariant(variants: AiPromptVariant[]): AiPromptVariant {
+  const active = variants.filter((v) => v.isActive && v.weight > 0);
+  if (active.length === 0) {
+    return { id: "base", name: "Базовый", instructions: "", weight: 1, isActive: true, createdAt: "" };
+  }
+  const totalWeight = active.reduce((sum, v) => sum + v.weight, 0);
+  let rand = Math.random() * totalWeight;
+  for (const v of active) {
+    rand -= v.weight;
+    if (rand <= 0) return v;
+  }
+  return active[active.length - 1];
+}
 
 function buildUserContext(user: User, activities?: GarminActivity[]): string {
   let context = `\n\n===== ПРОФИЛЬ СПОРТСМЕНА =====
@@ -460,7 +474,8 @@ function buildChatMessages(
   history: ChatMessage[],
   activities?: GarminActivity[],
   timezone?: string,
-  weatherContext?: string
+  weatherContext?: string,
+  variantInstructions?: string
 ): OpenAI.ChatCompletionMessageParam[] {
   const userContext = buildUserContext(user, activities);
   const todayDate = getTodayDateString(timezone);
@@ -470,7 +485,8 @@ function buildChatMessages(
     .replace(/\{TODAY_DATE\}/g, todayDate)
     .replace(/\{TODAY_DOW\}/g, todayDow);
 
-  const fullSystemContent = systemPrompt + userContext + (weatherContext || "");
+  const variantSuffix = variantInstructions ? `\n\nДОПОЛНИТЕЛЬНЫЕ ИНСТРУКЦИИ:\n${variantInstructions}` : "";
+  const fullSystemContent = systemPrompt + userContext + (weatherContext || "") + variantSuffix;
   console.log(`[AI] System prompt length: ${fullSystemContent.length} chars`);
   if (weatherContext) {
     console.log(`[AI] Extra context included (${weatherContext.length} chars), starts with: ${weatherContext.substring(0, 200)}`);
@@ -575,9 +591,10 @@ export async function chatStream(
   activities?: GarminActivity[],
   onChunk?: (chunk: string) => void,
   timezone?: string,
-  weatherContext?: string
+  weatherContext?: string,
+  variantInstructions?: string
 ): Promise<AiResponse> {
-  const messages = buildChatMessages(user, userMessage, history, activities, timezone, weatherContext);
+  const messages = buildChatMessages(user, userMessage, history, activities, timezone, weatherContext, variantInstructions);
 
   try {
     const openai = getOpenAIClient();
