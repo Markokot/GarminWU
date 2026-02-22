@@ -63,6 +63,8 @@ const levelColors: Record<string, { bg: string; text: string; ring: string; dot:
 };
 
 export function ReadinessBadge() {
+  const [expanded, setExpanded] = useState(false);
+
   const { data: readiness, isLoading, error } = useQuery<ReadinessResult>({
     queryKey: ["/api/readiness"],
     staleTime: 5 * 60 * 1000,
@@ -74,13 +76,59 @@ export function ReadinessBadge() {
   const colors = levelColors[readiness.level];
 
   return (
-    <div
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-default ${colors.bg} ring-1 ${colors.ring}`}
-      title={`${readiness.label}: ${readiness.summary}`}
-      data-testid="badge-readiness"
-    >
-      <div className={`w-2 h-2 rounded-full ${colors.dot}`} />
-      <span className={colors.text}>{readiness.score}</span>
+    <div className="relative" data-testid="badge-readiness">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${colors.bg} ring-1 ${colors.ring} hover:ring-2`}
+      >
+        <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} />
+        <span className={colors.text}>Готовность {readiness.score}</span>
+        {expanded ? (
+          <ChevronUp className={`w-3.5 h-3.5 ${colors.text}`} />
+        ) : (
+          <ChevronDown className={`w-3.5 h-3.5 ${colors.text}`} />
+        )}
+      </button>
+
+      {expanded && (
+        <div className="absolute right-0 top-full mt-2 z-50 w-72 rounded-lg border bg-popover p-3 shadow-lg" data-testid="readiness-popup">
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} />
+            <span className={`text-sm font-semibold ${colors.text}`}>{readiness.label}</span>
+            <span className="text-xs text-muted-foreground ml-auto">{readiness.score}/100</span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">{readiness.summary}</p>
+          <div className="space-y-2.5 border-t pt-2.5">
+            {readiness.factors.map((factor) => {
+              const Icon = factorIcons[factor.name] || Activity;
+              const pct = (factor.score / factor.maxScore) * 100;
+              return (
+                <div key={factor.name} className="flex items-center gap-2.5">
+                  <Icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs font-medium">
+                        {factorNames[factor.name] || factor.name}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {factor.label}
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-1.5">
+                      <div
+                        className={`rounded-full h-1.5 transition-all ${
+                          pct >= 70 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-red-500"
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -805,31 +805,31 @@ export default function CoachPage() {
               <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-semibold" data-testid="text-coach-title">AI Тренер</h1>
-                {(user?.garminConnected || user?.intervalsConnected) && <ReadinessBadge />}
-              </div>
+              <h1 className="text-lg font-semibold" data-testid="text-coach-title">AI Тренер</h1>
               <p className="text-xs text-muted-foreground">
                 Опишите тренировку или попросите план на период — AI создаст и загрузит на часы
               </p>
             </div>
           </div>
-          {messages.length > 0 && (
-            <Button
-              size="sm"
-              variant="ghost"
-              data-testid="button-clear-chat"
-              disabled={isSending || clearChatMutation.isPending}
-              onClick={() => {
-                if (window.confirm("Очистить всю историю чата? Это действие нельзя отменить.")) {
-                  clearChatMutation.mutate();
-                }
-              }}
-            >
-              {clearChatMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-              <span className="ml-1">Очистить</span>
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {(user?.garminConnected || user?.intervalsConnected) && <ReadinessBadge />}
+            {messages.length > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                data-testid="button-clear-chat"
+                disabled={isSending || clearChatMutation.isPending}
+                onClick={() => {
+                  if (window.confirm("Очистить всю историю чата? Это действие нельзя отменить.")) {
+                    clearChatMutation.mutate();
+                  }
+                }}
+              >
+                {clearChatMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                <span className="ml-1">Очистить</span>
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
