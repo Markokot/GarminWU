@@ -266,6 +266,17 @@ export interface AiRequestLog {
   errorMessage?: string;
 }
 
+export interface ErrorLog {
+  id: string;
+  source: "ai" | "garmin" | "intervals";
+  userId: string;
+  username: string;
+  timestamp: string;
+  errorMessage: string;
+  context?: string;
+  status: "new" | "resolved";
+}
+
 export interface RescheduleData {
   workoutId: string;
   currentDate: string;

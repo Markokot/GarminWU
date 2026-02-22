@@ -1,4 +1,4 @@
-import type { User, Workout, ChatMessage, FavoriteWorkout, SportType, FitnessLevel, BugReport, AiPromptVariant, AiRequestLog } from "@shared/schema";
+import type { User, Workout, ChatMessage, FavoriteWorkout, SportType, FitnessLevel, BugReport, AiPromptVariant, AiRequestLog, ErrorLog } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 import * as fs from "fs";
@@ -12,6 +12,7 @@ const MESSAGES_FILE = path.join(DATA_DIR, "messages.json");
 const BUG_REPORTS_FILE = path.join(DATA_DIR, "bug-reports.json");
 const AI_LOGS_FILE = path.join(DATA_DIR, "ai-logs.json");
 const PROMPT_VARIANTS_FILE = path.join(DATA_DIR, "prompt-variants.json");
+const ERROR_LOGS_FILE = path.join(DATA_DIR, "error-logs.json");
 
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -71,6 +72,11 @@ export interface IStorage {
   getAllAiLogs(): Promise<AiRequestLog[]>;
   addAiLog(log: Omit<AiRequestLog, "id">): Promise<AiRequestLog>;
   updateAiLog(id: string, updates: Partial<AiRequestLog>): Promise<AiRequestLog | undefined>;
+
+  getAllErrorLogs(): Promise<ErrorLog[]>;
+  addErrorLog(log: Omit<ErrorLog, "id" | "timestamp" | "status">): Promise<ErrorLog>;
+  updateErrorLog(id: string, updates: Partial<ErrorLog>): Promise<ErrorLog | undefined>;
+  deleteErrorLog(id: string): Promise<boolean>;
 }
 
 export class FileStorage implements IStorage {
@@ -81,6 +87,7 @@ export class FileStorage implements IStorage {
   private bugReports: Map<string, BugReport>;
   private aiLogs: Map<string, AiRequestLog>;
   private promptVariants: Map<string, AiPromptVariant>;
+  private errorLogs: Map<string, ErrorLog>;
 
   constructor() {
     ensureDataDir();
@@ -91,6 +98,7 @@ export class FileStorage implements IStorage {
     const bugReportsArr: BugReport[] = loadJson(BUG_REPORTS_FILE, []);
     const aiLogsArr: AiRequestLog[] = loadJson(AI_LOGS_FILE, []);
     const promptVariantsArr: AiPromptVariant[] = loadJson(PROMPT_VARIANTS_FILE, []);
+    const errorLogsArr: ErrorLog[] = loadJson(ERROR_LOGS_FILE, []);
 
     this.users = new Map(usersArr.map((u) => [u.id, u]));
     this.workouts = new Map(workoutsArr.map((w) => [w.id, w]));
@@ -99,6 +107,7 @@ export class FileStorage implements IStorage {
     this.bugReports = new Map(bugReportsArr.map((r) => [r.id, r]));
     this.aiLogs = new Map(aiLogsArr.map((l) => [l.id, l]));
     this.promptVariants = new Map(promptVariantsArr.map((v) => [v.id, v]));
+    this.errorLogs = new Map(errorLogsArr.map((e) => [e.id, e]));
   }
 
   private saveUsers() {
@@ -347,6 +356,39 @@ export class FileStorage implements IStorage {
     this.aiLogs.set(id, updated);
     this.saveAiLogs();
     return updated;
+  }
+
+  private saveErrorLogs() {
+    saveJson(ERROR_LOGS_FILE, Array.from(this.errorLogs.values()));
+  }
+
+  async getAllErrorLogs(): Promise<ErrorLog[]> {
+    return Array.from(this.errorLogs.values())
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  async addErrorLog(input: Omit<ErrorLog, "id" | "timestamp" | "status">): Promise<ErrorLog> {
+    const id = randomUUID();
+    const log: ErrorLog = { ...input, id, timestamp: new Date().toISOString(), status: "new" };
+    this.errorLogs.set(id, log);
+    this.saveErrorLogs();
+    return log;
+  }
+
+  async updateErrorLog(id: string, updates: Partial<ErrorLog>): Promise<ErrorLog | undefined> {
+    const log = this.errorLogs.get(id);
+    if (!log) return undefined;
+    const updated = { ...log, ...updates };
+    this.errorLogs.set(id, updated);
+    this.saveErrorLogs();
+    return updated;
+  }
+
+  async deleteErrorLog(id: string): Promise<boolean> {
+    if (!this.errorLogs.has(id)) return false;
+    this.errorLogs.delete(id);
+    this.saveErrorLogs();
+    return true;
   }
 }
 

@@ -354,12 +354,24 @@ export async function registerRoutes(
       });
     } catch (error: any) {
       const elapsed = Date.now() - startTime;
+      const errMsg = error instanceof z.ZodError
+        ? "Некорректный формат тренировки: " + error.errors.map((e) => e.message).join(", ")
+        : error.message;
       if (error instanceof z.ZodError) {
         console.log(`[Garmin Push] FAIL user=${username} reason=validation error="${error.errors.map((e) => e.message).join(", ")}" time=${elapsed}ms`);
-        return res.status(400).json({ message: "Некорректный формат тренировки: " + error.errors.map((e) => e.message).join(", ") });
+      } else {
+        console.log(`[Garmin Push] FAIL user=${username} reason=error error="${error.message}" stack="${error.stack?.split('\n').slice(0,3).join(' | ')}" time=${elapsed}ms`);
       }
-      console.log(`[Garmin Push] FAIL user=${username} reason=error error="${error.message}" stack="${error.stack?.split('\n').slice(0,3).join(' | ')}" time=${elapsed}ms`);
-      res.status(400).json({ message: error.message });
+      try {
+        await storage.addErrorLog({
+          source: "garmin",
+          userId: req.session.userId!,
+          username: String(username),
+          errorMessage: errMsg,
+          context: `Тренировка: ${req.body?.name || "?"}`,
+        });
+      } catch {}
+      res.status(400).json({ message: errMsg });
     }
   });
 
@@ -429,10 +441,20 @@ export async function registerRoutes(
         scheduledDate: result.scheduledDate,
       });
     } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Некорректный формат тренировки: " + error.errors.map((e) => e.message).join(", ") });
-      }
-      res.status(400).json({ message: error.message });
+      const errMsg = error instanceof z.ZodError
+        ? "Некорректный формат тренировки: " + error.errors.map((e) => e.message).join(", ")
+        : error.message;
+      try {
+        const errUser = await storage.getUser(req.session.userId!);
+        await storage.addErrorLog({
+          source: "intervals",
+          userId: req.session.userId!,
+          username: errUser?.username || req.session.userId!,
+          errorMessage: errMsg,
+          context: `Тренировка: ${req.body?.name || "?"}`,
+        });
+      } catch {}
+      res.status(400).json({ message: errMsg });
     }
   });
 
@@ -745,19 +767,12 @@ export async function registerRoutes(
       if (chatUser) {
         try {
           const msg = chatContent.length > 200 ? chatContent.substring(0, 200) + "..." : chatContent;
-          await storage.addAiLog({
+          await storage.addErrorLog({
+            source: "ai",
             userId: chatUser.id,
             username: chatUser.username,
-            timestamp: new Date().toISOString(),
-            userMessage: msg || "(пустое сообщение)",
-            responseLength: 0,
-            hadWorkout: false,
-            hadPlan: false,
-            responseTimeMs: 0,
-            promptVariantId: chatVariantId,
-            promptVariantName: chatVariantName,
-            isError: true,
             errorMessage: error.message || "Неизвестная ошибка AI",
+            context: `Запрос: ${msg || "(пустое сообщение)"}. Промпт: ${chatVariantName}`,
           });
         } catch (logErr: any) {
           console.error("[Chat] Failed to log AI error:", logErr.message);
@@ -906,14 +921,35 @@ export async function registerRoutes(
     res.json({ success: true });
   });
 
-  app.get("/api/admin/ai-errors", requireAuth, async (req, res) => {
+  app.get("/api/admin/error-logs", requireAuth, async (req, res) => {
     const currentUser = await storage.getUser(req.session.userId!);
     if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
       return res.status(403).json({ message: "Доступ запрещён" });
     }
-    const logs = await storage.getAllAiLogs();
-    const errors = logs.filter((l) => l.isError);
+    const errors = await storage.getAllErrorLogs();
     res.json(errors);
+  });
+
+  app.patch("/api/admin/error-logs/:id", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    const errorId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const updated = await storage.updateErrorLog(errorId, { status: req.body.status });
+    if (!updated) return res.status(404).json({ message: "Ошибка не найдена" });
+    res.json(updated);
+  });
+
+  app.delete("/api/admin/error-logs/:id", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    const errorId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const deleted = await storage.deleteErrorLog(errorId);
+    if (!deleted) return res.status(404).json({ message: "Ошибка не найдена" });
+    res.json({ success: true });
   });
 
   app.get("/api/admin/ai-logs", requireAuth, async (req, res) => {

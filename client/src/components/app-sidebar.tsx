@@ -32,7 +32,7 @@ import {
   Brain,
   ScrollText,
 } from "lucide-react";
-import type { BugReport, AiRequestLog } from "@shared/schema";
+import type { BugReport, ErrorLog } from "@shared/schema";
 
 const menuItems = [
   { title: "Дашборд", url: "/", icon: LayoutDashboard },
@@ -53,12 +53,12 @@ export function AppSidebar() {
     enabled: isAdmin,
     refetchInterval: 30000,
   });
-  const { data: aiErrors } = useQuery<AiRequestLog[]>({
-    queryKey: ["/api/admin/ai-errors"],
+  const { data: errorLogs } = useQuery<ErrorLog[]>({
+    queryKey: ["/api/admin/error-logs"],
     enabled: isAdmin,
     refetchInterval: 30000,
   });
-  const newBugCount = (bugReports?.filter((r) => r.status === "new").length || 0) + (aiErrors?.length || 0);
+  const newBugCount = (bugReports?.filter((r) => r.status === "new").length || 0) + (errorLogs?.filter((e) => e.status === "new").length || 0);
 
   const handleNavClick = () => {
     if (isMobile) {

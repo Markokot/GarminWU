@@ -12,7 +12,7 @@ import {
   Zap,
   Filter,
 } from "lucide-react";
-import type { BugReport, AiRequestLog } from "@shared/schema";
+import type { BugReport, ErrorLog } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -29,17 +29,17 @@ function formatDateShort(dateStr: string | null): string {
 
 type UnifiedItem =
   | { type: "bug"; data: BugReport }
-  | { type: "ai-error"; data: AiRequestLog };
+  | { type: "error-log"; data: ErrorLog };
 
 export default function BugReportsPage() {
   const { data: bugReports, isLoading: bugsLoading, error: bugsError } = useQuery<BugReport[]>({
     queryKey: ["/api/admin/bug-reports"],
   });
-  const { data: aiErrors, isLoading: aiErrorsLoading, error: aiErrorsError } = useQuery<AiRequestLog[]>({
-    queryKey: ["/api/admin/ai-errors"],
+  const { data: errorLogs, isLoading: errorLogsLoading, error: errorLogsError } = useQuery<ErrorLog[]>({
+    queryKey: ["/api/admin/error-logs"],
   });
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "bugs" | "ai-errors">("all");
+  const [filter, setFilter] = useState<"all" | "bugs" | "errors">("all");
   const { toast } = useToast();
 
   const updateStatus = async (id: string, status: "read" | "resolved") => {
@@ -65,7 +65,7 @@ export default function BugReportsPage() {
     setUpdatingId(null);
   };
 
-  const isLoading = bugsLoading || aiErrorsLoading;
+  const isLoading = bugsLoading || errorLogsLoading;
 
   if (isLoading) {
     return (
@@ -75,7 +75,7 @@ export default function BugReportsPage() {
     );
   }
 
-  if (bugsError || aiErrorsError) {
+  if (bugsError || errorLogsError) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-muted-foreground">Доступ запрещён</p>
@@ -84,15 +84,15 @@ export default function BugReportsPage() {
   }
 
   const newBugCount = bugReports?.filter((r) => r.status === "new").length || 0;
-  const aiErrorCount = aiErrors?.length || 0;
-  const totalNewCount = newBugCount + aiErrorCount;
+  const newErrorCount = errorLogs?.filter((e) => e.status === "new").length || 0;
+  const totalNewCount = newBugCount + newErrorCount;
 
   const unified: UnifiedItem[] = [];
-  if (filter !== "ai-errors" && bugReports) {
+  if (filter !== "errors" && bugReports) {
     bugReports.forEach((b) => unified.push({ type: "bug", data: b }));
   }
-  if (filter !== "bugs" && aiErrors) {
-    aiErrors.forEach((e) => unified.push({ type: "ai-error", data: e }));
+  if (filter !== "bugs" && errorLogs) {
+    errorLogs.forEach((e) => unified.push({ type: "error-log", data: e }));
   }
   unified.sort((a, b) => {
     const ta = new Date(a.data.timestamp).getTime();
@@ -120,7 +120,7 @@ export default function BugReportsPage() {
           data-testid="button-filter-all"
         >
           <Filter className="w-3.5 h-3.5 mr-1.5" />
-          Все ({(bugReports?.length || 0) + aiErrorCount})
+          Все ({(bugReports?.length || 0) + (errorLogs?.length || 0)})
         </Button>
         <Button
           size="sm"
@@ -133,12 +133,12 @@ export default function BugReportsPage() {
         </Button>
         <Button
           size="sm"
-          variant={filter === "ai-errors" ? "default" : "outline"}
-          onClick={() => setFilter("ai-errors")}
-          data-testid="button-filter-ai-errors"
+          variant={filter === "errors" ? "default" : "outline"}
+          onClick={() => setFilter("errors")}
+          data-testid="button-filter-errors"
         >
           <Zap className="w-3.5 h-3.5 mr-1.5" />
-          Ошибки AI ({aiErrorCount})
+          Ошибки ({errorLogs?.length || 0})
         </Button>
       </div>
 
@@ -231,25 +231,81 @@ export default function BugReportsPage() {
               );
             }
 
-            const aiErr = item.data;
+            const errLog = item.data;
+            const sourceLabels: Record<string, string> = { ai: "AI", garmin: "Garmin", intervals: "Intervals.icu" };
+            const sourceLabel = sourceLabels[errLog.source] || errLog.source;
             return (
               <Card
-                key={`ai-${aiErr.id}`}
-                className="border-orange-500/30"
-                data-testid={`ai-error-${aiErr.id}`}
+                key={`err-${errLog.id}`}
+                className={errLog.status === "new" ? "border-orange-500/30" : "border-green-500/30 opacity-60"}
+                data-testid={`error-log-${errLog.id}`}
               >
                 <CardContent className="p-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <Badge variant="outline" className="text-xs gap-1 border-orange-500/50 text-orange-600 dark:text-orange-400">
-                        <Zap className="w-3 h-3" />
-                        AI
-                      </Badge>
-                      <span className="font-medium text-sm">{aiErr.username}</span>
-                      <span className="text-xs text-muted-foreground">{formatDateShort(aiErr.timestamp)}</span>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <Badge variant="outline" className="text-xs gap-1 border-orange-500/50 text-orange-600 dark:text-orange-400">
+                          <Zap className="w-3 h-3" />
+                          {sourceLabel}
+                        </Badge>
+                        <span className="font-medium text-sm">{errLog.username}</span>
+                        <span className="text-xs text-muted-foreground">{formatDateShort(errLog.timestamp)}</span>
+                        <Badge
+                          variant={errLog.status === "new" ? "destructive" : "outline"}
+                          className="text-xs"
+                        >
+                          {errLog.status === "new" ? "Новое" : "Решено"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-destructive font-medium mb-1">{errLog.errorMessage}</p>
+                      {errLog.context && (
+                        <p className="text-xs text-muted-foreground">{errLog.context}</p>
+                      )}
                     </div>
-                    <p className="text-sm text-destructive font-medium mb-1">{aiErr.errorMessage}</p>
-                    <p className="text-xs text-muted-foreground">Запрос: {aiErr.userMessage}</p>
+                    <div className="flex gap-1 flex-shrink-0">
+                      {errLog.status === "new" && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          disabled={updatingId === errLog.id}
+                          onClick={async () => {
+                            setUpdatingId(errLog.id);
+                            try {
+                              await apiRequest("PATCH", `/api/admin/error-logs/${errLog.id}`, { status: "resolved" });
+                              queryClient.invalidateQueries({ queryKey: ["/api/admin/error-logs"] });
+                            } catch {
+                              toast({ title: "Ошибка", variant: "destructive" });
+                            }
+                            setUpdatingId(null);
+                          }}
+                          title="Отметить решённым"
+                          data-testid={`button-resolve-error-${errLog.id}`}
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        disabled={updatingId === errLog.id}
+                        onClick={async () => {
+                          setUpdatingId(errLog.id);
+                          try {
+                            await apiRequest("DELETE", `/api/admin/error-logs/${errLog.id}`);
+                            queryClient.invalidateQueries({ queryKey: ["/api/admin/error-logs"] });
+                            toast({ title: "Удалено" });
+                          } catch {
+                            toast({ title: "Ошибка при удалении", variant: "destructive" });
+                          }
+                          setUpdatingId(null);
+                        }}
+                        title="Удалить"
+                        data-testid={`button-delete-error-${errLog.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
