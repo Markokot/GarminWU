@@ -20,6 +20,7 @@ import {
 import type { GarminActivity, FavoriteWorkout } from "@shared/schema";
 import { sportTypeLabels } from "@shared/schema";
 import { OnboardingDialog } from "@/components/onboarding-dialog";
+import { ReadinessCard } from "@/components/readiness-card";
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -84,6 +85,8 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {hasAnyConnection && <ReadinessCard />}
 
       {!hasAnyConnection && (
         <Card>

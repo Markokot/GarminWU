@@ -31,6 +31,7 @@ import {
   Check,
 } from "lucide-react";
 import { GarminGuideDialog } from "@/components/garmin-guide-dialog";
+import { ReadinessCard } from "@/components/readiness-card";
 
 function formatTime(ts: string) {
   return new Date(ts).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
@@ -831,6 +832,9 @@ export default function CoachPage() {
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden" ref={scrollRef}>
         <div className="p-4 space-y-4 max-w-3xl mx-auto">
+          {(user?.garminConnected || user?.intervalsConnected) && messages.length === 0 && !isLoading && (
+            <ReadinessCard />
+          )}
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (

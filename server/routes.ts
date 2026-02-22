@@ -11,6 +11,7 @@ import { chat, chatStream, parseAiResponse, pickPromptVariant } from "./ai";
 import { runAllTests } from "./tests";
 import { encrypt, decrypt } from "./crypto";
 import { enrichActivitiesWithCity, detectLikelyCity, getWeatherForecast, buildWeatherContext, reverseGeocode } from "./weather";
+import { calculateReadiness } from "./readiness";
 
 const MemStore = MemoryStore(session);
 
@@ -286,6 +287,19 @@ export async function registerRoutes(
       const result = await fetchActivitiesWithFallback(req.session.userId!, user);
       const enriched = await enrichActivitiesWithCity(result.activities);
       res.json({ activities: enriched, source: result.source });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/readiness", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Пользователь не найден" });
+
+      const result = await fetchActivitiesWithFallback(req.session.userId!, user, 20);
+      const readiness = calculateReadiness(result.activities);
+      res.json(readiness);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
@@ -664,6 +678,20 @@ export async function registerRoutes(
         activities = await enrichActivitiesWithCity(result.activities);
       } catch {}
 
+      let readinessCtx = "";
+      if (activities && activities.length > 0) {
+        try {
+          const readiness = calculateReadiness(activities);
+          readinessCtx = `\n\n===== ГОТОВНОСТЬ К ТРЕНИРОВКЕ =====\nScore: ${readiness.score}/100 (${readiness.label})\n${readiness.summary}\n`;
+          readiness.factors.forEach(f => {
+            readinessCtx += `- ${f.name}: ${f.score}/${f.maxScore} — ${f.description}\n`;
+          });
+          console.log(`[Readiness] score=${readiness.score} level=${readiness.level} for user=${user.username}`);
+        } catch (err: any) {
+          console.log("[Readiness] Failed to calculate:", err.message);
+        }
+      }
+
       let weatherCtx = "";
       if (activities && activities.length > 0) {
         try {
@@ -720,7 +748,7 @@ export async function registerRoutes(
 
       try {
         const userTimezone = typeof timezone === "string" ? timezone : undefined;
-        const extraContext = weatherCtx + calendarCtx;
+        const extraContext = readinessCtx + weatherCtx + calendarCtx;
         console.log(`[Chat] user=${user.username} weatherCtx=${weatherCtx.length}chars calendarCtx=${calendarCtx.length}chars extraContext=${extraContext.length}chars`);
 
         const variants = await storage.getPromptVariants();
