@@ -91,7 +91,7 @@ export function ReadinessBadge() {
       </button>
 
       {expanded && (
-        <div className="absolute right-0 top-full mt-2 z-50 w-72 rounded-lg border bg-popover p-3 shadow-lg" data-testid="readiness-popup">
+        <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 z-50 w-[min(18rem,calc(100vw-2rem))] rounded-lg border bg-popover p-3 shadow-lg" data-testid="readiness-popup">
           <div className="flex items-center gap-2 mb-2">
             <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} />
             <span className={`text-sm font-semibold ${colors.text}`}>{readiness.label}</span>
