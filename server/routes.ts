@@ -503,6 +503,22 @@ export async function registerRoutes(
       const workouts: import("@shared/schema").UpcomingWorkout[] = [];
       const sources = { garmin: false, intervals: false };
 
+      let todayActivityNames: string[] = [];
+      try {
+        if (user.garminConnected) {
+          const acts = await getGarminActivities(req.session.userId!, 10).catch(() => []);
+          todayActivityNames = acts
+            .filter((a: any) => a.startTimeLocal && a.startTimeLocal.startsWith(todayStr))
+            .map((a: any) => (a.activityName || "").toLowerCase());
+        } else if (user.intervalsConnected && user.intervalsAthleteId && user.intervalsApiKey) {
+          const apiKey = decrypt(user.intervalsApiKey);
+          const acts = await getIntervalsActivities(user.intervalsAthleteId, apiKey, 10).catch(() => []);
+          todayActivityNames = acts
+            .filter((a: any) => a.startTimeLocal && a.startTimeLocal.startsWith(todayStr))
+            .map((a: any) => (a.activityName || "").toLowerCase());
+        }
+      } catch {}
+
       if (user.garminConnected) {
         try {
           await ensureGarminSessionWithDecrypt(req.session.userId!, user);
@@ -565,9 +581,17 @@ export async function registerRoutes(
         }
       }
 
-      workouts.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+      const filtered = todayActivityNames.length > 0
+        ? workouts.filter(w => {
+            if (!w.isToday) return true;
+            const nameLower = w.name.toLowerCase();
+            return !todayActivityNames.some(actName => nameLower.includes(actName) || actName.includes(nameLower));
+          })
+        : workouts;
 
-      res.json({ workouts, sources });
+      filtered.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+
+      res.json({ workouts: filtered, sources });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
