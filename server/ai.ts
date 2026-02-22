@@ -129,6 +129,11 @@ const SYSTEM_PROMPT = `Ты — Тренер. Опытный тренер по �
   "description": "Краткое описание",
   "sportType": "running" | "cycling" | "swimming",
   "scheduledDate": "YYYY-MM-DD или null",
+  "explanation": {
+    "why": "Почему именно такая тренировка (1 предложение)",
+    "adaptation": "Какую адаптацию тренируем (1 предложение)",
+    "successSignal": "Сигнал успеха — как понять что тренировка прошла хорошо (1 предложение)"
+  },
   "steps": [
     {
       "stepId": 1,
@@ -196,6 +201,11 @@ const SYSTEM_PROMPT = `Ты — Тренер. Опытный тренер по �
       "description": "Описание",
       "sportType": "running",
       "scheduledDate": "YYYY-MM-DD",
+      "explanation": {
+        "why": "Почему именно такая тренировка",
+        "adaptation": "Какую адаптацию тренируем",
+        "successSignal": "Сигнал успеха"
+      },
       "steps": [...]
     }
   ]
@@ -339,6 +349,10 @@ function extractWorkoutJson(text: string): (Workout & { scheduledDate?: string }
 
   try {
     const parsed = JSON.parse(match[1].trim());
+    const explanation = parsed.explanation && parsed.explanation.why
+      ? { why: parsed.explanation.why, adaptation: parsed.explanation.adaptation || "", successSignal: parsed.explanation.successSignal || "" }
+      : null;
+
     return {
       id: "",
       userId: "",
@@ -346,6 +360,7 @@ function extractWorkoutJson(text: string): (Workout & { scheduledDate?: string }
       description: parsed.description || "",
       sportType: parsed.sportType || "running",
       scheduledDate: parsed.scheduledDate || null,
+      explanation,
       steps: (parsed.steps || []).map((s: any, i: number) => ({
         stepId: s.stepId || i + 1,
         stepOrder: s.stepOrder || i + 1,
@@ -396,6 +411,9 @@ function extractTrainingPlanJson(text: string): { workouts: (Workout & { schedul
       description: w.description || "",
       sportType: w.sportType || "running",
       scheduledDate: w.scheduledDate || null,
+      explanation: w.explanation && w.explanation.why
+        ? { why: w.explanation.why, adaptation: w.explanation.adaptation || "", successSignal: w.explanation.successSignal || "" }
+        : null,
       steps: (w.steps || []).map((s: any, i: number) => ({
         stepId: s.stepId || i + 1,
         stepOrder: s.stepOrder || i + 1,

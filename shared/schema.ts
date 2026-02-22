@@ -52,6 +52,12 @@ export interface WorkoutStep {
   childSteps?: WorkoutStep[];
 }
 
+export interface WorkoutExplanation {
+  why: string;
+  adaptation: string;
+  successSignal: string;
+}
+
 export interface Workout {
   id: string;
   userId: string;
@@ -65,6 +71,7 @@ export interface Workout {
   garminWorkoutId?: number;
   sentToIntervals: boolean;
   intervalsEventId?: string;
+  explanation?: WorkoutExplanation | null;
 }
 
 export interface FavoriteWorkout {

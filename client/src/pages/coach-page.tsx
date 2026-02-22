@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { ChatMessage, Workout, GarminWatchModel, RescheduleData } from "@shared/schema";
+import type { ChatMessage, Workout, GarminWatchModel, RescheduleData, WorkoutExplanation } from "@shared/schema";
 import { sportTypeLabels, garminWatchLabels, swimStructuredWatchModels } from "@shared/schema";
 import {
   Send,
@@ -29,6 +29,7 @@ import {
   HelpCircle,
   CalendarClock,
   Check,
+  Lightbulb,
 } from "lucide-react";
 import { GarminGuideDialog } from "@/components/garmin-guide-dialog";
 import { ReadinessBadge } from "@/components/readiness-card";
@@ -43,6 +44,41 @@ function formatDate(dateStr: string) {
     month: "long",
     weekday: "short",
   });
+}
+
+function WorkoutExplanationBlock({ explanation }: { explanation: WorkoutExplanation }) {
+  const [open, setOpen] = useState(false);
+
+  const lines = [
+    explanation.why ? { label: "Цель", value: explanation.why, testId: "text-explanation-why" } : null,
+    explanation.adaptation ? { label: "Адаптация", value: explanation.adaptation, testId: "text-explanation-adaptation" } : null,
+    explanation.successSignal ? { label: "Успех", value: explanation.successSignal, testId: "text-explanation-success" } : null,
+  ].filter(Boolean) as { label: string; value: string; testId: string }[];
+
+  if (lines.length === 0) return null;
+
+  return (
+    <div className="mb-3" data-testid="card-workout-explanation">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        data-testid="button-toggle-explanation"
+      >
+        <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+        <span>Почему эта тренировка</span>
+        {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+      </button>
+      {open && (
+        <div className="mt-2 p-2.5 rounded-md bg-accent/40 space-y-1">
+          {lines.map((line) => (
+            <p key={line.testId} className="text-xs text-muted-foreground" data-testid={line.testId}>
+              <span className="font-medium text-foreground/80">{line.label}:</span> {line.value}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals, savingFavorite, pushing, pushingIntervals, showGarmin, showIntervals, swimWarning, onShowGuide }: {
@@ -112,6 +148,7 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
             </div>
           ))}
         </div>
+        {workout.explanation && <WorkoutExplanationBlock explanation={workout.explanation} />}
         {swimWarning && workout.sportType === "swimming" && (
           <div className="flex items-start gap-2 mb-3 p-2 rounded-md bg-accent/50 text-xs text-muted-foreground">
             <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
