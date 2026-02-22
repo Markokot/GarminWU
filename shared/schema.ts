@@ -262,6 +262,8 @@ export interface AiRequestLog {
   promptVariantName: string;
   rating?: number;
   notes?: string;
+  isError?: boolean;
+  errorMessage?: string;
 }
 
 export interface RescheduleData {

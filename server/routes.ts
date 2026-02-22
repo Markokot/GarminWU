@@ -612,14 +612,20 @@ export async function registerRoutes(
   });
 
   app.post("/api/chat/send", requireAuth, async (req, res) => {
+    let chatUser: any = null;
+    let chatContent = "";
+    let chatVariantId = "base";
+    let chatVariantName = "Базовый";
     try {
       const { content, timezone } = req.body;
+      chatContent = content || "";
       if (!content || typeof content !== "string") {
         return res.status(400).json({ message: "Сообщение не может быть пустым" });
       }
 
       const user = await storage.getUser(req.session.userId!);
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
+      chatUser = user;
 
       await storage.addMessage({
         userId: user.id,
@@ -697,6 +703,8 @@ export async function registerRoutes(
 
         const variants = await storage.getPromptVariants();
         const selectedVariant = pickPromptVariant(variants);
+        chatVariantId = selectedVariant.id;
+        chatVariantName = selectedVariant.name;
         console.log(`[Chat] prompt variant: ${selectedVariant.name} (id=${selectedVariant.id})`);
 
         const startTime = Date.now();
@@ -734,6 +742,27 @@ export async function registerRoutes(
       }
       res.end();
     } catch (error: any) {
+      if (chatUser) {
+        try {
+          const msg = chatContent.length > 200 ? chatContent.substring(0, 200) + "..." : chatContent;
+          await storage.addAiLog({
+            userId: chatUser.id,
+            username: chatUser.username,
+            timestamp: new Date().toISOString(),
+            userMessage: msg || "(пустое сообщение)",
+            responseLength: 0,
+            hadWorkout: false,
+            hadPlan: false,
+            responseTimeMs: 0,
+            promptVariantId: chatVariantId,
+            promptVariantName: chatVariantName,
+            isError: true,
+            errorMessage: error.message || "Неизвестная ошибка AI",
+          });
+        } catch (logErr: any) {
+          console.error("[Chat] Failed to log AI error:", logErr.message);
+        }
+      }
       if (!res.headersSent) {
         res.status(500).json({ message: error.message || "Ошибка AI" });
       } else {
@@ -875,6 +904,16 @@ export async function registerRoutes(
     const deleted = await storage.deleteBugReport(reportId);
     if (!deleted) return res.status(404).json({ message: "Отчёт не найден" });
     res.json({ success: true });
+  });
+
+  app.get("/api/admin/ai-errors", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    const logs = await storage.getAllAiLogs();
+    const errors = logs.filter((l) => l.isError);
+    res.json(errors);
   });
 
   app.get("/api/admin/ai-logs", requireAuth, async (req, res) => {
