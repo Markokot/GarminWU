@@ -1,0 +1,80 @@
+[root@NL13573 GarminWU]# ./deploy.sh 
+=== Deploy started: Sun Feb 22 10:20:14 PM EET 2026 ===
+→ Stopping old service
+→ Ensuring data directory exists: /home/Garmin/data
+→ Fetching latest code
+Already on 'main'
+Your branch is up to date with 'origin/main'.
+HEAD is now at ed6c5cb Update build and database commands to use npx
+→ Installing dependencies
+
+added 107 packages, and audited 523 packages in 4s
+
+81 packages are looking for funding
+  run `npm fund` for details
+
+6 vulnerabilities (1 low, 1 moderate, 4 high)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+→ Building project
+
+> rest-express@1.0.0 build
+> npx tsx script/build.ts
+
+building client...
+vite v7.3.0 building client environment for production...
+transforming (1) src/main.tsx
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 1874 modules transformed.
+../dist/public/index.html                                                     2.02 kB │ gzip:   0.77 kB
+../dist/public/assets/IMAGE_2026-02-16_23_43_42_1771274623997-B5teF3Mi.jpg   24.12 kB
+../dist/public/assets/IMAGE_2026-02-16_23_43_36_1771274617930-D3PfghQk.jpg   50.31 kB
+../dist/public/assets/IMAGE_2026-02-16_23_43_51_1771274633188-1NAtZy-j.jpg   58.28 kB
+../dist/public/assets/onboarding-step3-chat-DFEXDkv6.png                    375.82 kB
+../dist/public/assets/onboarding-step2-profile-Ckk_kl_s.png                 377.13 kB
+../dist/public/assets/onboarding-step1-connect-CaDIJ4Js.png                 386.39 kB
+../dist/public/assets/onboarding-step4-push-CXU8HgbU.png                    513.63 kB
+../dist/public/assets/onboarding-step5-plan-Btfe2hIp.png                    569.55 kB
+../dist/public/assets/garmin-watch-clean-MEKOO4Ro.png                       660.97 kB
+../dist/public/assets/index-CEf6GG1V.css                                     77.27 kB │ gzip:  12.63 kB
+../dist/public/assets/index-fKZgbFu3.js                                     669.00 kB │ gzip: 190.83 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 7.68s
+building server...
+
+  dist/index.cjs  1.3mb ⚠️
+
+⚡ Done in 415ms
+→ Applying database migrations
+
+> rest-express@1.0.0 db:push
+> npx drizzle-kit push
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/root/GarminWU/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+[⣯] Pulling schema from database...
+[✓] Pulling schema from database...
+[i] No changes detected
+→ DB schema synced
+→ Restarting service
+● GarminCoach.service - GarminCoach AI Training App
+     Loaded: loaded (/etc/systemd/system/GarminCoach.service; enabled; preset: disabled)
+     Active: active (running) since Sun 2026-02-22 22:20:31 EET; 19ms ago
+   Main PID: 3247856 (node)
+      Tasks: 6 (limit: 23044)
+     Memory: 2.6M (peak: 2.6M)
+        CPU: 13ms
+     CGroup: /system.slice/GarminCoach.service
+             └─3247856 /usr/bin/node dist/index.cjs
+
+Feb 22 22:20:31 NL13573 systemd[1]: Started GarminCoach AI Training App.
+=== Deploy finished successfully: Sun Feb 22 10:20:31 PM EET 2026 ===
