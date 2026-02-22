@@ -1046,21 +1046,26 @@ export async function registerRoutes(
   });
 
   app.post("/api/admin/prompt-variants", requireAuth, async (req, res) => {
-    const currentUser = await storage.getUser(req.session.userId!);
-    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
-      return res.status(403).json({ message: "Доступ запрещён" });
+    try {
+      const currentUser = await storage.getUser(req.session.userId!);
+      if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+        return res.status(403).json({ message: "Доступ запрещён" });
+      }
+      const { name, instructions, weight, isActive } = req.body;
+      if (!name || typeof name !== "string") {
+        return res.status(400).json({ message: "Название обязательно" });
+      }
+      const variant = await storage.addPromptVariant({
+        name,
+        instructions: instructions || "",
+        weight: typeof weight === "number" ? weight : 1,
+        isActive: isActive !== false,
+      });
+      res.json(variant);
+    } catch (error: any) {
+      console.error("[Admin] Error creating prompt variant:", error);
+      res.status(500).json({ message: error.message || "Ошибка сервера" });
     }
-    const { name, instructions, weight, isActive } = req.body;
-    if (!name || typeof name !== "string") {
-      return res.status(400).json({ message: "Название обязательно" });
-    }
-    const variant = await storage.addPromptVariant({
-      name,
-      instructions: instructions || "",
-      weight: typeof weight === "number" ? weight : 1,
-      isActive: isActive !== false,
-    });
-    res.json(variant);
   });
 
   app.patch("/api/admin/prompt-variants/:id", requireAuth, async (req, res) => {

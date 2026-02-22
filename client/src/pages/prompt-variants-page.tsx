@@ -84,8 +84,15 @@ export default function PromptVariantsPage() {
       setCreateOpen(false);
       setFormData(emptyForm);
       toast({ title: "Вариант создан" });
-    } catch {
-      toast({ title: "Ошибка при создании", variant: "destructive" });
+    } catch (error: any) {
+      let msg = "Неизвестная ошибка";
+      try {
+        const parsed = JSON.parse(error?.message?.replace(/^\d+:\s*/, "") || "{}");
+        msg = parsed.message || error?.message || msg;
+      } catch {
+        msg = error?.message || msg;
+      }
+      toast({ title: "Ошибка при создании", description: msg, variant: "destructive" });
     }
     setSubmitting(false);
   };
