@@ -810,6 +810,7 @@ export async function registerRoutes(
         : null;
 
       return {
+        id: u.id,
         username: u.username,
         garminConnected: u.garminConnected,
         intervalsConnected: u.intervalsConnected,
@@ -865,6 +866,36 @@ export async function registerRoutes(
       fitnessDistribution,
       recentUsers,
     });
+  });
+
+  app.get("/api/admin/users/:userId/profile", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+
+    const user = await storage.getUser(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: "Пользователь не найден" });
+    }
+
+    const { password, garminPassword, intervalsApiKey, ...safeUser } = user;
+    res.json(safeUser);
+  });
+
+  app.get("/api/admin/users/:userId/messages", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+
+    const user = await storage.getUser(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: "Пользователь не найден" });
+    }
+
+    const messages = await storage.getMessages(req.params.userId);
+    res.json(messages);
   });
 
   app.post("/api/bug-reports", requireAuth, async (req, res) => {

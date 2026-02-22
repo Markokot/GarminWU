@@ -1,6 +1,14 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Users,
   MessageSquare,
@@ -10,11 +18,17 @@ import {
   TrendingUp,
   Clock,
   Star,
+  User,
+  Dumbbell,
+  Target,
+  Calendar,
+  HeartPulse,
 } from "lucide-react";
-import { sportTypeLabels, fitnessLevelLabels } from "@shared/schema";
-import type { SportType, FitnessLevel } from "@shared/schema";
+import { sportTypeLabels, fitnessLevelLabels, garminWatchLabels } from "@shared/schema";
+import type { SportType, FitnessLevel, GarminWatchModel, ChatMessage } from "@shared/schema";
 
 interface UserStat {
+  id: string;
   username: string;
   garminConnected: boolean;
   intervalsConnected: boolean;
@@ -44,24 +58,47 @@ interface AdminStats {
   recentUsers: UserStat[];
 }
 
-function formatDate(dateStr: string | null): string {
+interface UserProfile {
+  id: string;
+  username: string;
+  garminEmail?: string;
+  garminConnected: boolean;
+  intervalsAthleteId?: string;
+  intervalsConnected: boolean;
+  sportTypes: SportType[];
+  goals: string;
+  fitnessLevel?: FitnessLevel;
+  age?: number;
+  weeklyHours?: number;
+  experienceYears?: number;
+  injuries?: string;
+  personalRecords?: string;
+  preferences?: string;
+  garminWatch?: GarminWatchModel;
+  garminPushCount?: number;
+  intervalsPushCount?: number;
+  favoritesCount?: number;
+  lastLogin?: string;
+}
+
+function formatDateShort(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatDateFull(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
   return d.toLocaleDateString("ru-RU", {
     day: "numeric",
     month: "short",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatDateShort(dateStr: string | null): string {
-  if (!dateStr) return "—";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("ru-RU", {
-    day: "numeric",
-    month: "short",
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -82,7 +119,195 @@ function timeAgo(dateStr: string | null): string {
   return "";
 }
 
+function UserDetailDialog({ userId, open, onOpenChange }: { userId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { data: profile, isLoading: profileLoading } = useQuery<UserProfile>({
+    queryKey: ["/api/admin/users", userId, "profile"],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/users/${userId}/profile`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!userId && open,
+  });
+
+  const { data: messages, isLoading: messagesLoading } = useQuery<ChatMessage[]>({
+    queryKey: ["/api/admin/users", userId, "messages"],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/users/${userId}/messages`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!userId && open,
+  });
+
+  const isLoading = profileLoading || messagesLoading;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col" data-testid="dialog-user-detail">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <User className="w-5 h-5" />
+            {profile?.username || "Загрузка..."}
+          </DialogTitle>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+          </div>
+        ) : (
+          <ScrollArea className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: "calc(85vh - 80px)" }}>
+            <div className="space-y-4">
+              {profile && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Dumbbell className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Виды спорта:</span>
+                        <span className="font-medium">
+                          {profile.sportTypes.length > 0
+                            ? profile.sportTypes.map(s => sportTypeLabels[s] || s).join(", ")
+                            : "—"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Target className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Уровень:</span>
+                        <span className="font-medium">
+                          {profile.fitnessLevel ? fitnessLevelLabels[profile.fitnessLevel] || profile.fitnessLevel : "—"}
+                        </span>
+                      </div>
+                      {profile.age && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Calendar className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">Возраст:</span>
+                          <span className="font-medium">{profile.age} лет</span>
+                        </div>
+                      )}
+                      {profile.experienceYears !== undefined && profile.experienceYears !== null && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">Стаж:</span>
+                          <span className="font-medium">{profile.experienceYears} лет</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Watch className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Часы:</span>
+                        <span className="font-medium">
+                          {profile.garminWatch ? garminWatchLabels[profile.garminWatch] || profile.garminWatch : "—"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Watch className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Garmin:</span>
+                        <Badge variant={profile.garminConnected ? "default" : "secondary"} className="text-xs">
+                          {profile.garminConnected ? "Подключён" : "Нет"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <FlaskConical className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Intervals.icu:</span>
+                        <Badge variant={profile.intervalsConnected ? "default" : "secondary"} className="text-xs">
+                          {profile.intervalsConnected ? "Подключён" : "Нет"}
+                        </Badge>
+                      </div>
+                      {profile.weeklyHours !== undefined && profile.weeklyHours !== null && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Clock className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">Часов/нед:</span>
+                          <span className="font-medium">{profile.weeklyHours}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {profile.goals && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Цели: </span>
+                      <span>{profile.goals}</span>
+                    </div>
+                  )}
+                  {profile.injuries && (
+                    <div className="text-sm">
+                      <HeartPulse className="w-4 h-4 text-muted-foreground inline mr-1" />
+                      <span className="text-muted-foreground">Травмы: </span>
+                      <span>{profile.injuries}</span>
+                    </div>
+                  )}
+                  {profile.personalRecords && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Рекорды: </span>
+                      <span>{profile.personalRecords}</span>
+                    </div>
+                  )}
+
+                  <div className="flex gap-4 text-xs text-muted-foreground border-t pt-2">
+                    <span>Garmin: {profile.garminPushCount || 0} отправок</span>
+                    <span>Intervals: {profile.intervalsPushCount || 0} отправок</span>
+                    <span>Избранное: {profile.favoritesCount || 0}</span>
+                    <span>Логин: {formatDateShort(profile.lastLogin)}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="border-t pt-3">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" />
+                  История чата
+                  {messages && <span className="text-muted-foreground font-normal">({messages.length} сообщений)</span>}
+                </h3>
+
+                {messages && messages.length > 0 ? (
+                  <div className="space-y-3">
+                    {messages.filter(m => m.role !== "system").map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`text-sm rounded-lg p-3 ${
+                          msg.role === "user"
+                            ? "bg-primary/10 border border-primary/20 ml-0 mr-8"
+                            : "bg-muted/50 border border-border ml-8 mr-0"
+                        }`}
+                        data-testid={`message-${msg.id}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium">
+                            {msg.role === "user" ? profile?.username || "Пользователь" : "AI Тренер"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{formatDateShort(msg.timestamp)}</span>
+                        </div>
+                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                          {msg.content.length > 2000 ? msg.content.substring(0, 2000) + "..." : msg.content}
+                        </p>
+                        {msg.workoutJson && (
+                          <Badge variant="outline" className="mt-1 text-xs">Тренировка</Badge>
+                        )}
+                        {msg.workoutsJson && msg.workoutsJson.length > 0 && (
+                          <Badge variant="outline" className="mt-1 text-xs">План ({msg.workoutsJson.length} тренировок)</Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">Нет сообщений</p>
+                )}
+              </div>
+            </div>
+          </ScrollArea>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function AdminPage() {
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   const { data: stats, isLoading, error } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
   });
@@ -284,9 +509,17 @@ export default function AdminPage() {
               </thead>
               <tbody>
                 {stats.recentUsers.map((user, idx) => (
-                  <tr key={user.username} className="border-b last:border-0" data-testid={`row-user-${idx}`}>
+                  <tr
+                    key={user.username}
+                    className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
+                    data-testid={`row-user-${idx}`}
+                    onClick={() => {
+                      setSelectedUserId(user.id);
+                      setDialogOpen(true);
+                    }}
+                  >
                     <td className="py-2.5 sticky left-0 bg-card z-10 pr-3">
-                      <span className="font-medium">{user.username}</span>
+                      <span className="font-medium text-primary underline-offset-2 hover:underline">{user.username}</span>
                     </td>
                     <td className="py-2.5 text-center">
                       <div className={`w-2 h-2 rounded-full mx-auto ${user.garminConnected ? "bg-status-online" : "bg-status-offline"}`} />
@@ -319,6 +552,11 @@ export default function AdminPage() {
         </CardContent>
       </Card>
 
+      <UserDetailDialog
+        userId={selectedUserId}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </div>
   );
 }
