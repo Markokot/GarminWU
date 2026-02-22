@@ -22,6 +22,19 @@ The application features a modern web stack with React 18, Vite, shadcn/ui, and 
 - JSON files are never deleted during migration (kept as backup)
 - Base prompt variant (id="base") is auto-created in both modes
 
+### Dashboard — Upcoming Workouts
+- Endpoint `/api/upcoming-workouts` fetches planned workouts from Garmin calendar and/or Intervals.icu events for the next 14 days
+- Returns `{ workouts: UpcomingWorkout[], sources: { garmin: boolean, intervals: boolean } }`
+- `UpcomingWorkout` interface defined in shared/schema.ts (id, source, date, name, sportType, isToday)
+- Dashboard shows section with upcoming workouts between ReadinessCard and recent activities
+- Both sources fetched in parallel; errors from one source don't block the other
+
+### VPS Deployment
+- deploy.sh located on VPS at /root/GarminWU/deploy.sh (not in git repo)
+- Includes `npm install --include=dev` for build tools
+- Automatically runs `npm run db:push` to sync DB schema when STORAGE_MODE=pg
+- Loads env vars from /home/Garmin/.env before build/migration steps
+
 ## External Dependencies
 - **AI Service**: DeepSeek API (model "deepseek-chat")
 - **Garmin Integration**: `@gooin/garmin-connect` npm package
