@@ -10,7 +10,17 @@ GarminCoach AI is an AI-powered web application designed to act as a personal tr
 - The user deploys to external VPS via deploy.sh, NOT via Replit deployment
 
 ## System Architecture
-The application features a modern web stack with React 18, Vite, shadcn/ui, and TanStack Query v5 for the frontend, and an Express.js v5 backend. UI styling is managed with Tailwind CSS v4, supporting both dark and light themes. All UI text is localized in Russian. AI capabilities are powered by DeepSeek API, generating structured workouts for running, cycling, and swimming, and multi-week training plans. Garmin Connect integration uses the `@gooin/garmin-connect` npm package, while Intervals.icu integration is achieved via its REST API. User and workout data are persisted using file-based JSON storage, with sensitive information like Garmin passwords and Intervals.icu API keys encrypted using AES-256-GCM. The AI coach persona is an "experienced triathlon coach" that analyzes user activity data, profile information, and weather forecasts to provide personalized and safe recommendations, adhering to principles like the 80/20 rule and disagreeing with unsafe requests. AI responses are streamed via SSE for a smoother user experience, and a robust parsing system extracts structured workout data from natural language outputs. Garmin watch compatibility is dynamically handled, adapting workout recommendations based on the user's specific watch model.
+The application features a modern web stack with React 18, Vite, shadcn/ui, and TanStack Query v5 for the frontend, and an Express.js v5 backend. UI styling is managed with Tailwind CSS v4, supporting both dark and light themes. All UI text is localized in Russian. AI capabilities are powered by DeepSeek API, generating structured workouts for running, cycling, and swimming, and multi-week training plans. Garmin Connect integration uses the `@gooin/garmin-connect` npm package, while Intervals.icu integration is achieved via its REST API. Sensitive information like Garmin passwords and Intervals.icu API keys are encrypted using AES-256-GCM. The AI coach persona is an "experienced triathlon coach" that analyzes user activity data, profile information, and weather forecasts to provide personalized and safe recommendations, adhering to principles like the 80/20 rule and disagreeing with unsafe requests. AI responses are streamed via SSE for a smoother user experience, and a robust parsing system extracts structured workout data from natural language outputs. Garmin watch compatibility is dynamically handled, adapting workout recommendations based on the user's specific watch model.
+
+### Storage
+- **Switchable storage**: controlled by `STORAGE_MODE` env var (`json` or `pg`, default: `json`)
+- **JSON mode**: FileStorage class in server/storage.ts — uses .data/*.json files (original approach)
+- **PostgreSQL mode**: PostgresStorage class in server/pg-storage.ts — uses Drizzle ORM with pg driver
+- Both implement the same `IStorage` interface — no changes needed in routes or other code
+- Drizzle table definitions are in shared/schema.ts alongside existing TypeScript interfaces
+- Migration script: `npx tsx scripts/migrate-json-to-pg.ts` — reads JSON files, writes to PG, uses onConflictDoNothing (safe to re-run)
+- JSON files are never deleted during migration (kept as backup)
+- Base prompt variant (id="base") is auto-created in both modes
 
 ## External Dependencies
 - **AI Service**: DeepSeek API (model "deepseek-chat")
