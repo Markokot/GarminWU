@@ -504,20 +504,6 @@ export async function registerRoutes(
       const sources = { garmin: false, intervals: false };
 
       let todayActivityNames: string[] = [];
-      try {
-        if (user.garminConnected) {
-          const acts = await getGarminActivities(req.session.userId!, 10).catch(() => []);
-          todayActivityNames = acts
-            .filter((a: any) => a.startTimeLocal && a.startTimeLocal.startsWith(todayStr))
-            .map((a: any) => (a.activityName || "").toLowerCase());
-        } else if (user.intervalsConnected && user.intervalsAthleteId && user.intervalsApiKey) {
-          const apiKey = decrypt(user.intervalsApiKey);
-          const acts = await getIntervalsActivities(user.intervalsAthleteId, apiKey, 10).catch(() => []);
-          todayActivityNames = acts
-            .filter((a: any) => a.startTimeLocal && a.startTimeLocal.startsWith(todayStr))
-            .map((a: any) => (a.activityName || "").toLowerCase());
-        }
-      } catch {}
 
       if (user.garminConnected) {
         try {
@@ -526,10 +512,17 @@ export async function registerRoutes(
           const year = now.getFullYear();
           const month = now.getMonth();
 
-          const calendars = await Promise.all([
+          const [cal1, cal2, acts] = await Promise.all([
             getGarminCalendar(req.session.userId!, year, month).catch(() => null),
             getGarminCalendar(req.session.userId!, month === 11 ? year + 1 : year, month === 11 ? 0 : month + 1).catch(() => null),
+            getGarminActivities(req.session.userId!, 10).catch(() => []),
           ]);
+
+          todayActivityNames = acts
+            .filter((a: any) => a.startTimeLocal && a.startTimeLocal.startsWith(todayStr))
+            .map((a: any) => (a.activityName || "").toLowerCase());
+
+          const calendars = [cal1, cal2];
 
           const seenGarmin = new Set<string>();
           for (const cal of calendars) {
@@ -559,6 +552,14 @@ export async function registerRoutes(
       if (user.intervalsConnected && user.intervalsAthleteId && user.intervalsApiKey) {
         try {
           const apiKey = decrypt(user.intervalsApiKey);
+
+          if (todayActivityNames.length === 0) {
+            const acts = await getIntervalsActivities(user.intervalsAthleteId, apiKey, 10).catch(() => []);
+            todayActivityNames = acts
+              .filter((a: any) => a.startTimeLocal && a.startTimeLocal.startsWith(todayStr))
+              .map((a: any) => (a.activityName || "").toLowerCase());
+          }
+
           const events = await getIntervalsCalendarEvents(user.intervalsAthleteId, apiKey);
 
           const intervalsTypeMap: Record<string, string> = { Run: "running", Ride: "cycling", Swim: "swimming", Walk: "walking", VirtualRide: "cycling", VirtualRun: "running" };
