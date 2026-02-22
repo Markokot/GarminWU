@@ -830,11 +830,16 @@ export default function CoachPage() {
         </div>
       </div>
 
+      {(user?.garminConnected || user?.intervalsConnected) && (
+        <div className="border-b px-4 py-2">
+          <div className="max-w-3xl mx-auto">
+            <ReadinessCard />
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto overflow-x-hidden" ref={scrollRef}>
         <div className="p-4 space-y-4 max-w-3xl mx-auto">
-          {(user?.garminConnected || user?.intervalsConnected) && messages.length === 0 && !isLoading && (
-            <ReadinessCard />
-          )}
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
