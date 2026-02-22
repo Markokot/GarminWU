@@ -62,6 +62,29 @@ const levelColors: Record<string, { bg: string; text: string; ring: string; dot:
   },
 };
 
+export function ReadinessBadge() {
+  const { data: readiness, isLoading, error } = useQuery<ReadinessResult>({
+    queryKey: ["/api/readiness"],
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  if (isLoading || error || !readiness) return null;
+
+  const colors = levelColors[readiness.level];
+
+  return (
+    <div
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-default ${colors.bg} ring-1 ${colors.ring}`}
+      title={`${readiness.label}: ${readiness.summary}`}
+      data-testid="badge-readiness"
+    >
+      <div className={`w-2 h-2 rounded-full ${colors.dot}`} />
+      <span className={colors.text}>{readiness.score}</span>
+    </div>
+  );
+}
+
 export function ReadinessCard() {
   const [expanded, setExpanded] = useState(false);
 

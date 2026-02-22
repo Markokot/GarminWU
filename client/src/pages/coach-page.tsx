@@ -31,7 +31,7 @@ import {
   Check,
 } from "lucide-react";
 import { GarminGuideDialog } from "@/components/garmin-guide-dialog";
-import { ReadinessCard } from "@/components/readiness-card";
+import { ReadinessBadge } from "@/components/readiness-card";
 
 function formatTime(ts: string) {
   return new Date(ts).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
@@ -805,7 +805,10 @@ export default function CoachPage() {
               <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-semibold" data-testid="text-coach-title">AI Тренер</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-semibold" data-testid="text-coach-title">AI Тренер</h1>
+                {(user?.garminConnected || user?.intervalsConnected) && <ReadinessBadge />}
+              </div>
               <p className="text-xs text-muted-foreground">
                 Опишите тренировку или попросите план на период — AI создаст и загрузит на часы
               </p>
@@ -829,14 +832,6 @@ export default function CoachPage() {
           )}
         </div>
       </div>
-
-      {(user?.garminConnected || user?.intervalsConnected) && (
-        <div className="border-b px-4 py-2">
-          <div className="max-w-3xl mx-auto">
-            <ReadinessCard />
-          </div>
-        </div>
-      )}
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden" ref={scrollRef}>
         <div className="p-4 space-y-4 max-w-3xl mx-auto">
