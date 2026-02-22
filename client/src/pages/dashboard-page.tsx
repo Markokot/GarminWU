@@ -16,8 +16,9 @@ import {
   ArrowRight,
   Star,
   MapPin,
+  CalendarDays,
 } from "lucide-react";
-import type { GarminActivity, FavoriteWorkout } from "@shared/schema";
+import type { GarminActivity, FavoriteWorkout, UpcomingWorkout } from "@shared/schema";
 import { sportTypeLabels } from "@shared/schema";
 import { OnboardingDialog } from "@/components/onboarding-dialog";
 import { ReadinessCard } from "@/components/readiness-card";
@@ -61,6 +62,11 @@ export default function DashboardPage() {
   const activities = activitiesData?.activities;
   const activitiesSource = activitiesData?.source;
 
+  const { data: upcomingData, isLoading: upcomingLoading } = useQuery<{ workouts: UpcomingWorkout[]; sources: { garmin: boolean; intervals: boolean } }>({
+    queryKey: ["/api/upcoming-workouts"],
+    enabled: hasAnyConnection,
+  });
+
   const { data: favorites, isLoading: favoritesLoading } = useQuery<FavoriteWorkout[]>({
     queryKey: ["/api/favorites"],
   });
@@ -87,6 +93,75 @@ export default function DashboardPage() {
       </div>
 
       {hasAnyConnection && <ReadinessCard />}
+
+      {hasAnyConnection && (
+        <div>
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2" data-testid="text-upcoming-header">
+              <CalendarDays className="w-5 h-5" />
+              Предстоящие тренировки
+            </h2>
+            {upcomingData?.sources && (
+              <div className="flex gap-1">
+                {upcomingData.sources.garmin && (
+                  <Badge variant="secondary" className="text-xs" data-testid="badge-source-garmin">Garmin</Badge>
+                )}
+                {upcomingData.sources.intervals && (
+                  <Badge variant="secondary" className="text-xs" data-testid="badge-source-intervals">Intervals.icu</Badge>
+                )}
+              </div>
+            )}
+          </div>
+          {upcomingLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i}>
+                  <CardContent className="p-4 space-y-3">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : upcomingData?.workouts && upcomingData.workouts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {upcomingData.workouts.map((w) => (
+                <Card key={w.id} className={w.isToday ? "border-primary" : ""} data-testid={`card-upcoming-${w.id}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h3 className="font-medium text-sm truncate">{w.name}</h3>
+                      {w.isToday && (
+                        <Badge className="text-xs flex-shrink-0" data-testid="badge-today">Сегодня</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(w.date + "T12:00:00").toLocaleDateString("ru-RU", {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {w.sportType === "running" ? "Бег" : w.sportType === "cycling" ? "Велосипед" : w.sportType === "swimming" ? "Плавание" : w.sportType}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {w.source === "garmin" ? "Garmin" : "Intervals"}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground text-sm" data-testid="text-no-upcoming">
+                Нет запланированных тренировок на ближайшие 14 дней
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {!hasAnyConnection && (
         <Card>

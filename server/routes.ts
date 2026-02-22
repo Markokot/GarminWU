@@ -6,7 +6,7 @@ import { storage } from "./storage";
 import { loginSchema, registerSchema, garminConnectSchema, intervalsConnectSchema, createWorkoutSchema, workoutStepSchema, swimStructuredWatchModels, type GarminWatchModel } from "@shared/schema";
 import { z } from "zod";
 import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected, getGarminCalendar, rescheduleGarminWorkout, deleteGarminWorkout } from "./garmin";
-import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities, rescheduleIntervalsWorkout } from "./intervals";
+import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities, rescheduleIntervalsWorkout, getIntervalsCalendarEvents } from "./intervals";
 import { chat, chatStream, parseAiResponse, pickPromptVariant } from "./ai";
 import { runAllTests } from "./tests";
 import { encrypt, decrypt } from "./crypto";
@@ -486,6 +486,86 @@ export async function registerRoutes(
       res.json(calendar);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/upcoming-workouts", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(401).json({ message: "Не авторизован" });
+
+      const today = new Date();
+      const todayStr = today.toISOString().split("T")[0];
+      const maxDate = new Date(today);
+      maxDate.setDate(maxDate.getDate() + 14);
+      const maxDateStr = maxDate.toISOString().split("T")[0];
+
+      const workouts: import("@shared/schema").UpcomingWorkout[] = [];
+      const sources = { garmin: false, intervals: false };
+
+      if (user.garminConnected) {
+        try {
+          await ensureGarminSessionWithDecrypt(req.session.userId!, user);
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = now.getMonth();
+
+          const calendars = await Promise.all([
+            getGarminCalendar(req.session.userId!, year, month).catch(() => null),
+            getGarminCalendar(req.session.userId!, month === 11 ? year + 1 : year, month === 11 ? 0 : month + 1).catch(() => null),
+          ]);
+
+          for (const cal of calendars) {
+            if (!cal?.calendarItems) continue;
+            for (const item of cal.calendarItems) {
+              if (item.itemType === "workout" && item.date >= todayStr && item.date <= maxDateStr) {
+                workouts.push({
+                  id: `garmin-${item.workoutId || item.id}`,
+                  source: "garmin",
+                  date: item.date,
+                  name: item.title || item.workoutName || "Тренировка",
+                  sportType: item.sportTypeKey || "other",
+                  isToday: item.date === todayStr,
+                });
+              }
+            }
+          }
+          sources.garmin = true;
+        } catch (err: any) {
+          console.log(`[UpcomingWorkouts] Garmin fetch error: ${err.message}`);
+        }
+      }
+
+      if (user.intervalsConnected && user.intervalsAthleteId && user.intervalsApiKey) {
+        try {
+          const apiKey = decrypt(user.intervalsApiKey);
+          const events = await getIntervalsCalendarEvents(user.intervalsAthleteId, apiKey);
+
+          const intervalsTypeMap: Record<string, string> = { Run: "running", Ride: "cycling", Swim: "swimming", Walk: "walking", VirtualRide: "cycling", VirtualRun: "running" };
+          for (const ev of events) {
+            const eventDate = (ev.start_date_local || ev.start_date || "").split("T")[0];
+            if (eventDate >= todayStr && eventDate <= maxDateStr && ev.category === "WORKOUT") {
+              workouts.push({
+                id: `intervals-${ev.id}`,
+                source: "intervals",
+                date: eventDate,
+                name: ev.name || ev.description || "Тренировка",
+                sportType: ev.type ? (intervalsTypeMap[ev.type] || ev.type.toLowerCase()) : "other",
+                isToday: eventDate === todayStr,
+              });
+            }
+          }
+          sources.intervals = true;
+        } catch (err: any) {
+          console.log(`[UpcomingWorkouts] Intervals fetch error: ${err.message}`);
+        }
+      }
+
+      workouts.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+
+      res.json({ workouts, sources });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 

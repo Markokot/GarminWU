@@ -488,6 +488,15 @@ export const promptVariantsTable = pgTable("prompt_variants", {
   createdAt: text("created_at").notNull(),
 });
 
+export interface UpcomingWorkout {
+  id: string;
+  source: "garmin" | "intervals";
+  date: string;
+  name: string;
+  sportType: string;
+  isToday: boolean;
+}
+
 export const errorLogsTable = pgTable("error_logs", {
   id: varchar("id").primaryKey(),
   source: varchar("source").notNull(),
