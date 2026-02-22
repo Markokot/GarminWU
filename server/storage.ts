@@ -410,4 +410,21 @@ export class FileStorage implements IStorage {
   }
 }
 
-export const storage = new FileStorage();
+import { PostgresStorage, initPgPool } from "./pg-storage";
+
+function createStorage(): IStorage {
+  const mode = (process.env.STORAGE_MODE || "json").toLowerCase();
+  if (mode === "pg") {
+    console.log("[storage] Using PostgreSQL storage mode");
+    initPgPool();
+    const pgStorage = new PostgresStorage();
+    pgStorage.ensureBasePromptVariant().catch((err) =>
+      console.error("[storage] Failed to ensure base prompt variant:", err)
+    );
+    return pgStorage;
+  }
+  console.log("[storage] Using JSON file storage mode");
+  return new FileStorage();
+}
+
+export const storage = createStorage();

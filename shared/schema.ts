@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pgTable, text, varchar, boolean, integer, real, jsonb, timestamp } from "drizzle-orm/pg-core";
 
 export const sportTypes = ["running", "cycling", "swimming"] as const;
 export type SportType = (typeof sportTypes)[number];
@@ -384,3 +385,116 @@ export type GarminConnectInput = z.infer<typeof garminConnectSchema>;
 export type IntervalsConnectInput = z.infer<typeof intervalsConnectSchema>;
 export type CreateWorkoutInput = z.infer<typeof createWorkoutSchema>;
 export type InsertUser = Omit<User, "id" | "garminConnected" | "intervalsConnected">;
+
+export const usersTable = pgTable("users", {
+  id: varchar("id").primaryKey(),
+  username: varchar("username").notNull().unique(),
+  password: text("password").notNull(),
+  garminEmail: text("garmin_email"),
+  garminPassword: text("garmin_password"),
+  garminConnected: boolean("garmin_connected").notNull().default(false),
+  intervalsAthleteId: text("intervals_athlete_id"),
+  intervalsApiKey: text("intervals_api_key"),
+  intervalsConnected: boolean("intervals_connected").notNull().default(false),
+  sportTypes: jsonb("sport_types").notNull().default([]),
+  goals: text("goals").notNull().default(""),
+  fitnessLevel: varchar("fitness_level"),
+  age: integer("age"),
+  weeklyHours: real("weekly_hours"),
+  experienceYears: real("experience_years"),
+  injuries: text("injuries"),
+  personalRecords: text("personal_records"),
+  preferences: text("preferences"),
+  garminWatch: varchar("garmin_watch"),
+  garminPushCount: integer("garmin_push_count"),
+  intervalsPushCount: integer("intervals_push_count"),
+  favoritesCount: integer("favorites_count"),
+  onboardingShown: boolean("onboarding_shown"),
+  lastLogin: text("last_login"),
+});
+
+export const workoutsTable = pgTable("workouts", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  sportType: varchar("sport_type").notNull(),
+  steps: jsonb("steps").notNull().default([]),
+  scheduledDate: text("scheduled_date"),
+  createdAt: text("created_at").notNull(),
+  sentToGarmin: boolean("sent_to_garmin").notNull().default(false),
+  garminWorkoutId: integer("garmin_workout_id"),
+  sentToIntervals: boolean("sent_to_intervals").notNull().default(false),
+  intervalsEventId: text("intervals_event_id"),
+  explanation: jsonb("explanation"),
+});
+
+export const favoritesTable = pgTable("favorites", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  sportType: varchar("sport_type").notNull(),
+  steps: jsonb("steps").notNull().default([]),
+  savedAt: text("saved_at").notNull(),
+});
+
+export const messagesTable = pgTable("messages", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  role: varchar("role").notNull(),
+  content: text("content").notNull(),
+  timestamp: text("timestamp").notNull(),
+  workoutJson: jsonb("workout_json"),
+  workoutsJson: jsonb("workouts_json"),
+  rescheduleData: jsonb("reschedule_data"),
+});
+
+export const bugReportsTable = pgTable("bug_reports", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  username: varchar("username").notNull(),
+  message: text("message").notNull(),
+  page: text("page").notNull(),
+  timestamp: text("timestamp").notNull(),
+  status: varchar("status").notNull().default("new"),
+});
+
+export const aiLogsTable = pgTable("ai_logs", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  username: varchar("username").notNull(),
+  timestamp: text("timestamp").notNull(),
+  userMessage: text("user_message").notNull(),
+  aiResponse: text("ai_response"),
+  responseLength: integer("response_length").notNull(),
+  hadWorkout: boolean("had_workout").notNull().default(false),
+  hadPlan: boolean("had_plan").notNull().default(false),
+  responseTimeMs: integer("response_time_ms").notNull(),
+  promptVariantId: varchar("prompt_variant_id").notNull(),
+  promptVariantName: varchar("prompt_variant_name").notNull(),
+  rating: integer("rating"),
+  notes: text("notes"),
+  isError: boolean("is_error"),
+  errorMessage: text("error_message"),
+});
+
+export const promptVariantsTable = pgTable("prompt_variants", {
+  id: varchar("id").primaryKey(),
+  name: varchar("name").notNull(),
+  instructions: text("instructions").notNull().default(""),
+  weight: integer("weight").notNull().default(1),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: text("created_at").notNull(),
+});
+
+export const errorLogsTable = pgTable("error_logs", {
+  id: varchar("id").primaryKey(),
+  source: varchar("source").notNull(),
+  userId: varchar("user_id").notNull(),
+  username: varchar("username").notNull(),
+  timestamp: text("timestamp").notNull(),
+  errorMessage: text("error_message").notNull(),
+  context: text("context"),
+  status: varchar("status").notNull().default("new"),
+});
