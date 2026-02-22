@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +64,9 @@ const levelColors: Record<string, { bg: string; text: string; ring: string; dot:
 
 export function ReadinessBadge() {
   const [expanded, setExpanded] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
 
   const { data: readiness, isLoading, error } = useQuery<ReadinessResult>({
     queryKey: ["/api/readiness"],
@@ -71,15 +74,53 @@ export function ReadinessBadge() {
     retry: false,
   });
 
+  const updatePosition = useCallback(() => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const popupW = 288;
+    let left = rect.left;
+    if (left + popupW > window.innerWidth - 8) {
+      left = window.innerWidth - popupW - 8;
+    }
+    if (left < 8) left = 8;
+    setPopupStyle({
+      position: "fixed" as const,
+      top: rect.bottom + 8,
+      left,
+      width: Math.min(popupW, window.innerWidth - 16),
+      zIndex: 9999,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!expanded) return;
+    updatePosition();
+    const onClickOutside = (e: MouseEvent) => {
+      if (
+        btnRef.current?.contains(e.target as Node) ||
+        popupRef.current?.contains(e.target as Node)
+      ) return;
+      setExpanded(false);
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      document.removeEventListener("mousedown", onClickOutside);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [expanded, updatePosition]);
+
   if (isLoading || error || !readiness) return null;
 
   const colors = levelColors[readiness.level];
 
   return (
-    <div className="relative" data-testid="badge-readiness">
+    <>
       <button
+        ref={btnRef}
         onClick={() => setExpanded(!expanded)}
         className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${colors.bg} ring-1 ${colors.ring} hover:ring-2`}
+        data-testid="badge-readiness"
       >
         <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} />
         <span className={colors.text}>Готовность {readiness.score}</span>
@@ -91,7 +132,7 @@ export function ReadinessBadge() {
       </button>
 
       {expanded && (
-        <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 z-50 w-[min(18rem,calc(100vw-2rem))] rounded-lg border bg-popover p-3 shadow-lg" data-testid="readiness-popup">
+        <div ref={popupRef} style={popupStyle} className="rounded-lg border bg-popover p-3 shadow-lg" data-testid="readiness-popup">
           <div className="flex items-center gap-2 mb-2">
             <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} />
             <span className={`text-sm font-semibold ${colors.text}`}>{readiness.label}</span>
@@ -129,7 +170,7 @@ export function ReadinessBadge() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
