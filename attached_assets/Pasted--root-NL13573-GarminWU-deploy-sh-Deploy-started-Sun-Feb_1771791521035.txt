@@ -1,0 +1,57 @@
+[root@NL13573 GarminWU]# ./deploy.sh 
+=== Deploy started: Sun Feb 22 10:18:08 PM EET 2026 ===
+→ Stopping old service
+→ Ensuring data directory exists: /home/Garmin/data
+→ Fetching latest code
+remote: Enumerating objects: 41, done.
+remote: Counting objects: 100% (41/41), done.
+remote: Compressing objects: 100% (13/13), done.
+remote: Total 33 (delta 12), reused 33 (delta 12), pack-reused 0 (from 0)
+Unpacking objects: 100% (33/33), 318.65 KiB | 6.50 MiB/s, done.
+From https://github.com/Markokot/GarminWU
+   7dd1a89..ed6c5cb  main       -> origin/main
+Already on 'main'
+Your branch is behind 'origin/main' by 4 commits, and can be fast-forwarded.
+  (use "git pull" to update your local branch)
+HEAD is now at ed6c5cb Update build and database commands to use npx
+→ Installing dependencies
+
+up to date, audited 416 packages in 2s
+
+66 packages are looking for funding
+  run `npm fund` for details
+
+6 vulnerabilities (1 low, 1 moderate, 4 high)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+→ Building project
+
+> rest-express@1.0.0 build
+> npx tsx script/build.ts
+
+Need to install the following packages:
+tsx@4.21.0
+Ok to proceed? (y) y
+
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'esbuild' imported from /root/GarminWU/script/build.ts
+    at packageResolve (node:internal/modules/esm/resolve:873:9)
+    at moduleResolve (node:internal/modules/esm/resolve:946:18)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at nextResolve (node:internal/modules/esm/hooks:864:28)
+    at resolveBase (file:///root/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1771791504939:2:3744)
+    at resolveDirectory (file:///root/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1771791504939:2:4243)
+    at resolveTsPaths (file:///root/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1771791504939:2:4984)
+    at async resolve (file:///root/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1771791504939:2:5355)
+    at async nextResolve (node:internal/modules/esm/hooks:864:22)
+    at async Hooks.resolve (node:internal/modules/esm/hooks:306:24) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v20.20.0
