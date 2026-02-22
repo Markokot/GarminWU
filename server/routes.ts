@@ -515,10 +515,14 @@ export async function registerRoutes(
             getGarminCalendar(req.session.userId!, month === 11 ? year + 1 : year, month === 11 ? 0 : month + 1).catch(() => null),
           ]);
 
+          const seenGarmin = new Set<string>();
           for (const cal of calendars) {
             if (!cal?.calendarItems) continue;
             for (const item of cal.calendarItems) {
               if (item.itemType === "workout" && item.date >= todayStr && item.date <= maxDateStr) {
+                const dedupKey = `${item.workoutId || item.id}-${item.date}`;
+                if (seenGarmin.has(dedupKey)) continue;
+                seenGarmin.add(dedupKey);
                 workouts.push({
                   id: `garmin-${item.workoutId || item.id}`,
                   source: "garmin",
