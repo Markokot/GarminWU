@@ -11,9 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import type { AiRequestLog } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Brain, Clock, Star, Dumbbell, Filter, Loader2 } from "lucide-react";
+import { Brain, Clock, Star, Dumbbell, Filter, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function formatDateShort(dateStr: string | null): string {
@@ -284,55 +289,84 @@ export default function AiLogsPage() {
           {filteredLogs.map((log) => (
             <Card key={log.id} data-testid={`card-ai-log-${log.id}`}>
               <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm" data-testid={`text-username-${log.id}`}>
-                        {log.username}
-                      </span>
-                      <span className="text-xs text-muted-foreground" data-testid={`text-timestamp-${log.id}`}>
-                        {formatDateShort(log.timestamp)}
-                      </span>
-                      <Badge variant="secondary" className="text-xs">
-                        {log.promptVariantName}
-                      </Badge>
-                      {log.hadWorkout && (
-                        <Badge variant="default" className="text-xs" data-testid={`badge-workout-${log.id}`}>
-                          <Dumbbell className="w-3 h-3 mr-1" />
-                          Тренировка
+                <Collapsible>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm" data-testid={`text-username-${log.id}`}>
+                          {log.username}
+                        </span>
+                        <span className="text-xs text-muted-foreground" data-testid={`text-timestamp-${log.id}`}>
+                          {formatDateShort(log.timestamp)}
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          {log.promptVariantName}
                         </Badge>
-                      )}
-                      {log.hadPlan && (
-                        <Badge variant="default" className="text-xs" data-testid={`badge-plan-${log.id}`}>
-                          План
-                        </Badge>
-                      )}
+                        {log.hadWorkout && (
+                          <Badge variant="default" className="text-xs" data-testid={`badge-workout-${log.id}`}>
+                            <Dumbbell className="w-3 h-3 mr-1" />
+                            Тренировка
+                          </Badge>
+                        )}
+                        {log.hadPlan && (
+                          <Badge variant="default" className="text-xs" data-testid={`badge-plan-${log.id}`}>
+                            План
+                          </Badge>
+                        )}
+                      </div>
+
+                      <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-message-${log.id}`}>
+                        {log.userMessage}
+                      </p>
+
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                        <span data-testid={`text-response-length-${log.id}`}>
+                          Ответ: {log.responseLength} симв.
+                        </span>
+                        <span data-testid={`text-response-time-${log.id}`}>
+                          <Clock className="w-3 h-3 inline mr-1" />
+                          {(log.responseTimeMs / 1000).toFixed(1)}с
+                        </span>
+                        {log.aiResponse && (
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto p-0 text-xs text-primary hover:text-primary/80"
+                              data-testid={`button-toggle-response-${log.id}`}
+                            >
+                              Показать ответ
+                              <ChevronDown className="w-3 h-3 ml-1" />
+                            </Button>
+                          </CollapsibleTrigger>
+                        )}
+                      </div>
                     </div>
 
-                    <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-message-${log.id}`}>
-                      {log.userMessage}
-                    </p>
-
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                      <span data-testid={`text-response-length-${log.id}`}>
-                        Ответ: {log.responseLength} симв.
-                      </span>
-                      <span data-testid={`text-response-time-${log.id}`}>
-                        <Clock className="w-3 h-3 inline mr-1" />
-                        {(log.responseTimeMs / 1000).toFixed(1)}с
-                      </span>
+                    <div className="flex-shrink-0">
+                      <RatingStars
+                        logId={log.id}
+                        rating={log.rating}
+                        onRate={handleRate}
+                        disabled={ratingId === log.id}
+                      />
                     </div>
                   </div>
 
-                  <div className="flex-shrink-0">
-                    <RatingStars
-                      logId={log.id}
-                      rating={log.rating}
-                      onRate={handleRate}
-                      disabled={ratingId === log.id}
-                    />
-                  </div>
-                </div>
+                  {log.aiResponse && (
+                    <CollapsibleContent>
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Ответ AI:</p>
+                        <div
+                          className="text-sm whitespace-pre-wrap bg-muted/50 rounded-md p-3 max-h-80 overflow-y-auto"
+                          data-testid={`text-ai-response-${log.id}`}
+                        >
+                          {log.aiResponse}
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  )}
+                </Collapsible>
               </CardContent>
             </Card>
           ))}

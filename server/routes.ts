@@ -778,6 +778,7 @@ export async function registerRoutes(
           username: user.username,
           timestamp: new Date().toISOString(),
           userMessage: content.length > 200 ? content.substring(0, 200) + "..." : content,
+          aiResponse: aiResponse.text,
           responseLength: aiResponse.text.length,
           hadWorkout: !!aiResponse.workout,
           hadPlan: !!(aiResponse.workouts && aiResponse.workouts.length > 0),

@@ -261,6 +261,7 @@ export interface AiRequestLog {
   username: string;
   timestamp: string;
   userMessage: string;
+  aiResponse?: string;
   responseLength: number;
   hadWorkout: boolean;
   hadPlan: boolean;
