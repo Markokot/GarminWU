@@ -410,10 +410,10 @@ export default function PromptVariantsPage() {
                           )}
                         </td>
                         <td className="p-3 text-right tabular-nums" data-testid={`text-metric-workout-rate-${m.variantId}`}>
-                          {(m.workoutRate * 100).toFixed(0)}%
+                          {m.workoutRate}%
                         </td>
                         <td className="p-3 text-right tabular-nums" data-testid={`text-metric-plan-rate-${m.variantId}`}>
-                          {(m.planRate * 100).toFixed(0)}%
+                          {m.planRate}%
                         </td>
                         <td className="p-3 text-right tabular-nums" data-testid={`text-metric-response-time-${m.variantId}`}>
                           {Math.round(m.avgResponseTime)}
