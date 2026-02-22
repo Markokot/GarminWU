@@ -1,0 +1,36 @@
+Feb 22 19:51:26 NL13573 node[3208631]: 7:51:26 PM [express] GET /api/admin/error-logs 304 in 2ms :: []
+Feb 22 19:51:56 NL13573 node[3208631]: 7:51:56 PM [express] GET /api/admin/error-logs 304 in 3ms :: []
+Feb 22 19:51:56 NL13573 node[3208631]: 7:51:56 PM [express] GET /api/admin/bug-reports 304 in 3ms :: []
+Feb 22 19:52:26 NL13573 node[3208631]: 7:52:26 PM [express] GET /api/admin/error-logs 304 in 3ms :: []
+Feb 22 19:52:26 NL13573 node[3208631]: 7:52:26 PM [express] GET /api/admin/bug-reports 304 in 3ms :: []
+Feb 22 19:52:56 NL13573 node[3208631]: 7:52:56 PM [express] GET /api/admin/bug-reports 304 in 2ms :: []
+Feb 22 19:52:56 NL13573 node[3208631]: 7:52:56 PM [express] GET /api/admin/error-logs 304 in 2ms :: []
+Feb 22 19:53:26 NL13573 node[3208631]: 7:53:26 PM [express] GET /api/admin/bug-reports 304 in 4ms :: []
+Feb 22 19:53:26 NL13573 node[3208631]: 7:53:26 PM [express] GET /api/admin/error-logs 304 in 3ms :: []
+Feb 22 19:53:56 NL13573 node[3208631]: 7:53:56 PM [express] GET /api/admin/error-logs 304 in 2ms :: []
+Feb 22 19:53:56 NL13573 node[3208631]: 7:53:56 PM [express] GET /api/admin/bug-reports 304 in 1ms :: []
+Feb 22 19:54:26 NL13573 node[3208631]: 7:54:26 PM [express] GET /api/admin/error-logs 304 in 2ms :: []
+Feb 22 19:54:26 NL13573 node[3208631]: 7:54:26 PM [express] GET /api/admin/bug-reports 304 in 1ms :: []
+Feb 22 19:54:57 NL13573 node[3208631]: 7:54:57 PM [express] GET /api/admin/error-logs 304 in 5ms :: []
+Feb 22 19:54:57 NL13573 node[3208631]: 7:54:57 PM [express] GET /api/admin/bug-reports 304 in 5ms :: []
+Feb 22 19:55:27 NL13573 node[3208631]: 7:55:27 PM [express] GET /api/admin/error-logs 304 in 1ms :: []
+Feb 22 19:55:27 NL13573 node[3208631]: 7:55:27 PM [express] GET /api/admin/bug-reports 304 in 2ms :: []
+Feb 22 19:55:57 NL13573 node[3208631]: 7:55:57 PM [express] GET /api/admin/bug-reports 304 in 2ms :: []
+Feb 22 19:55:57 NL13573 node[3208631]: 7:55:57 PM [express] GET /api/admin/error-logs 304 in 3ms :: []
+Feb 22 19:56:27 NL13573 node[3208631]: 7:56:27 PM [express] GET /api/admin/bug-reports 304 in 3ms :: []
+Feb 22 19:56:27 NL13573 node[3208631]: 7:56:27 PM [express] GET /api/admin/error-logs 304 in 2ms :: []
+Feb 22 19:56:57 NL13573 node[3208631]: 7:56:57 PM [express] GET /api/admin/error-logs 304 in 2ms :: []
+Feb 22 19:56:57 NL13573 node[3208631]: 7:56:57 PM [express] GET /api/admin/bug-reports 304 in 1ms :: []
+Feb 22 19:57:27 NL13573 node[3208631]: 7:57:27 PM [express] GET /api/admin/bug-reports 304 in 7ms :: []
+Feb 22 19:57:27 NL13573 node[3208631]: 7:57:27 PM [express] GET /api/admin/error-logs 304 in 3ms :: []
+Feb 22 20:36:03 NL13573 node[3208631]: 8:36:03 PM [express] GET /api/admin/error-logs 304 in 5ms :: []
+Feb 22 20:36:03 NL13573 node[3208631]: 8:36:03 PM [express] GET /api/admin/bug-reports 304 in 14ms :: []
+Feb 22 20:36:05 NL13573 node[3208631]: 8:36:05 PM [express] GET /api/auth/me 200 in 1ms :: {"id":"b9f7e240-891a-409d-bc73-88dabe111ef3","username":"Andrey",">
+Feb 22 20:36:05 NL13573 node[3208631]: 8:36:05 PM [express] GET /api/workouts 304 in 1ms :: []
+Feb 22 20:36:05 NL13573 node[3208631]: 8:36:05 PM [express] GET /api/admin/bug-reports 304 in 2ms :: []
+Feb 22 20:36:05 NL13573 node[3208631]: 8:36:05 PM [express] GET /api/admin/error-logs 304 in 2ms :: []
+Feb 22 20:36:08 NL13573 node[3208631]: 8:36:08 PM [express] GET /api/admin/stats 200 in 4ms :: {"totalUsers":14,"garminConnected":8,"intervalsConnected":4,"t>
+Feb 22 20:40:11 NL13573 systemd[1]: Stopping GarminCoach AI Training App...
+Feb 22 20:40:11 NL13573 systemd[1]: GarminCoach.service: Deactivated successfully.
+Feb 22 20:40:11 NL13573 systemd[1]: Stopped GarminCoach AI Training App.
+Feb 22 20:40:11 NL13573 systemd[1]: GarminCoach.service: Consumed 1.247s CPU time.
