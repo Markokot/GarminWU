@@ -108,6 +108,24 @@ export class FileStorage implements IStorage {
     this.aiLogs = new Map(aiLogsArr.map((l) => [l.id, l]));
     this.promptVariants = new Map(promptVariantsArr.map((v) => [v.id, v]));
     this.errorLogs = new Map(errorLogsArr.map((e) => [e.id, e]));
+
+    this.ensureBasePromptVariant();
+  }
+
+  private ensureBasePromptVariant() {
+    const hasBase = Array.from(this.promptVariants.values()).some((v) => v.id === "base");
+    if (!hasBase) {
+      const base: AiPromptVariant = {
+        id: "base",
+        name: "Базовый",
+        instructions: "",
+        weight: 1,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+      this.promptVariants.set("base", base);
+      this.savePromptVariants();
+    }
   }
 
   private saveUsers() {

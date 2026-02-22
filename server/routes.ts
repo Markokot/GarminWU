@@ -1091,6 +1091,9 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Доступ запрещён" });
     }
     const variantId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    if (variantId === "base") {
+      return res.status(400).json({ message: "Базовый вариант нельзя удалить" });
+    }
     const deleted = await storage.deletePromptVariant(variantId);
     if (!deleted) return res.status(404).json({ message: "Вариант не найден" });
     res.json({ success: true });

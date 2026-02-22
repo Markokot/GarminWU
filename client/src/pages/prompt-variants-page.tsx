@@ -298,7 +298,7 @@ export default function PromptVariantsPage() {
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-variant-instructions-${variant.id}`}>
-                      {variant.instructions}
+                      {variant.instructions || (variant.id === "base" ? "Стандартный промпт без дополнительных инструкций" : "")}
                     </p>
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
@@ -316,41 +316,43 @@ export default function PromptVariantsPage() {
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
-                    {confirmDeleteId === variant.id ? (
-                      <div className="flex gap-1">
+                    {variant.id !== "base" && (
+                      confirmDeleteId === variant.id ? (
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled={deletingId === variant.id}
+                            onClick={() => handleDelete(variant.id)}
+                            data-testid={`button-confirm-delete-${variant.id}`}
+                          >
+                            {deletingId === variant.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              "Да"
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setConfirmDeleteId(null)}
+                            data-testid={`button-cancel-delete-${variant.id}`}
+                          >
+                            Нет
+                          </Button>
+                        </div>
+                      ) : (
                         <Button
-                          size="sm"
-                          variant="destructive"
-                          disabled={deletingId === variant.id}
-                          onClick={() => handleDelete(variant.id)}
-                          data-testid={`button-confirm-delete-${variant.id}`}
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => setConfirmDeleteId(variant.id)}
+                          title="Удалить"
+                          data-testid={`button-delete-variant-${variant.id}`}
                         >
-                          {deletingId === variant.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            "Да"
-                          )}
+                          <Trash2 className="w-4 h-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setConfirmDeleteId(null)}
-                          data-testid={`button-cancel-delete-${variant.id}`}
-                        >
-                          Нет
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="text-destructive"
-                        onClick={() => setConfirmDeleteId(variant.id)}
-                        title="Удалить"
-                        data-testid={`button-delete-variant-${variant.id}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      )
                     )}
                   </div>
                 </div>
