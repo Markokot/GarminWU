@@ -72,7 +72,7 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
+        <Link href="/" onClick={handleNavClick} className="flex items-center gap-3 cursor-pointer" data-testid="link-logo-home">
           <div className="w-9 h-9 rounded-md bg-primary flex items-center justify-center flex-shrink-0">
             <Watch className="w-5 h-5 text-primary-foreground" />
           </div>
@@ -80,7 +80,7 @@ export function AppSidebar() {
             <span className="font-semibold text-sm truncate">GarminCoach AI</span>
             <span className="text-xs text-muted-foreground truncate">AI-тренер</span>
           </div>
-        </div>
+        </Link>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
