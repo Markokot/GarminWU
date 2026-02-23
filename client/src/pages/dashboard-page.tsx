@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
 import {
   Activity,
@@ -17,6 +18,10 @@ import {
   Star,
   MapPin,
   CalendarDays,
+  UserCircle,
+  Wifi,
+  Dumbbell,
+  CheckCircle2,
 } from "lucide-react";
 import type { GarminActivity, FavoriteWorkout, UpcomingWorkout } from "@shared/schema";
 import { sportTypeLabels } from "@shared/schema";
@@ -42,6 +47,102 @@ function formatPace(secondsPerKm: number | undefined): string {
   return `${m}:${s.toString().padStart(2, "0")} /км`;
 }
 
+interface OnboardingStep {
+  id: string;
+  title: string;
+  description: string;
+  icon: typeof UserCircle;
+  completed: boolean;
+  href: string;
+  buttonText: string;
+}
+
+function OnboardingSteps({ steps }: { steps: OnboardingStep[] }) {
+  const completedCount = steps.filter((s) => s.completed).length;
+  const totalSteps = steps.length;
+  const allDone = completedCount === totalSteps;
+
+  if (allDone) return null;
+
+  const progressPercent = Math.round((completedCount / totalSteps) * 100);
+
+  return (
+    <Card data-testid="card-onboarding-steps">
+      <CardContent className="p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold" data-testid="text-onboarding-title">Начало работы</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {completedCount} из {totalSteps} шагов выполнено
+            </p>
+          </div>
+          <span className="text-2xl font-bold text-primary" data-testid="text-onboarding-progress">
+            {progressPercent}%
+          </span>
+        </div>
+        <Progress value={progressPercent} className="h-2 mb-5" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {steps.map((step) => {
+            const Icon = step.icon;
+            return (
+              <div
+                key={step.id}
+                className={`relative rounded-lg border p-4 transition-colors ${
+                  step.completed
+                    ? "bg-muted/50 border-muted"
+                    : "bg-card border-border hover:border-primary/50"
+                }`}
+                data-testid={`onboarding-step-${step.id}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      step.completed
+                        ? "bg-primary/10 text-primary"
+                        : "bg-accent text-accent-foreground"
+                    }`}
+                  >
+                    {step.completed ? (
+                      <CheckCircle2 className="w-5 h-5" />
+                    ) : (
+                      <Icon className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3
+                      className={`text-sm font-medium ${
+                        step.completed ? "line-through text-muted-foreground" : ""
+                      }`}
+                    >
+                      {step.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {step.description}
+                    </p>
+                    {!step.completed && (
+                      <Link href={step.href}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-2 h-7 text-xs"
+                          data-testid={`button-onboarding-${step.id}`}
+                        >
+                          {step.buttonText}
+                          <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -53,6 +154,52 @@ export default function DashboardPage() {
   }, [user]);
 
   const hasAnyConnection = !!user?.garminConnected || !!user?.intervalsConnected;
+
+  const profileFilled = !!(
+    user &&
+    user.sportTypes &&
+    user.sportTypes.length > 0 &&
+    user.fitnessLevel &&
+    user.goals
+  );
+
+  const hasWorkout = !!(
+    (user?.garminPushCount && user.garminPushCount > 0) ||
+    (user?.intervalsPushCount && user.intervalsPushCount > 0) ||
+    (user?.favoritesCount && user.favoritesCount > 0)
+  );
+
+  const onboardingSteps: OnboardingStep[] = [
+    {
+      id: "profile",
+      title: "Заполните профиль",
+      description: "Укажите виды спорта, уровень и цели",
+      icon: UserCircle,
+      completed: profileFilled,
+      href: "/settings",
+      buttonText: "Заполнить",
+    },
+    {
+      id: "device",
+      title: "Подключите устройство",
+      description: "Garmin Connect или Intervals.icu",
+      icon: Wifi,
+      completed: hasAnyConnection,
+      href: "/settings",
+      buttonText: "Подключить",
+    },
+    {
+      id: "workout",
+      title: "Создайте тренировку",
+      description: "Попросите AI тренера составить план",
+      icon: Dumbbell,
+      completed: hasWorkout,
+      href: "/coach",
+      buttonText: "Создать",
+    },
+  ];
+
+  const showOnboardingSteps = onboardingSteps.some((s) => !s.completed);
 
   const { data: activitiesData, isLoading: activitiesLoading } = useQuery<{ activities: GarminActivity[]; source: string }>({
     queryKey: ["/api/activities"],
@@ -79,7 +226,9 @@ export default function DashboardPage() {
             Привет, {user?.username}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Обзор ваших тренировок и активности
+            {showOnboardingSteps
+              ? "Выполните несколько шагов, чтобы начать тренироваться"
+              : "Обзор ваших тренировок и активности"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -91,6 +240,8 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {showOnboardingSteps && <OnboardingSteps steps={onboardingSteps} />}
 
       {hasAnyConnection && <ReadinessCard />}
 
@@ -161,28 +312,6 @@ export default function DashboardPage() {
             </Card>
           )}
         </div>
-      )}
-
-      {!hasAnyConnection && (
-        <Card>
-          <CardContent className="flex flex-col sm:flex-row items-center gap-4 py-6">
-            <div className="w-12 h-12 rounded-md bg-accent flex items-center justify-center flex-shrink-0">
-              <Watch className="w-6 h-6 text-accent-foreground" />
-            </div>
-            <div className="flex-1 text-center sm:text-left">
-              <h3 className="font-semibold">Подключите устройство</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Подключите Garmin Connect или Intervals.icu, чтобы видеть свои активности и загружать тренировки
-              </p>
-            </div>
-            <Link href="/settings">
-              <Button variant="outline" data-testid="button-connect-garmin">
-                Подключить
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
       )}
 
       {hasAnyConnection && (
