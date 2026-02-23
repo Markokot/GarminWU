@@ -6,6 +6,7 @@ import { storage } from "./storage";
 import { loginSchema, registerSchema, garminConnectSchema, intervalsConnectSchema, createWorkoutSchema, workoutStepSchema, swimStructuredWatchModels, type GarminWatchModel } from "@shared/schema";
 import { z } from "zod";
 import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected, getGarminCalendar, rescheduleGarminWorkout, deleteGarminWorkout, invalidateGarminCache } from "./garmin";
+import { debugLog, getDebugLogs, clearDebugLogs } from "./debug-log";
 import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities, rescheduleIntervalsWorkout, getIntervalsCalendarEvents } from "./intervals";
 import { chat, chatStream, parseAiResponse, pickPromptVariant } from "./ai";
 import { runAllTests } from "./tests";
@@ -615,26 +616,28 @@ export async function registerRoutes(
 
   app.post("/api/garmin/reschedule-workout", requireAuth, async (req, res) => {
     try {
-      console.log(`[Garmin Reschedule] Incoming request body:`, JSON.stringify(req.body));
+      debugLog("Reschedule", "Incoming request", req.body);
       const schema = z.object({
         workoutId: z.string(),
         newDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         currentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       });
       const { workoutId, newDate, currentDate } = schema.parse(req.body);
-      console.log(`[Garmin Reschedule] Parsed: workoutId=${workoutId} currentDate=${currentDate} newDate=${newDate}`);
+      debugLog("Reschedule", `Parsed: workoutId=${workoutId} currentDate=${currentDate} newDate=${newDate}`);
 
       const user = await storage.getUser(req.session.userId!);
       if (!user || !user.garminConnected) {
+        debugLog("Reschedule", "ERROR: Garmin не подключён");
         return res.status(400).json({ message: "Garmin не подключён" });
       }
       await ensureGarminSessionWithDecrypt(req.session.userId!, user);
+      debugLog("Reschedule", "Session ensured OK");
 
       const result = await rescheduleGarminWorkout(req.session.userId!, workoutId, newDate, currentDate);
-      console.log(`[Garmin Reschedule] Result:`, JSON.stringify(result));
+      debugLog("Reschedule", "Result", result);
       res.json(result);
     } catch (error: any) {
-      console.error(`[Garmin Reschedule] Error:`, error.message, error.stack?.split('\n').slice(0, 3).join(' '));
+      debugLog("Reschedule", `ERROR: ${error.message}`, { stack: error.stack?.split('\n').slice(0, 5) });
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Некорректные данные: " + error.errors.map((e) => e.message).join(", ") });
       }
@@ -1136,6 +1139,23 @@ export async function registerRoutes(
     const errorId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const deleted = await storage.deleteErrorLog(errorId);
     if (!deleted) return res.status(404).json({ message: "Ошибка не найдена" });
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/debug-logs", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    res.json(getDebugLogs());
+  });
+
+  app.delete("/api/admin/debug-logs", requireAuth, async (req, res) => {
+    const currentUser = await storage.getUser(req.session.userId!);
+    if (!currentUser || currentUser.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
+    clearDebugLogs();
     res.json({ success: true });
   });
 

@@ -5,7 +5,7 @@ GarminCoach AI is an AI-powered web application designed to act as a personal tr
 
 ## User Preferences
 - Admin username: "Andrey" (hardcoded in server/routes.ts as ADMIN_USERNAME)
-- Admin-only pages: /admin (statistics), /test-workouts (push tests), /auto-tests (automated tests), /bug-reports (bug reports), /ai-logs (AI request logs), /prompt-variants (A/B prompt testing)
+- Admin-only pages: /admin (statistics), /test-workouts (push tests), /auto-tests (automated tests), /bug-reports (bug reports), /ai-logs (AI request logs), /prompt-variants (A/B prompt testing), /debug-logs (in-memory debug logs)
 - App language: Russian throughout
 - The user deploys to external VPS via deploy.sh, NOT via Replit deployment
 

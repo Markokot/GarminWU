@@ -31,6 +31,7 @@ import {
   Bug,
   Brain,
   ScrollText,
+  Terminal,
 } from "lucide-react";
 import type { BugReport, ErrorLog } from "@shared/schema";
 
@@ -183,6 +184,18 @@ export function AppSidebar() {
                       <Link href="/auto-tests" onClick={handleNavClick}>
                         <FlaskConical className="w-4 h-4" />
                         <span>Автотесты</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === "/debug-logs"}
+                      data-testid="nav-debug-logs"
+                    >
+                      <Link href="/debug-logs" onClick={handleNavClick}>
+                        <Terminal className="w-4 h-4" />
+                        <span>Логи</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
