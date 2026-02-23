@@ -12,6 +12,23 @@ GarminCoach AI is an AI-powered web application designed to act as a personal tr
 ## System Architecture
 The application features a modern web stack with React 18, Vite, shadcn/ui, and TanStack Query v5 for the frontend, and an Express.js v5 backend. UI styling is managed with Tailwind CSS v4, supporting both dark and light themes. All UI text is localized in Russian. AI capabilities are powered by DeepSeek API, generating structured workouts for running, cycling, and swimming, and multi-week training plans. Garmin Connect integration uses the `@gooin/garmin-connect` npm package, while Intervals.icu integration is achieved via its REST API. Sensitive information like Garmin passwords and Intervals.icu API keys are encrypted using AES-256-GCM. The AI coach persona is an "experienced triathlon coach" that analyzes user activity data, profile information, and weather forecasts to provide personalized and safe recommendations, adhering to principles like the 80/20 rule and disagreeing with unsafe requests. AI responses are streamed via SSE for a smoother user experience, and a robust parsing system extracts structured workout data from natural language outputs. Garmin watch compatibility is dynamically handled, adapting workout recommendations based on the user's specific watch model.
 
+### Key Files
+- **shared/schema.ts** — All TypeScript interfaces, Drizzle table definitions, and Zod validation schemas
+- **server/routes.ts** — All Express API endpoints (auth, workouts, Garmin, Intervals, AI, admin)
+- **server/storage.ts** — IStorage interface + FileStorage (JSON mode)
+- **server/pg-storage.ts** — PostgresStorage (PG mode, Drizzle ORM)
+- **server/garmin.ts** — Garmin Connect session management, workout push/schedule/reschedule/delete, calendar fetch, caching
+- **server/intervals.ts** — Intervals.icu API integration (activities, calendar, workout push/reschedule)
+- **server/ai.ts** — DeepSeek AI chat/stream, prompt construction, response parsing
+- **server/debug-log.ts** — In-memory debug logging system (up to 500 entries, cleared on restart or via API)
+- **server/crypto.ts** — AES-256-GCM encryption/decryption for credentials
+- **client/src/App.tsx** — Frontend routing and layout
+- **client/src/components/app-sidebar.tsx** — Sidebar navigation with admin section
+- **client/src/pages/dashboard-page.tsx** — Main dashboard with onboarding and upcoming workouts
+- **client/src/pages/coach-page.tsx** — AI chat interface with workout generation
+- **client/src/pages/settings-page.tsx** — User profile, Garmin/Intervals connection settings
+- **client/src/pages/debug-logs-page.tsx** — Admin debug logs viewer with clear button
+
 ### Storage
 - **Switchable storage**: controlled by `STORAGE_MODE` env var (`json` or `pg`, default: `json`)
 - **JSON mode**: FileStorage class in server/storage.ts — uses .data/*.json files (original approach)
@@ -21,6 +38,14 @@ The application features a modern web stack with React 18, Vite, shadcn/ui, and 
 - Migration script: `npx tsx scripts/migrate-json-to-pg.ts` — reads JSON files, writes to PG, uses onConflictDoNothing (safe to re-run)
 - JSON files are never deleted during migration (kept as backup)
 - Base prompt variant (id="base") is auto-created in both modes
+
+### Debug Logging System
+- **server/debug-log.ts** provides `debugLog(category, message, data?)` function for in-memory logging
+- Logs stored in-memory (max 500 entries), auto-cleared on server restart
+- API: `GET /api/admin/debug-logs` (fetch), `DELETE /api/admin/debug-logs` (clear all)
+- Frontend page at `/debug-logs` with auto-refresh every 5 seconds
+- Use `debugLog("Category", "message", optionalData)` anywhere in server code to add entries
+- Import: `import { debugLog } from "./debug-log";`
 
 ### Dashboard — Upcoming Workouts & Onboarding
 - Dashboard (`/`) is the start page with onboarding steps (profile, device, first workout)
@@ -43,6 +68,11 @@ The application features a modern web stack with React 18, Vite, shadcn/ui, and 
 - Includes `npm install --include=dev` for build tools
 - Automatically runs `npm run db:push` to sync DB schema when STORAGE_MODE=pg
 - Loads env vars from /home/Garmin/.env before build/migration steps
+
+## Known Issues & Lessons Learned
+- **Date formatting on frontend**: NEVER use `toISOString().split("T")[0]` for user-selected dates — it converts to UTC and shifts the date by -1 day in positive timezones (e.g., UTC+3 Moscow). Always use `getFullYear()`, `getMonth()`, `getDate()` for local date formatting.
+- **Garmin API rate limiting**: Solved with server-side caching (5 min TTL). Without it, dashboard loads trigger ~6 API calls per visit.
+- **Garmin reschedule workflow**: 1) Find scheduleId via calendar API, 2) DELETE old schedule, 3) POST new schedule with `scheduleWorkout()`. The scheduleId is NOT the workoutId — it's the calendar item id.
 
 ## External Dependencies
 - **AI Service**: DeepSeek API (model "deepseek-chat")
