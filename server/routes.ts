@@ -5,7 +5,7 @@ import MemoryStore from "memorystore";
 import { storage } from "./storage";
 import { loginSchema, registerSchema, garminConnectSchema, intervalsConnectSchema, createWorkoutSchema, workoutStepSchema, swimStructuredWatchModels, type GarminWatchModel } from "@shared/schema";
 import { z } from "zod";
-import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected, getGarminCalendar, rescheduleGarminWorkout, deleteGarminWorkout } from "./garmin";
+import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected, getGarminCalendar, rescheduleGarminWorkout, deleteGarminWorkout, invalidateGarminCache } from "./garmin";
 import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities, rescheduleIntervalsWorkout, getIntervalsCalendarEvents } from "./intervals";
 import { chat, chatStream, parseAiResponse, pickPromptVariant } from "./ai";
 import { runAllTests } from "./tests";
@@ -595,6 +595,19 @@ export async function registerRoutes(
       filtered.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
 
       res.json({ workouts: filtered, sources });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/refresh-data", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(401).json({ message: "Не авторизован" });
+      if (user.garminConnected) {
+        invalidateGarminCache(req.session.userId!);
+      }
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

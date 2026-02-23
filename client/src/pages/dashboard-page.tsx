@@ -25,6 +25,7 @@ import {
   Dumbbell,
   CheckCircle2,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import type { GarminActivity, FavoriteWorkout, UpcomingWorkout } from "@shared/schema";
 import { sportTypeLabels } from "@shared/schema";
@@ -192,6 +193,21 @@ export default function DashboardPage() {
     },
   });
 
+  const refreshMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/refresh-data");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/upcoming-workouts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/readiness"] });
+      toast({ title: "Данные обновлены" });
+    },
+    onError: () => {
+      toast({ title: "Ошибка обновления", variant: "destructive" });
+    },
+  });
+
   const hasAnyConnection = !!user?.garminConnected || !!user?.intervalsConnected;
 
   const profileFilled = !!(
@@ -271,6 +287,18 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {hasAnyConnection && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={refreshMutation.isPending}
+              onClick={() => refreshMutation.mutate()}
+              data-testid="button-refresh-data"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1.5 ${refreshMutation.isPending ? "animate-spin" : ""}`} />
+              Обновить
+            </Button>
+          )}
           <Link href="/coach">
             <Button data-testid="button-goto-coach">
               <MessageSquare className="w-4 h-4 mr-2" />
