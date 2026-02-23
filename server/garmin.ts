@@ -368,17 +368,24 @@ async function findScheduleIdFromCalendar(
 
     const allItems = [...items, ...nextMonthItems];
     const wId = Number(workoutId);
+    console.log(`[Garmin FindSchedule] Searching for workoutId=${workoutId} (numeric=${wId}), currentDate=${currentDate || 'any'}, total items=${allItems.length}`);
+
+    const workoutItems = allItems.filter((i: any) => i.itemType === "workout");
+    console.log(`[Garmin FindSchedule] Workout items in calendar: ${workoutItems.length}`);
+    for (const item of workoutItems) {
+      console.log(`[Garmin FindSchedule]   item.id=${item.id} item.workoutId=${item.workoutId} (type=${typeof item.workoutId}) date=${item.date} title=${item.title || item.workoutName || '?'}`);
+    }
 
     for (const item of allItems) {
       if (item.itemType === "workout" && item.workoutId === wId) {
         if (currentDate && item.date !== currentDate) continue;
         if (item.id) {
-          console.log(`[Garmin] Found scheduleId=${item.id} for workoutId=${workoutId} on ${item.date}`);
+          console.log(`[Garmin FindSchedule] MATCH: scheduleId=${item.id} for workoutId=${workoutId} on ${item.date}`);
           return item.id;
         }
       }
     }
-    console.log(`[Garmin] No scheduleId found for workoutId=${workoutId}${currentDate ? ` on ${currentDate}` : ''}`);
+    console.log(`[Garmin FindSchedule] No scheduleId found for workoutId=${workoutId}${currentDate ? ` on ${currentDate}` : ''}`);
     return null;
   } catch (err: any) {
     console.log(`[Garmin] Error searching calendar for scheduleId: ${err.message}`);
@@ -396,29 +403,43 @@ export async function rescheduleGarminWorkout(
   if (!client) throw new Error("Garmin не подключён");
 
   const doReschedule = async (c: any) => {
-    console.log(`[Garmin] Rescheduling workout ${workoutId}: ${currentDate || '?'} → ${newDate}`);
+    console.log(`[Garmin Reschedule] START: workoutId=${workoutId} (type=${typeof workoutId}), currentDate=${currentDate || 'none'}, newDate=${newDate}`);
 
     const scheduleId = await findScheduleIdFromCalendar(c, workoutId, currentDate);
+    console.log(`[Garmin Reschedule] findScheduleIdFromCalendar returned: ${scheduleId}`);
+    
     if (scheduleId) {
       try {
         const scheduleUrl = (c as any).url?.SCHEDULE_WORKOUTS;
+        console.log(`[Garmin Reschedule] SCHEDULE_WORKOUTS URL: ${scheduleUrl}`);
         if (scheduleUrl) {
           const deleteUrl = `${scheduleUrl}${scheduleId}`;
-          console.log(`[Garmin] Removing old schedule: DELETE ${deleteUrl}`);
+          console.log(`[Garmin Reschedule] Deleting old schedule: DELETE ${deleteUrl}`);
           await (c as any).client.delete(deleteUrl);
-          console.log(`[Garmin] Old schedule removed (scheduleId=${scheduleId})`);
+          console.log(`[Garmin Reschedule] Old schedule removed OK (scheduleId=${scheduleId})`);
+        } else {
+          console.log(`[Garmin Reschedule] WARNING: No SCHEDULE_WORKOUTS URL found, cannot delete old schedule`);
         }
       } catch (delErr: any) {
-        console.log(`[Garmin] Could not remove old schedule (scheduleId=${scheduleId}): ${delErr.message}`);
+        console.log(`[Garmin Reschedule] ERROR deleting old schedule (scheduleId=${scheduleId}): ${delErr.message}`);
       }
     } else {
-      console.log(`[Garmin] No old schedule found to remove, will just create new one`);
+      console.log(`[Garmin Reschedule] No old schedule found for workoutId=${workoutId} on ${currentDate || 'any date'}`);
     }
 
     const scheduleDate = new Date(newDate + "T12:00:00");
     const numericWorkoutId = Number(workoutId);
-    await c.scheduleWorkout({ workoutId: numericWorkoutId }, scheduleDate);
-    console.log(`[Garmin] Workout ${workoutId} scheduled to ${newDate}`);
+    console.log(`[Garmin Reschedule] Scheduling: numericWorkoutId=${numericWorkoutId}, scheduleDate=${scheduleDate.toISOString()}`);
+    
+    try {
+      const scheduleResult = await c.scheduleWorkout({ workoutId: numericWorkoutId }, scheduleDate);
+      console.log(`[Garmin Reschedule] scheduleWorkout result:`, JSON.stringify(scheduleResult));
+    } catch (schedErr: any) {
+      console.log(`[Garmin Reschedule] ERROR in scheduleWorkout: ${schedErr.message}`);
+      throw schedErr;
+    }
+    
+    console.log(`[Garmin Reschedule] SUCCESS: Workout ${workoutId} scheduled to ${newDate}`);
     return { success: true, scheduledDate: newDate };
   };
 

@@ -602,12 +602,14 @@ export async function registerRoutes(
 
   app.post("/api/garmin/reschedule-workout", requireAuth, async (req, res) => {
     try {
+      console.log(`[Garmin Reschedule] Incoming request body:`, JSON.stringify(req.body));
       const schema = z.object({
         workoutId: z.string(),
         newDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         currentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       });
       const { workoutId, newDate, currentDate } = schema.parse(req.body);
+      console.log(`[Garmin Reschedule] Parsed: workoutId=${workoutId} currentDate=${currentDate} newDate=${newDate}`);
 
       const user = await storage.getUser(req.session.userId!);
       if (!user || !user.garminConnected) {
@@ -616,9 +618,10 @@ export async function registerRoutes(
       await ensureGarminSessionWithDecrypt(req.session.userId!, user);
 
       const result = await rescheduleGarminWorkout(req.session.userId!, workoutId, newDate, currentDate);
-      console.log(`[Garmin Reschedule] user=${user.username} workoutId=${workoutId} ${currentDate || '?'} → ${newDate}`);
+      console.log(`[Garmin Reschedule] Result:`, JSON.stringify(result));
       res.json(result);
     } catch (error: any) {
+      console.error(`[Garmin Reschedule] Error:`, error.message, error.stack?.split('\n').slice(0, 3).join(' '));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Некорректные данные: " + error.errors.map((e) => e.message).join(", ") });
       }
