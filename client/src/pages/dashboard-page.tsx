@@ -24,7 +24,6 @@ import {
   Wifi,
   Dumbbell,
   CheckCircle2,
-  MoveRight,
   Loader2,
 } from "lucide-react";
 import type { GarminActivity, FavoriteWorkout, UpcomingWorkout } from "@shared/schema";
@@ -325,15 +324,15 @@ export default function DashboardPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0"
-                          title="Перенести"
+                          className="h-6 px-2 text-xs text-muted-foreground"
                           data-testid={`button-reschedule-${w.id}`}
                           onClick={() => {
                             setRescheduleWorkout(w);
                             setSelectedDate(undefined);
                           }}
                         >
-                          <MoveRight className="w-3.5 h-3.5" />
+                          <CalendarDays className="w-3 h-3 mr-1" />
+                          Перенести
                         </Button>
                       </div>
                     </div>

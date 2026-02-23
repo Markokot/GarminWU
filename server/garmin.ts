@@ -416,7 +416,8 @@ export async function rescheduleGarminWorkout(
     }
 
     const scheduleDate = new Date(newDate + "T12:00:00");
-    await c.scheduleWorkout({ workoutId }, scheduleDate);
+    const numericWorkoutId = Number(workoutId);
+    await c.scheduleWorkout({ workoutId: numericWorkoutId }, scheduleDate);
     console.log(`[Garmin] Workout ${workoutId} scheduled to ${newDate}`);
     return { success: true, scheduledDate: newDate };
   };
