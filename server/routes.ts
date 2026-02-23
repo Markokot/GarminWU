@@ -538,6 +538,7 @@ export async function registerRoutes(
                   date: item.date,
                   name: item.title || item.workoutName || "Тренировка",
                   sportType: item.sportTypeKey || "other",
+                  workoutId: item.workoutId ? String(item.workoutId) : undefined,
                   isToday: item.date === todayStr,
                 });
               }
@@ -572,6 +573,7 @@ export async function registerRoutes(
                 date: eventDate,
                 name: ev.name || ev.description || "Тренировка",
                 sportType: ev.type ? (intervalsTypeMap[ev.type] || ev.type.toLowerCase()) : "other",
+                workoutId: String(ev.id),
                 isToday: eventDate === todayStr,
               });
             }

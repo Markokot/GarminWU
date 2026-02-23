@@ -495,6 +495,7 @@ export interface UpcomingWorkout {
   name: string;
   sportType: string;
   isToday: boolean;
+  workoutId?: string;
 }
 
 export const errorLogsTable = pgTable("error_logs", {

@@ -164,15 +164,18 @@ export default function DashboardPage() {
 
   const rescheduleMutation = useMutation({
     mutationFn: async ({ workout, newDate }: { workout: UpcomingWorkout; newDate: string }) => {
-      const workoutId = workout.id.replace(/^(garmin|intervals)-/, "");
+      const workoutId = workout.workoutId || workout.id.replace(/^(garmin|intervals)-/, "");
+      if (!workoutId) throw new Error("Не удалось определить ID тренировки");
       const url = workout.source === "garmin"
         ? "/api/garmin/reschedule-workout"
         : "/api/intervals/reschedule-workout";
-      await apiRequest("POST", url, {
+      const res = await apiRequest("POST", url, {
         workoutId,
         newDate,
         currentDate: workout.date,
       });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.message || "Ошибка переноса");
     },
     onSuccess: () => {
       toast({ title: "Тренировка перенесена" });
