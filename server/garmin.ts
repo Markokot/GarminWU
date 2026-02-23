@@ -4,6 +4,39 @@ import type { Workout, WorkoutStep, User } from "@shared/schema";
 
 const garminSessions: Map<string, any> = new Map();
 const garminCredentials: Map<string, { email: string; password: string }> = new Map();
+const garminLastUsed: Map<string, number> = new Map();
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const CACHE_TTL = 5 * 60 * 1000;
+const activitiesCache: Map<string, CacheEntry<any[]>> = new Map();
+const calendarCache: Map<string, CacheEntry<any>> = new Map();
+
+function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCache<T>(cache: Map<string, CacheEntry<T>>, key: string, data: T): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+export function invalidateGarminCache(userId: string): void {
+  for (const key of activitiesCache.keys()) {
+    if (key.startsWith(userId)) activitiesCache.delete(key);
+  }
+  for (const key of calendarCache.keys()) {
+    if (key.startsWith(userId)) calendarCache.delete(key);
+  }
+}
 
 export async function connectGarmin(userId: string, email: string, password: string): Promise<boolean> {
   try {
@@ -14,6 +47,7 @@ export async function connectGarmin(userId: string, email: string, password: str
     await client.login();
     garminSessions.set(userId, client);
     garminCredentials.set(userId, { email, password });
+    garminLastUsed.set(userId, Date.now());
     console.log(`[Garmin] Connected successfully for user ${userId}`);
     return true;
   } catch (error: any) {
@@ -32,15 +66,25 @@ export function isGarminConnected(userId: string): boolean {
   return garminSessions.has(userId);
 }
 
+const SESSION_CHECK_INTERVAL = 10 * 60 * 1000;
+
 async function isSessionAlive(userId: string): Promise<boolean> {
   const client = garminSessions.get(userId);
   if (!client) return false;
+  
+  const lastUsed = garminLastUsed.get(userId) || 0;
+  if (Date.now() - lastUsed < SESSION_CHECK_INTERVAL) {
+    return true;
+  }
+  
   try {
     await client.getUserProfile();
+    garminLastUsed.set(userId, Date.now());
     return true;
   } catch {
     console.log(`[Garmin] Session expired for user ${userId}`);
     garminSessions.delete(userId);
+    garminLastUsed.delete(userId);
     return false;
   }
 }
@@ -74,12 +118,19 @@ export function getGarminClient(userId: string): any | undefined {
 }
 
 export async function getGarminActivities(userId: string, count: number = 10) {
+  const cacheKey = `${userId}-${count}`;
+  const cached = getCached(activitiesCache, cacheKey);
+  if (cached) {
+    console.log(`[Garmin] Activities cache hit for user ${userId}`);
+    return cached;
+  }
+
   const client = garminSessions.get(userId);
   if (!client) throw new Error("Garmin не подключён");
 
   const fetchActivities = async (c: any) => {
     const activities = await c.getActivities(0, count);
-    return (activities || []).map((a: any) => ({
+    const result = (activities || []).map((a: any) => ({
       activityId: a.activityId,
       activityName: a.activityName || "Тренировка",
       activityType: a.activityType?.typeKey || "unknown",
@@ -93,6 +144,9 @@ export async function getGarminActivities(userId: string, count: number = 10) {
       startLongitude: a.startLongitude || null,
       locationName: a.locationName || null,
     }));
+    setCache(activitiesCache, cacheKey, result);
+    garminLastUsed.set(userId, Date.now());
+    return result;
   };
 
   try {
@@ -306,30 +360,28 @@ export function convertToGarminWorkout(workout: { name: string; description?: st
 }
 
 export async function getGarminCalendar(userId: string, year?: number, month?: number): Promise<any> {
-  const client = garminSessions.get(userId);
-  if (!client) throw new Error("Garmin не подключён");
-
   const now = new Date();
   const y = year ?? now.getFullYear();
   const m = month ?? now.getMonth();
 
+  const cacheKey = `${userId}-${y}-${m}`;
+  const cached = getCached(calendarCache, cacheKey);
+  if (cached) {
+    console.log(`[Garmin] Calendar cache hit for ${y}-${String(m + 1).padStart(2, '0')}`);
+    return cached;
+  }
+
+  const client = garminSessions.get(userId);
+  if (!client) throw new Error("Garmin не подключён");
+
   const fetchCalendar = async (c: any) => {
     console.log(`[Garmin] Fetching calendar for year=${y} month=${m} (0-based, real month=${m + 1})`);
     const calendar = await c.getCalendar(y, m);
-    const topKeys = calendar ? Object.keys(calendar) : [];
-    console.log(`[Garmin] Calendar response keys: [${topKeys.join(', ')}]`);
     const itemCount = calendar?.calendarItems?.length ?? 0;
     const workoutCount = calendar?.calendarItems?.filter((i: any) => i.itemType === "workout")?.length ?? 0;
     console.log(`[Garmin] Calendar ${y}-${String(m + 1).padStart(2, '0')}: ${itemCount} total items, ${workoutCount} workouts`);
-    if (itemCount > 0 && workoutCount === 0) {
-      const itemTypes = [...new Set(calendar.calendarItems.map((i: any) => i.itemType))];
-      console.log(`[Garmin] Calendar item types found: [${itemTypes.join(', ')}]`);
-      console.log(`[Garmin] First 3 items:`, JSON.stringify(calendar.calendarItems.slice(0, 3).map((i: any) => ({ itemType: i.itemType, date: i.date, title: i.title, workoutId: i.workoutId }))));
-    }
-    if (workoutCount > 0) {
-      const workouts = calendar.calendarItems.filter((i: any) => i.itemType === "workout");
-      console.log(`[Garmin] Calendar workouts:`, JSON.stringify(workouts.slice(0, 5).map((w: any) => ({ date: w.date, title: w.title, workoutId: w.workoutId, sportTypeKey: w.sportTypeKey }))));
-    }
+    setCache(calendarCache, cacheKey, calendar);
+    garminLastUsed.set(userId, Date.now());
     return calendar;
   };
 
@@ -440,6 +492,7 @@ export async function rescheduleGarminWorkout(
     }
     
     console.log(`[Garmin Reschedule] SUCCESS: Workout ${workoutId} scheduled to ${newDate}`);
+    invalidateGarminCache(userId);
     return { success: true, scheduledDate: newDate };
   };
 

@@ -22,12 +22,21 @@ The application features a modern web stack with React 18, Vite, shadcn/ui, and 
 - JSON files are never deleted during migration (kept as backup)
 - Base prompt variant (id="base") is auto-created in both modes
 
-### Dashboard — Upcoming Workouts
+### Dashboard — Upcoming Workouts & Onboarding
+- Dashboard (`/`) is the start page with onboarding steps (profile, device, first workout)
+- Onboarding block auto-hides when all steps completed; shows progress bar
 - Endpoint `/api/upcoming-workouts` fetches planned workouts from Garmin calendar and/or Intervals.icu events for the next 14 days
 - Returns `{ workouts: UpcomingWorkout[], sources: { garmin: boolean, intervals: boolean } }`
-- `UpcomingWorkout` interface defined in shared/schema.ts (id, source, date, name, sportType, isToday)
-- Dashboard shows section with upcoming workouts between ReadinessCard and recent activities
+- `UpcomingWorkout` interface defined in shared/schema.ts (id, source, date, name, sportType, isToday, workoutId)
+- Each workout card has "Перенести" button to reschedule via calendar picker dialog
+- Reschedule calls `/api/garmin/reschedule-workout` or `/api/intervals/reschedule-workout` depending on source
 - Both sources fetched in parallel; errors from one source don't block the other
+
+### Garmin API Caching
+- Server-side cache (5 min TTL) for activities and calendar data in server/garmin.ts
+- Session alive check skipped if session used within last 10 minutes (avoids extra getUserProfile calls)
+- Cache invalidated after workout reschedule/push operations
+- Reduces Garmin API calls from ~6 per dashboard load to ~3 first time, 0 on refresh within 5 min
 
 ### VPS Deployment
 - deploy.sh located on VPS at /root/GarminWU/deploy.sh (not in git repo)
