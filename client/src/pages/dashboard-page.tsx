@@ -606,7 +606,10 @@ export default function DashboardPage() {
               disabled={!selectedDate || rescheduleMutation.isPending}
               onClick={() => {
                 if (!rescheduleWorkout || !selectedDate) return;
-                const newDate = selectedDate.toISOString().split("T")[0];
+                const y = selectedDate.getFullYear();
+                const m = String(selectedDate.getMonth() + 1).padStart(2, "0");
+                const d = String(selectedDate.getDate()).padStart(2, "0");
+                const newDate = `${y}-${m}-${d}`;
                 rescheduleMutation.mutate({ workout: rescheduleWorkout, newDate });
               }}
               data-testid="button-reschedule-confirm"
