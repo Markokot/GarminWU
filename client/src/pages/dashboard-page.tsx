@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
 import { Link } from "wouter";
 import {
   Activity,
@@ -22,11 +24,16 @@ import {
   Wifi,
   Dumbbell,
   CheckCircle2,
+  MoveRight,
+  Loader2,
 } from "lucide-react";
 import type { GarminActivity, FavoriteWorkout, UpcomingWorkout } from "@shared/schema";
 import { sportTypeLabels } from "@shared/schema";
 import { OnboardingDialog } from "@/components/onboarding-dialog";
 import { ReadinessCard } from "@/components/readiness-card";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { ru } from "date-fns/locale";
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -145,13 +152,43 @@ function OnboardingSteps({ steps }: { steps: OnboardingStep[] }) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [rescheduleWorkout, setRescheduleWorkout] = useState<UpcomingWorkout | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     if (user && !user.onboardingShown) {
       setShowOnboarding(true);
     }
   }, [user]);
+
+  const rescheduleMutation = useMutation({
+    mutationFn: async ({ workout, newDate }: { workout: UpcomingWorkout; newDate: string }) => {
+      const workoutId = workout.id.replace(/^(garmin|intervals)-/, "");
+      const url = workout.source === "garmin"
+        ? "/api/garmin/reschedule-workout"
+        : "/api/intervals/reschedule-workout";
+      await apiRequest("POST", url, {
+        workoutId,
+        newDate,
+        currentDate: workout.date,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Тренировка перенесена" });
+      queryClient.invalidateQueries({ queryKey: ["/api/upcoming-workouts"] });
+      setRescheduleWorkout(null);
+      setSelectedDate(undefined);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Ошибка переноса",
+        description: error.message || "Попробуйте позже",
+        variant: "destructive",
+      });
+    },
+  });
 
   const hasAnyConnection = !!user?.garminConnected || !!user?.intervalsConnected;
 
@@ -281,9 +318,24 @@ export default function DashboardPage() {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <h3 className="font-medium text-sm truncate">{w.name}</h3>
-                      {w.isToday && (
-                        <Badge className="text-xs flex-shrink-0" data-testid="badge-today">Сегодня</Badge>
-                      )}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {w.isToday && (
+                          <Badge className="text-xs" data-testid="badge-today">Сегодня</Badge>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          title="Перенести"
+                          data-testid={`button-reschedule-${w.id}`}
+                          onClick={() => {
+                            setRescheduleWorkout(w);
+                            setSelectedDate(undefined);
+                          }}
+                        >
+                          <MoveRight className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs text-muted-foreground">
@@ -465,6 +517,78 @@ export default function DashboardPage() {
           </Card>
         )}
       </div>
+      <Dialog
+        open={!!rescheduleWorkout}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRescheduleWorkout(null);
+            setSelectedDate(undefined);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md" data-testid="dialog-reschedule">
+          <DialogHeader>
+            <DialogTitle>Перенести тренировку</DialogTitle>
+            <DialogDescription>
+              {rescheduleWorkout && (
+                <>
+                  <span className="font-medium text-foreground">{rescheduleWorkout.name}</span>
+                  {" — "}
+                  {new Date(rescheduleWorkout.date + "T12:00:00").toLocaleDateString("ru-RU", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              locale={ru}
+              disabled={(date) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return date < today;
+              }}
+              data-testid="calendar-reschedule"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRescheduleWorkout(null);
+                setSelectedDate(undefined);
+              }}
+              data-testid="button-reschedule-cancel"
+            >
+              Отмена
+            </Button>
+            <Button
+              disabled={!selectedDate || rescheduleMutation.isPending}
+              onClick={() => {
+                if (!rescheduleWorkout || !selectedDate) return;
+                const newDate = selectedDate.toISOString().split("T")[0];
+                rescheduleMutation.mutate({ workout: rescheduleWorkout, newDate });
+              }}
+              data-testid="button-reschedule-confirm"
+            >
+              {rescheduleMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Переносим...
+                </>
+              ) : (
+                "Перенести"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <OnboardingDialog open={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </div>
   );
