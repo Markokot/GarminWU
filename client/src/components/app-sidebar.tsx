@@ -32,6 +32,7 @@ import {
   Brain,
   ScrollText,
   Terminal,
+  Info,
 } from "lucide-react";
 import type { BugReport, ErrorLog } from "@shared/schema";
 
@@ -41,6 +42,7 @@ const menuItems = [
   { title: "Избранное", url: "/favorites", icon: Star },
   { title: "Настройки", url: "/settings", icon: Settings },
   { title: "FAQ", url: "/faq", icon: HelpCircle },
+  { title: "Версия", url: "/version", icon: Info },
 ];
 
 export function AppSidebar() {

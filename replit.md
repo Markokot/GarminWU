@@ -69,6 +69,11 @@ The application features a modern web stack with React 18, Vite, shadcn/ui, and 
 - Automatically runs `npm run db:push` to sync DB schema when STORAGE_MODE=pg
 - Loads env vars from /home/Garmin/.env before build/migration steps
 
+### Versioning
+- Current version: **1.000** — defined in `client/src/pages/version-page.tsx` as `CURRENT_VERSION`
+- Version page (`/version`) is accessible to all users, shows full feature list by category
+- **For future AI agents**: When adding significant new functionality (new integrations, major features, new pages), propose incrementing the version number and updating the `features` array in `version-page.tsx`. Minor bug fixes don't require version bumps. Increment by 0.001 for small features, 0.010 for medium features, 0.100 for major features.
+
 ## Known Issues & Lessons Learned
 - **Date formatting on frontend**: NEVER use `toISOString().split("T")[0]` for user-selected dates — it converts to UTC and shifts the date by -1 day in positive timezones (e.g., UTC+3 Moscow). Always use `getFullYear()`, `getMonth()`, `getDate()` for local date formatting.
 - **Garmin API rate limiting**: Solved with server-side caching (5 min TTL). Without it, dashboard loads trigger ~6 API calls per visit.

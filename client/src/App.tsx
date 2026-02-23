@@ -22,6 +22,7 @@ import BugReportsPage from "@/pages/bug-reports-page";
 import AiLogsPage from "@/pages/ai-logs-page";
 import PromptVariantsPage from "@/pages/prompt-variants-page";
 import DebugLogsPage from "@/pages/debug-logs-page";
+import VersionPage from "@/pages/version-page";
 import { Loader2 } from "lucide-react";
 
 function Router() {
@@ -39,6 +40,7 @@ function Router() {
       <Route path="/ai-logs" component={AiLogsPage} />
       <Route path="/prompt-variants" component={PromptVariantsPage} />
       <Route path="/debug-logs" component={DebugLogsPage} />
+      <Route path="/version" component={VersionPage} />
       <Route component={NotFound} />
     </Switch>
   );
