@@ -1,0 +1,313 @@
+Reschedule
+23.02.2026, 19:34:06
+Result
+{
+  "success": true,
+  "scheduledDate": "2026-02-24"
+}
+Reschedule
+23.02.2026, 19:34:06
+SUCCESS: Workout 1484027611 scheduled to 2026-02-24
+Reschedule
+23.02.2026, 19:34:06
+scheduleWorkout result
+{
+  "workoutScheduleId": 1566065659,
+  "workout": {
+    "workoutId": 1484027611,
+    "ownerId": 68513225,
+    "workoutName": "Прогулка для чемпиона",
+    "description": "Спокойная ходьба, чтобы ноги отдохнули, а сердце поработало в комфортном режиме.",
+    "updatedDate": "2026-02-23T14:52:01.0",
+    "createdDate": "2026-02-23T14:52:01.0",
+    "sportType": {
+      "sportTypeId": 1,
+      "sportTypeKey": "running",
+      "displayOrder": 1
+    },
+    "subSportType": null,
+    "trainingPlanId": null,
+    "author": null,
+    "sharedWithUsers": null,
+    "estimatedDurationInSecs": 2400,
+    "estimatedDistanceInMeters": null,
+    "workoutSegments": [
+      {
+        "segmentOrder": 1,
+        "sportType": {
+          "sportTypeId": 1,
+          "sportTypeKey": "running",
+          "displayOrder": 1
+        },
+        "poolLengthUnit": null,
+        "poolLength": null,
+        "avgTrainingSpeed": null,
+        "estimatedDurationInSecs": null,
+        "estimatedDistanceInMeters": null,
+        "estimatedDistanceUnit": null,
+        "estimateType": null,
+        "description": null,
+        "workoutSteps": [
+          {
+            "type": "ExecutableStepDTO",
+            "stepId": 12537124479,
+            "stepOrder": 1,
+            "stepType": {
+              "stepTypeId": 1,
+              "stepTypeKey": "warmup",
+              "displayOrder": 1
+            },
+            "childStepId": null,
+            "description": null,
+            "endCondition": {
+              "conditionTypeId": 2,
+              "conditionTypeKey": "time",
+              "displayOrder": 2,
+              "displayable": true
+            },
+            "endConditionValue": 300,
+            "preferredEndConditionUnit": null,
+            "endConditionCompare": null,
+            "targetType": {
+              "workoutTargetTypeId": 4,
+              "workoutTargetTypeKey": "heart.rate.zone",
+              "displayOrder": 4
+            },
+            "targetValueOne": 100,
+            "targetValueTwo": 120,
+            "targetValueUnit": null,
+            "zoneNumber": null,
+            "secondaryTargetType": null,
+            "secondaryTargetValueOne": null,
+            "secondaryTargetValueTwo": null,
+            "secondaryTargetValueUnit": null,
+            "secondaryZoneNumber": null,
+            "endConditionZone": null,
+            "strokeType": {
+              "strokeTypeId": 0,
+              "strokeTypeKey": null,
+              "displayOrder": 0
+            },
+            "equipmentType": {
+              "equipmentTypeId": 0,
+              "equipmentTypeKey": null,
+              "displayOrder": 0
+            },
+            "category": null,
+            "exerciseName": null,
+            "workoutProvider": null,
+            "providerExerciseSourceId": null,
+            "weightValue": null,
+            "weightUnit": null
+          },
+          {
+            "type": "ExecutableStepDTO",
+            "stepId": 12537124480,
+            "stepOrder": 2,
+            "stepType": {
+              "stepTypeId": 3,
+              "stepTypeKey": "interval",
+              "displayOrder": 3
+            },
+            "childStepId": null,
+            "description": null,
+            "endCondition": {
+              "conditionTypeId": 2,
+              "conditionTypeKey": "time",
+              "displayOrder": 2,
+              "displayable": true
+            },
+            "endConditionValue": 1800,
+            "preferredEndConditionUnit": null,
+            "endConditionCompare": null,
+            "targetType": {
+              "workoutTargetTypeId": 4,
+              "workoutTargetTypeKey": "heart.rate.zone",
+              "displayOrder": 4
+            },
+            "targetValueOne": 110,
+            "targetValueTwo": 130,
+            "targetValueUnit": null,
+            "zoneNumber": null,
+            "secondaryTargetType": null,
+            "secondaryTargetValueOne": null,
+            "secondaryTargetValueTwo": null,
+            "secondaryTargetValueUnit": null,
+            "secondaryZoneNumber": null,
+            "endConditionZone": null,
+            "strokeType": {
+              "strokeTypeId": 0,
+              "strokeTypeKey": null,
+              "displayOrder": 0
+            },
+            "equipmentType": {
+              "equipmentTypeId": 0,
+              "equipmentTypeKey": null,
+              "displayOrder": 0
+            },
+            "category": null,
+            "exerciseName": null,
+            "workoutProvider": null,
+            "providerExerciseSourceId": null,
+            "weightValue": null,
+            "weightUnit": null
+          },
+          {
+            "type": "ExecutableStepDTO",
+            "stepId": 12537124481,
+            "stepOrder": 3,
+            "stepType": {
+              "stepTypeId": 2,
+              "stepTypeKey": "cooldown",
+              "displayOrder": 2
+            },
+            "childStepId": null,
+            "description": null,
+            "endCondition": {
+              "conditionTypeId": 2,
+              "conditionTypeKey": "time",
+              "displayOrder": 2,
+              "displayable": true
+            },
+            "endConditionValue": 300,
+            "preferredEndConditionUnit": null,
+            "endConditionCompare": null,
+            "targetType": {
+              "workoutTargetTypeId": 4,
+              "workoutTargetTypeKey": "heart.rate.zone",
+              "displayOrder": 4
+            },
+            "targetValueOne": 100,
+            "targetValueTwo": 115,
+            "targetValueUnit": null,
+            "zoneNumber": null,
+            "secondaryTargetType": null,
+            "secondaryTargetValueOne": null,
+            "secondaryTargetValueTwo": null,
+            "secondaryTargetValueUnit": null,
+            "secondaryZoneNumber": null,
+            "endConditionZone": null,
+            "strokeType": {
+              "strokeTypeId": 0,
+              "strokeTypeKey": null,
+              "displayOrder": 0
+            },
+            "equipmentType": {
+              "equipmentTypeId": 0,
+              "equipmentTypeKey": null,
+              "displayOrder": 0
+            },
+            "category": null,
+            "exerciseName": null,
+            "workoutProvider": null,
+            "providerExerciseSourceId": null,
+            "weightValue": null,
+            "weightUnit": null
+          }
+        ]
+      }
+    ],
+    "poolLength": null,
+    "poolLengthUnit": null,
+    "locale": null,
+    "workoutProvider": null,
+    "workoutSourceId": null,
+    "uploadTimestamp": null,
+    "atpPlanId": null,
+    "consumer": null,
+    "consumerName": null,
+    "consumerImageURL": null,
+    "consumerWebsiteURL": null,
+    "workoutNameI18nKey": null,
+    "descriptionI18nKey": null,
+    "avgTrainingSpeed": 0,
+    "estimateType": null,
+    "estimatedDistanceUnit": {
+      "unitId": null,
+      "unitKey": null,
+      "factor": null
+    },
+    "workoutThumbnailUrl": null,
+    "isSessionTransitionEnabled": null,
+    "shared": false
+  },
+  "calendarDate": "2026-02-24",
+  "createdDate": "2026-02-23",
+  "ownerId": 68513225,
+  "newName": null,
+  "consumer": null,
+  "atpPlanTypeId": null,
+  "associatedActivityId": null,
+  "priority": null,
+  "associatedActivityDateTime": null,
+  "tpType": null,
+  "race": false,
+  "itp": false,
+  "nameChanged": false,
+  "protected": false
+}
+Reschedule
+23.02.2026, 19:34:06
+Scheduling: numericWorkoutId=1484027611, scheduleDate=2026-02-24T10:00:00.000Z
+Reschedule
+23.02.2026, 19:34:06
+Old schedule removed OK (scheduleId=1566062838)
+Reschedule
+23.02.2026, 19:34:05
+Deleting old schedule: DELETE https://connectapi.garmin.com/workout-service/schedule/1566062838
+Reschedule
+23.02.2026, 19:34:05
+SCHEDULE_WORKOUTS URL: https://connectapi.garmin.com/workout-service/schedule/
+Reschedule
+23.02.2026, 19:34:05
+findScheduleIdFromCalendar returned: 1566062838
+FindSchedule
+23.02.2026, 19:34:05
+item.id=1566062838 item.workoutId=1484027611 (type=number) date=2026-02-23 title=Прогулка для чемпиона
+FindSchedule
+23.02.2026, 19:34:05
+item.id=1565967943 item.workoutId=1481855793 (type=number) date=2026-02-22 title=Восстановление: спокойная ходьба
+FindSchedule
+23.02.2026, 19:34:05
+item.id=1562397254 item.workoutId=1480438698 (type=number) date=2026-02-22 title=Восстановление-2: Ходьба/Бег 45с
+FindSchedule
+23.02.2026, 19:34:05
+item.id=1566062838 item.workoutId=1484027611 (type=number) date=2026-02-23 title=Прогулка для чемпиона
+FindSchedule
+23.02.2026, 19:34:05
+item.id=1565967943 item.workoutId=1481855793 (type=number) date=2026-02-22 title=Восстановление: спокойная ходьба
+FindSchedule
+23.02.2026, 19:34:05
+item.id=1562397254 item.workoutId=1480438698 (type=number) date=2026-02-22 title=Восстановление-2: Ходьба/Бег 45с
+FindSchedule
+23.02.2026, 19:34:05
+item.id=1559214667 item.workoutId=1477244346 (type=number) date=2026-02-17 title=Восстановление-1: Ходьба/Бег
+FindSchedule
+23.02.2026, 19:34:05
+item.id=1556191976 item.workoutId=1474235468 (type=number) date=2026-02-14 title=Восстановление: Бег/Ходьба
+FindSchedule
+23.02.2026, 19:34:05
+item.id=1556159093 item.workoutId=1474201913 (type=number) date=2026-02-14 title=Восстановительная ходьба
+FindSchedule
+23.02.2026, 19:34:05
+Workout items in calendar: 9
+FindSchedule
+23.02.2026, 19:34:05
+Searching for workoutId=1484027611 (numeric=1484027611), currentDate=2026-02-23, total items=12
+Reschedule
+23.02.2026, 19:34:05
+START: workoutId=1484027611 (type=string), currentDate=2026-02-23, newDate=2026-02-24
+Reschedule
+23.02.2026, 19:34:05
+Session ensured OK
+Reschedule
+23.02.2026, 19:34:05
+Parsed: workoutId=1484027611 currentDate=2026-02-23 newDate=2026-02-24
+Reschedule
+23.02.2026, 19:34:05
+Incoming request
+{
+  "workoutId": "1484027611",
+  "newDate": "2026-02-24",
+  "currentDate": "2026-02-23"
+}
