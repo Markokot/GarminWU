@@ -616,28 +616,22 @@ export async function registerRoutes(
 
   app.post("/api/garmin/reschedule-workout", requireAuth, async (req, res) => {
     try {
-      debugLog("Reschedule", "Incoming request", req.body);
       const schema = z.object({
         workoutId: z.string(),
         newDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         currentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       });
       const { workoutId, newDate, currentDate } = schema.parse(req.body);
-      debugLog("Reschedule", `Parsed: workoutId=${workoutId} currentDate=${currentDate} newDate=${newDate}`);
 
       const user = await storage.getUser(req.session.userId!);
       if (!user || !user.garminConnected) {
-        debugLog("Reschedule", "ERROR: Garmin не подключён");
         return res.status(400).json({ message: "Garmin не подключён" });
       }
       await ensureGarminSessionWithDecrypt(req.session.userId!, user);
-      debugLog("Reschedule", "Session ensured OK");
 
       const result = await rescheduleGarminWorkout(req.session.userId!, workoutId, newDate, currentDate);
-      debugLog("Reschedule", "Result", result);
       res.json(result);
     } catch (error: any) {
-      debugLog("Reschedule", `ERROR: ${error.message}`, { stack: error.stack?.split('\n').slice(0, 5) });
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Некорректные данные: " + error.errors.map((e) => e.message).join(", ") });
       }
