@@ -17,7 +17,6 @@ import {
   MessageSquare,
   Watch,
   ArrowRight,
-  Star,
   MapPin,
   CalendarDays,
   UserCircle,
@@ -27,7 +26,7 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
-import type { GarminActivity, FavoriteWorkout, UpcomingWorkout } from "@shared/schema";
+import type { GarminActivity, UpcomingWorkout } from "@shared/schema";
 import { sportTypeLabels } from "@shared/schema";
 import { OnboardingDialog } from "@/components/onboarding-dialog";
 import { ReadinessCard } from "@/components/readiness-card";
@@ -220,8 +219,7 @@ export default function DashboardPage() {
 
   const hasWorkout = !!(
     (user?.garminPushCount && user.garminPushCount > 0) ||
-    (user?.intervalsPushCount && user.intervalsPushCount > 0) ||
-    (user?.favoritesCount && user.favoritesCount > 0)
+    (user?.intervalsPushCount && user.intervalsPushCount > 0)
   );
 
   const onboardingSteps: OnboardingStep[] = [
@@ -269,9 +267,6 @@ export default function DashboardPage() {
     enabled: hasAnyConnection,
   });
 
-  const { data: favorites, isLoading: favoritesLoading } = useQuery<FavoriteWorkout[]>({
-    queryKey: ["/api/favorites"],
-  });
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
@@ -486,67 +481,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Избранное</h2>
-          {favorites && favorites.length > 0 && (
-            <Link href="/favorites">
-              <Button variant="ghost" size="sm" data-testid="button-view-all-favorites">
-                Все
-                <ArrowRight className="w-3 h-3 ml-1" />
-              </Button>
-            </Link>
-          )}
-        </div>
-        {favoritesLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2].map((i) => (
-              <Card key={i}>
-                <CardContent className="p-4 space-y-3">
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-3 w-1/2" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : favorites && favorites.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {favorites.slice(0, 3).map((fav) => (
-              <Card key={fav.id} className="hover-elevate" data-testid={`card-favorite-${fav.id}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-medium text-sm truncate">{fav.name}</h3>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                    {fav.description || "Без описания"}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      {sportTypeLabels[fav.sportType]}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {fav.steps.length} шагов
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="py-8 text-center">
-              <Star className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground mb-3">Нет избранных тренировок</p>
-              <Link href="/coach">
-                <Button size="sm" data-testid="button-create-first-workout">
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Попросить AI создать
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        )}
-      </div>
       <Dialog
         open={!!rescheduleWorkout}
         onOpenChange={(open) => {
