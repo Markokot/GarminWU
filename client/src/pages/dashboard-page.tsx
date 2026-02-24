@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,7 +25,11 @@ import {
   CheckCircle2,
   Loader2,
   RefreshCw,
+  TrendingUp,
+  Zap,
+  Route,
 } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import type { GarminActivity, UpcomingWorkout } from "@shared/schema";
 import { sportTypeLabels } from "@shared/schema";
 import { OnboardingDialog } from "@/components/onboarding-dialog";
@@ -51,6 +55,164 @@ function formatPace(secondsPerKm: number | undefined): string {
   const m = Math.floor(secondsPerKm / 60);
   const s = Math.round(secondsPerKm % 60);
   return `${m}:${s.toString().padStart(2, "0")} /км`;
+}
+
+const ACTIVITY_COLORS: Record<string, string> = {
+  running: "#22c55e",
+  trail_running: "#16a34a",
+  cycling: "#3b82f6",
+  swimming: "#06b6d4",
+  strength_training: "#f97316",
+  walking: "#a855f7",
+  hiking: "#84cc16",
+  yoga: "#ec4899",
+  other: "#94a3b8",
+};
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  running: "Бег",
+  trail_running: "Трейл",
+  cycling: "Велосипед",
+  swimming: "Плавание",
+  strength_training: "Силовая",
+  walking: "Ходьба",
+  hiking: "Хайкинг",
+  yoga: "Йога",
+  other: "Другое",
+};
+
+function normalizeActivityType(raw: string): string {
+  const lower = raw.toLowerCase().replace(/\s+/g, "_");
+  if (lower.includes("run") && !lower.includes("trail")) return "running";
+  if (lower.includes("trail")) return "trail_running";
+  if (lower.includes("cycl") || lower.includes("bik")) return "cycling";
+  if (lower.includes("swim")) return "swimming";
+  if (lower.includes("strength") || lower.includes("weight") || lower.includes("gym")) return "strength_training";
+  if (lower.includes("walk")) return "walking";
+  if (lower.includes("hik")) return "hiking";
+  if (lower.includes("yoga")) return "yoga";
+  return "other";
+}
+
+function ActivityDonutChart({ activities }: { activities: GarminActivity[] }) {
+  const stats = useMemo(() => {
+    if (!activities.length) return null;
+
+    const totalDistance = activities.reduce((s, a) => s + (a.distance || 0), 0);
+    const totalDuration = activities.reduce((s, a) => s + (a.duration || 0), 0);
+    const totalCount = activities.length;
+    const avgHR = Math.round(
+      activities.filter((a) => a.averageHR).reduce((s, a) => s + (a.averageHR || 0), 0) /
+        (activities.filter((a) => a.averageHR).length || 1)
+    );
+
+    const byType: Record<string, { count: number; duration: number; distance: number }> = {};
+    for (const a of activities) {
+      const type = normalizeActivityType(a.activityType);
+      if (!byType[type]) byType[type] = { count: 0, duration: 0, distance: 0 };
+      byType[type].count++;
+      byType[type].duration += a.duration || 0;
+      byType[type].distance += a.distance || 0;
+    }
+
+    const chartData = Object.entries(byType)
+      .map(([type, data]) => ({
+        name: ACTIVITY_LABELS[type] || type,
+        value: data.count,
+        duration: data.duration,
+        distance: data.distance,
+        color: ACTIVITY_COLORS[type] || ACTIVITY_COLORS.other,
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    return { totalDistance, totalDuration, totalCount, avgHR, chartData };
+  }, [activities]);
+
+  if (!stats) return null;
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    const d = payload[0].payload;
+    return (
+      <div className="bg-popover border rounded-lg shadow-lg px-3 py-2 text-sm" data-testid="tooltip-donut">
+        <p className="font-medium" style={{ color: d.color }}>{d.name}</p>
+        <p className="text-muted-foreground">{d.value} тренировок</p>
+        <p className="text-muted-foreground">{formatDuration(d.duration)}</p>
+        {d.distance > 0 && <p className="text-muted-foreground">{formatDistance(d.distance)}</p>}
+      </div>
+    );
+  };
+
+  return (
+    <Card data-testid="card-activity-stats">
+      <CardContent className="p-4 sm:p-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-primary" />
+          Сводка активностей
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-xl p-4 text-center" data-testid="stat-total-count">
+              <Zap className="w-5 h-5 text-green-500 mx-auto mb-1.5" />
+              <p className="text-2xl font-bold">{stats.totalCount}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Тренировок</p>
+            </div>
+            <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-4 text-center" data-testid="stat-total-distance">
+              <Route className="w-5 h-5 text-blue-500 mx-auto mb-1.5" />
+              <p className="text-2xl font-bold">{stats.totalDistance >= 1000 ? `${(stats.totalDistance / 1000).toFixed(0)}` : `${Math.round(stats.totalDistance)}`}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{stats.totalDistance >= 1000 ? "км" : "м"}</p>
+            </div>
+            <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-xl p-4 text-center" data-testid="stat-total-duration">
+              <Clock className="w-5 h-5 text-orange-500 mx-auto mb-1.5" />
+              <p className="text-2xl font-bold">{Math.round(stats.totalDuration / 3600)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Часов</p>
+            </div>
+            <div className="bg-gradient-to-br from-red-500/10 to-red-600/5 rounded-xl p-4 text-center" data-testid="stat-avg-hr">
+              <Heart className="w-5 h-5 text-red-500 mx-auto mb-1.5" />
+              <p className="text-2xl font-bold">{stats.avgHR || "—"}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Ср. пульс</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-3">
+            <div className="relative w-[180px] h-[180px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={stats.chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={80}
+                    paddingAngle={3}
+                    dataKey="value"
+                    strokeWidth={0}
+                  >
+                    {stats.chartData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} className="transition-opacity hover:opacity-80" />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <p className="text-2xl font-bold">{stats.chartData.length}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">видов<br/>спорта</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 max-w-[220px]">
+              {stats.chartData.map((entry) => (
+                <div key={entry.name} className="flex items-center gap-1.5 text-xs" data-testid={`legend-${entry.name}`}>
+                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
+                  <span className="text-muted-foreground">{entry.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 interface OnboardingStep {
@@ -306,6 +468,10 @@ export default function DashboardPage() {
       {showOnboardingSteps && <OnboardingSteps steps={onboardingSteps} />}
 
       {hasAnyConnection && <ReadinessCard />}
+
+      {hasAnyConnection && activities && activities.length > 0 && (
+        <ActivityDonutChart activities={activities} />
+      )}
 
       {hasAnyConnection && (
         <div>
