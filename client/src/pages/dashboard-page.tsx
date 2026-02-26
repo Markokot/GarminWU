@@ -148,7 +148,7 @@ function ActivityDonutChart({ activities }: { activities: GarminActivity[] }) {
       <CardContent className="p-4 sm:p-6">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-primary" />
-          Сводка активностей
+          Статистика за месяц
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -469,10 +469,6 @@ export default function DashboardPage() {
 
       {hasAnyConnection && <ReadinessCard />}
 
-      {hasAnyConnection && activities && activities.length > 0 && (
-        <ActivityDonutChart activities={activities} />
-      )}
-
       {hasAnyConnection && (
         <div>
           <div className="flex items-center justify-between gap-4 mb-4">
@@ -645,6 +641,10 @@ export default function DashboardPage() {
             </Card>
           )}
         </div>
+      )}
+
+      {hasAnyConnection && activities && activities.length > 0 && (
+        <ActivityDonutChart activities={activities} />
       )}
 
       <Dialog

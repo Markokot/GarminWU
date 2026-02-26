@@ -285,8 +285,14 @@ export async function registerRoutes(
       const user = await storage.getUser(req.session.userId!);
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
 
-      const result = await fetchActivitiesWithFallback(req.session.userId!, user);
-      const enriched = await enrichActivitiesWithCity(result.activities);
+      const result = await fetchActivitiesWithFallback(req.session.userId!, user, 30);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const monthActivities = result.activities.filter(
+        (a: any) => new Date(a.startTimeLocal) >= thirtyDaysAgo
+      );
+      const finalActivities = monthActivities.length >= 10 ? monthActivities : result.activities.slice(0, Math.max(10, monthActivities.length));
+      const enriched = await enrichActivitiesWithCity(finalActivities);
       res.json({ activities: enriched, source: result.source });
     } catch (error: any) {
       res.status(400).json({ message: error.message });
