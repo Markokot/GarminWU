@@ -16,6 +16,9 @@ import { calculateReadiness } from "./readiness";
 
 const MemStore = MemoryStore(session);
 
+const SYNC_COOLDOWN_MS = 4 * 60 * 60 * 1000;
+const lastSyncTimes = new Map<string, string>();
+
 export function buildCalendarContext(calendar: any, now: Date): string {
   const scheduledWorkouts: { date: string; name: string; workoutId?: string; sportType?: string }[] = [];
 
@@ -289,7 +292,22 @@ export async function registerRoutes(
       const cachedIds = await storage.getCachedActivityIds(userId);
       let fetchSource = user.garminConnected ? "garmin" : "intervals";
 
-      if (cachedIds.size === 0) {
+      if (!lastSyncTimes.has(userId) && cachedIds.size > 0) {
+        const dbSyncTime = await storage.getLastCachedAt(userId);
+        if (dbSyncTime) {
+          lastSyncTimes.set(userId, dbSyncTime);
+          console.log(`[Activities] Restored sync time from DB for ${user.username}: ${dbSyncTime}`);
+        }
+      }
+
+      const lastSync = lastSyncTimes.get(userId);
+      const lastSyncMs = lastSync ? new Date(lastSync).getTime() : 0;
+      const sinceLastSync = Date.now() - lastSyncMs;
+      const cooldownActive = cachedIds.size > 0 && sinceLastSync < SYNC_COOLDOWN_MS;
+
+      if (cooldownActive) {
+        console.log(`[Activities] Cooldown active for ${user.username}, serving from cache (synced ${Math.round(sinceLastSync / 60000)} min ago)`);
+      } else if (cachedIds.size === 0) {
         try {
           const result = await fetchActivitiesWithFallback(userId, user, 50);
           fetchSource = result.source;
@@ -297,7 +315,9 @@ export async function registerRoutes(
             await storage.saveCachedActivities(userId, result.activities, result.source);
             console.log(`[Activities] Initial fetch: cached ${result.activities.length} activities for ${user.username}`);
           }
+          lastSyncTimes.set(userId, new Date().toISOString());
         } catch (err: any) {
+          lastSyncTimes.set(userId, new Date().toISOString());
           throw err;
         }
       } else {
@@ -325,6 +345,7 @@ export async function registerRoutes(
         } catch (err: any) {
           console.log(`[Activities] API failed for ${user.username}, serving from cache: ${err.message}`);
         }
+        lastSyncTimes.set(userId, new Date().toISOString());
       }
 
       const allActivities = await storage.getCachedActivities(userId);
@@ -339,7 +360,11 @@ export async function registerRoutes(
         : allActivities.slice(0, Math.max(10, monthActivities.length));
 
       const enriched = await enrichActivitiesWithCity(finalActivities);
-      res.json({ activities: enriched, source: fetchSource });
+      res.json({
+        activities: enriched,
+        source: fetchSource,
+        lastSyncedAt: lastSyncTimes.get(userId) || null,
+      });
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
@@ -662,7 +687,8 @@ export async function registerRoutes(
         invalidateGarminCache(userId);
       }
       await storage.clearCachedActivities(userId);
-      console.log(`[Activities] Cache cleared for user ${user.username} (manual refresh)`);
+      lastSyncTimes.delete(userId);
+      console.log(`[Activities] Cache + cooldown cleared for user ${user.username} (manual refresh)`);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });

@@ -81,6 +81,7 @@ export interface IStorage {
   getCachedActivities(userId: string): Promise<GarminActivity[]>;
   getCachedActivityIds(userId: string): Promise<Set<number>>;
   saveCachedActivities(userId: string, activities: GarminActivity[], source: string): Promise<void>;
+  getLastCachedAt(userId: string): Promise<string | null>;
   clearCachedActivities(userId: string): Promise<void>;
 }
 
@@ -433,6 +434,10 @@ export class FileStorage implements IStorage {
       (a, b) => new Date(b.startTimeLocal).getTime() - new Date(a.startTimeLocal).getTime()
     );
     this.cachedActivities.set(userId, { activities: merged, source });
+  }
+
+  async getLastCachedAt(userId: string): Promise<string | null> {
+    return this.cachedActivities.has(userId) ? new Date().toISOString() : null;
   }
 
   async clearCachedActivities(userId: string): Promise<void> {

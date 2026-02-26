@@ -57,11 +57,13 @@ The application features a modern web stack with React 18, Vite, shadcn/ui, and 
 - Reschedule calls `/api/garmin/reschedule-workout` or `/api/intervals/reschedule-workout` depending on source
 - Both sources fetched in parallel; errors from one source don't block the other
 
-### Activity Caching (DB-backed, Progressive Fetch)
+### Activity Caching (DB-backed, Progressive Fetch + 4h Cooldown)
 - Activities are cached in `cached_activities` PostgreSQL table (defined in shared/schema.ts)
 - **First load** (empty cache): fetches 50 activities from Garmin/Intervals and saves to DB
 - **Subsequent loads** (progressive delta): fetches in steps [3, 10, 30, 50], stops as soon as overlap with cached activityIds is found. Typical case: user trains daily, step=3 finds overlap immediately → only 1 small API call
-- **Manual refresh** (button "Обновить"): clears DB cache + Garmin in-memory cache, triggers full re-fetch
+- **4-hour cooldown**: after a successful sync, no API calls are made for 4 hours — data served entirely from DB cache. Cooldown tracked in-memory via `lastSyncTimes` Map in routes.ts
+- **Manual refresh** (button "Обновить"): clears DB cache + Garmin in-memory cache + cooldown timer, triggers full re-fetch
+- **Sync status on dashboard**: shows "X мин/ч назад" next to refresh button with tooltip warning about not refreshing too often
 - **API failure fallback**: if Garmin/Intervals API fails but cache exists, serves cached data
 - **Dashboard logic**: shows activities from last 30 days; if fewer than 10, shows at least 10 latest
 - Storage methods: `getCachedActivities`, `getCachedActivityIds`, `saveCachedActivities`, `clearCachedActivities`

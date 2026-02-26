@@ -577,6 +577,15 @@ export class PostgresStorage implements IStorage {
     return new Set(rows.map(r => r.activityId));
   }
 
+  async getLastCachedAt(userId: string): Promise<string | null> {
+    const rows = await db.select({ cachedAt: cachedActivitiesTable.cachedAt })
+      .from(cachedActivitiesTable)
+      .where(eq(cachedActivitiesTable.userId, userId))
+      .orderBy(desc(cachedActivitiesTable.cachedAt))
+      .limit(1);
+    return rows.length ? rows[0].cachedAt : null;
+  }
+
   async clearCachedActivities(userId: string): Promise<void> {
     await db.delete(cachedActivitiesTable).where(eq(cachedActivitiesTable.userId, userId));
   }

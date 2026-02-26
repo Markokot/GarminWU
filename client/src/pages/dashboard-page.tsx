@@ -28,7 +28,9 @@ import {
   TrendingUp,
   Zap,
   Route,
+  Info,
 } from "lucide-react";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import type { GarminActivity, UpcomingWorkout } from "@shared/schema";
 import { sportTypeLabels } from "@shared/schema";
@@ -416,13 +418,14 @@ export default function DashboardPage() {
 
   const showOnboardingSteps = onboardingSteps.some((s) => !s.completed);
 
-  const { data: activitiesData, isLoading: activitiesLoading } = useQuery<{ activities: GarminActivity[]; source: string }>({
+  const { data: activitiesData, isLoading: activitiesLoading } = useQuery<{ activities: GarminActivity[]; source: string; lastSyncedAt: string | null }>({
     queryKey: ["/api/activities"],
     enabled: hasAnyConnection,
   });
 
   const activities = activitiesData?.activities;
   const activitiesSource = activitiesData?.source;
+  const lastSyncedAt = activitiesData?.lastSyncedAt;
 
   const { data: upcomingData, isLoading: upcomingLoading } = useQuery<{ workouts: UpcomingWorkout[]; sources: { garmin: boolean; intervals: boolean } }>({
     queryKey: ["/api/upcoming-workouts"],
@@ -444,6 +447,29 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {hasAnyConnection && lastSyncedAt && (
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 cursor-help" data-testid="text-last-sync">
+                    <Info className="w-3 h-3" />
+                    {(() => {
+                      const diff = Date.now() - new Date(lastSyncedAt).getTime();
+                      const mins = Math.round(diff / 60000);
+                      if (mins < 1) return "Только что";
+                      if (mins < 60) return `${mins} мин назад`;
+                      const hrs = Math.round(mins / 60);
+                      if (hrs < 24) return `${hrs} ч назад`;
+                      return new Date(lastSyncedAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+                    })()}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[250px] text-center">
+                  <p className="text-xs">Данные синхронизируются каждые 4 часа. Не обновляйте слишком часто — Garmin может временно заблокировать аккаунт.</p>
+                </TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
+          )}
           {hasAnyConnection && (
             <Button
               variant="outline"
