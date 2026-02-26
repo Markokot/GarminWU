@@ -389,15 +389,19 @@ export async function registerRoutes(
       const monthActivities = allActivities.filter(
         a => new Date(a.startTimeLocal) >= thirtyDaysAgo
       );
-      const finalActivities = monthActivities.length >= 10
+      const displayActivities = monthActivities.length >= 10
         ? monthActivities
         : allActivities.slice(0, Math.max(10, monthActivities.length));
 
-      debugLog("Activities", `Итог: ${finalActivities.length} активностей (30д: ${monthActivities.length}, всего: ${allActivities.length})`);
+      debugLog("Activities", `Итог: карточки=${displayActivities.length}, статистика за 30д=${monthActivities.length}, всего=${allActivities.length}`);
 
-      const enriched = await enrichActivitiesWithCity(finalActivities);
+      const enrichedDisplay = await enrichActivitiesWithCity(displayActivities);
+      const enrichedMonth = monthActivities.length < displayActivities.length
+        ? enrichedDisplay.filter(a => new Date(a.startTimeLocal) >= thirtyDaysAgo)
+        : enrichedDisplay;
       res.json({
-        activities: enriched,
+        activities: enrichedDisplay,
+        monthActivities: enrichedMonth,
         source: fetchSource,
         lastSyncedAt: lastSyncTimes.get(userId) || null,
       });

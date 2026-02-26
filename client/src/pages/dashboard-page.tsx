@@ -418,12 +418,13 @@ export default function DashboardPage() {
 
   const showOnboardingSteps = onboardingSteps.some((s) => !s.completed);
 
-  const { data: activitiesData, isLoading: activitiesLoading, error: activitiesError } = useQuery<{ activities: GarminActivity[]; source: string; lastSyncedAt: string | null }>({
+  const { data: activitiesData, isLoading: activitiesLoading, error: activitiesError } = useQuery<{ activities: GarminActivity[]; monthActivities: GarminActivity[]; source: string; lastSyncedAt: string | null }>({
     queryKey: ["/api/activities"],
     enabled: hasAnyConnection,
   });
 
   const activities = activitiesData?.activities;
+  const monthActivities = activitiesData?.monthActivities || activitiesData?.activities;
   const activitiesSource = activitiesData?.source;
   const lastSyncedAt = activitiesData?.lastSyncedAt;
 
@@ -675,8 +676,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {hasAnyConnection && activities && activities.length > 0 && (
-        <ActivityDonutChart activities={activities} />
+      {hasAnyConnection && monthActivities && monthActivities.length > 0 && (
+        <ActivityDonutChart activities={monthActivities} />
       )}
 
       <Dialog
