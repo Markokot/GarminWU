@@ -317,7 +317,6 @@ export async function registerRoutes(
           }
           lastSyncTimes.set(userId, new Date().toISOString());
         } catch (err: any) {
-          lastSyncTimes.set(userId, new Date().toISOString());
           throw err;
         }
       } else {
@@ -346,6 +345,7 @@ export async function registerRoutes(
           console.log(`[Activities] API failed for ${user.username}, serving from cache: ${err.message}`);
         }
         lastSyncTimes.set(userId, new Date().toISOString());
+        console.log(`[Activities] Cooldown set for ${user.username} (next sync in 4h or manual refresh)`);
       }
 
       const allActivities = await storage.getCachedActivities(userId);
