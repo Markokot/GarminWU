@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { pgTable, text, varchar, boolean, integer, real, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, integer, bigint, real, jsonb, timestamp } from "drizzle-orm/pg-core";
 
 export const sportTypes = ["running", "cycling", "swimming"] as const;
 export type SportType = (typeof sportTypes)[number];
@@ -501,7 +501,7 @@ export interface UpcomingWorkout {
 export const cachedActivitiesTable = pgTable("cached_activities", {
   id: varchar("id").primaryKey(),
   userId: varchar("user_id").notNull(),
-  activityId: integer("activity_id").notNull(),
+  activityId: bigint("activity_id", { mode: "number" }).notNull(),
   activityName: text("activity_name").notNull(),
   activityType: varchar("activity_type").notNull(),
   distance: real("distance").notNull().default(0),
