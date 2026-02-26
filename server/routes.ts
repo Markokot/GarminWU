@@ -320,9 +320,9 @@ export async function registerRoutes(
       if (cooldownActive) {
         debugLog("Activities", `Cooldown активен, отдаём из кэша (синхронизировано ${Math.round(sinceLastSync / 60000)} мин назад)`);
       } else if (cachedIds.size === 0) {
-        debugLog("Activities", `Кэш пуст — начальная загрузка 50 активностей`);
+        debugLog("Activities", `Кэш пуст — начальная загрузка 30 активностей`);
         try {
-          const result = await fetchActivitiesWithFallback(userId, user, 50);
+          const result = await fetchActivitiesWithFallback(userId, user, 30);
           fetchSource = result.source;
           debugLog("Activities", `Начальная загрузка: получено ${result.activities.length} активностей из ${result.source}`);
           if (result.activities.length > 0) {
@@ -337,7 +337,7 @@ export async function registerRoutes(
       } else {
         debugLog("Activities", `Дельта-синхронизация (кэш: ${cachedIds.size} записей)`);
         try {
-          const steps = [3, 10, 30, 50];
+          const steps = [3, 10, 30];
           for (const count of steps) {
             const result = await fetchActivitiesWithFallback(userId, user, count);
             fetchSource = result.source;
