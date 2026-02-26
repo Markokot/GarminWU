@@ -289,6 +289,11 @@ export async function registerRoutes(
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
 
+      debugLog("Activities", `Запрос активностей для ${user.username}`, {
+        garminConnected: user.garminConnected,
+        intervalsConnected: user.intervalsConnected,
+      });
+
       const cachedIds = await storage.getCachedActivityIds(userId);
       let fetchSource = user.garminConnected ? "garmin" : "intervals";
 
@@ -296,7 +301,7 @@ export async function registerRoutes(
         const dbSyncTime = await storage.getLastCachedAt(userId);
         if (dbSyncTime) {
           lastSyncTimes.set(userId, dbSyncTime);
-          console.log(`[Activities] Restored sync time from DB for ${user.username}: ${dbSyncTime}`);
+          debugLog("Activities", `Время синхронизации восстановлено из БД: ${dbSyncTime}`);
         }
       }
 
@@ -305,21 +310,32 @@ export async function registerRoutes(
       const sinceLastSync = Date.now() - lastSyncMs;
       const cooldownActive = cachedIds.size > 0 && sinceLastSync < SYNC_COOLDOWN_MS;
 
+      debugLog("Activities", `Состояние кэша`, {
+        cachedCount: cachedIds.size,
+        cooldownActive,
+        lastSync: lastSync || "нет",
+        sinceLastSyncMin: Math.round(sinceLastSync / 60000),
+      });
+
       if (cooldownActive) {
-        console.log(`[Activities] Cooldown active for ${user.username}, serving from cache (synced ${Math.round(sinceLastSync / 60000)} min ago)`);
+        debugLog("Activities", `Cooldown активен, отдаём из кэша (синхронизировано ${Math.round(sinceLastSync / 60000)} мин назад)`);
       } else if (cachedIds.size === 0) {
+        debugLog("Activities", `Кэш пуст — начальная загрузка 50 активностей`);
         try {
           const result = await fetchActivitiesWithFallback(userId, user, 50);
           fetchSource = result.source;
+          debugLog("Activities", `Начальная загрузка: получено ${result.activities.length} активностей из ${result.source}`);
           if (result.activities.length > 0) {
             await storage.saveCachedActivities(userId, result.activities, result.source);
-            console.log(`[Activities] Initial fetch: cached ${result.activities.length} activities for ${user.username}`);
+            debugLog("Activities", `Сохранено в кэш: ${result.activities.length} активностей`);
           }
           lastSyncTimes.set(userId, new Date().toISOString());
         } catch (err: any) {
+          debugLog("Activities", `ОШИБКА начальной загрузки: ${err.message}`, { stack: err.stack });
           throw err;
         }
       } else {
+        debugLog("Activities", `Дельта-синхронизация (кэш: ${cachedIds.size} записей)`);
         try {
           const steps = [3, 10, 30, 50];
           for (const count of steps) {
@@ -331,28 +347,27 @@ export async function registerRoutes(
             if (newActivities.length > 0) {
               await storage.saveCachedActivities(userId, newActivities, result.source);
               for (const a of newActivities) cachedIds.add(a.activityId);
-              console.log(`[Activities] Delta step=${count}: saved ${newActivities.length} new for ${user.username}`);
+              debugLog("Activities", `Дельта step=${count}: сохранено ${newActivities.length} новых`);
             }
 
             if (hasOverlap) {
-              console.log(`[Activities] Delta step=${count}: overlap found for ${user.username}, stopping`);
+              debugLog("Activities", `Дельта step=${count}: найдено пересечение, стоп`);
               break;
             }
 
-            console.log(`[Activities] Delta step=${count}: no overlap for ${user.username}, expanding...`);
+            debugLog("Activities", `Дельта step=${count}: нет пересечений, расширяем...`);
           }
         } catch (err: any) {
-          console.log(`[Activities] API failed for ${user.username}, serving from cache: ${err.message}`);
+          debugLog("Activities", `Ошибка API при дельта-синхронизации, отдаём кэш: ${err.message}`);
         }
         lastSyncTimes.set(userId, new Date().toISOString());
-        console.log(`[Activities] Cooldown set for ${user.username} (next sync in 4h or manual refresh)`);
       }
 
       let allActivities = await storage.getCachedActivities(userId);
-      console.log(`[Activities] Cache has ${allActivities.length} activities for ${user.username}`);
+      debugLog("Activities", `Из кэша получено ${allActivities.length} активностей`);
 
       if (allActivities.length === 0) {
-        console.log(`[Activities] Cache empty after sync for ${user.username}, trying direct fetch as fallback`);
+        debugLog("Activities", `Кэш пуст после синхронизации — прямой запрос как fallback`);
         try {
           const fallback = await fetchActivitiesWithFallback(userId, user, 30);
           fetchSource = fallback.source;
@@ -360,10 +375,12 @@ export async function registerRoutes(
             await storage.saveCachedActivities(userId, fallback.activities, fallback.source);
             allActivities = fallback.activities;
             lastSyncTimes.set(userId, new Date().toISOString());
-            console.log(`[Activities] Fallback fetch saved ${fallback.activities.length} activities for ${user.username}`);
+            debugLog("Activities", `Fallback: сохранено ${fallback.activities.length} активностей из ${fallback.source}`);
+          } else {
+            debugLog("Activities", `Fallback: API вернул 0 активностей`);
           }
         } catch (fallbackErr: any) {
-          console.log(`[Activities] Fallback fetch also failed for ${user.username}: ${fallbackErr.message}`);
+          debugLog("Activities", `Fallback тоже провалился: ${fallbackErr.message}`, { stack: fallbackErr.stack });
         }
       }
 
@@ -375,7 +392,8 @@ export async function registerRoutes(
       const finalActivities = monthActivities.length >= 10
         ? monthActivities
         : allActivities.slice(0, Math.max(10, monthActivities.length));
-      console.log(`[Activities] Returning ${finalActivities.length} activities (30d: ${monthActivities.length}, total: ${allActivities.length})`);
+
+      debugLog("Activities", `Итог: ${finalActivities.length} активностей (30д: ${monthActivities.length}, всего: ${allActivities.length})`);
 
       const enriched = await enrichActivitiesWithCity(finalActivities);
       res.json({
@@ -384,7 +402,7 @@ export async function registerRoutes(
         lastSyncedAt: lastSyncTimes.get(userId) || null,
       });
     } catch (error: any) {
-      console.log(`[Activities] ERROR for user: ${error.message}`);
+      debugLog("Activities", `КРИТИЧЕСКАЯ ОШИБКА: ${error.message}`, { stack: error.stack });
       res.status(400).json({ message: error.message });
     }
   });
