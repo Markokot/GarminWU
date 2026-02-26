@@ -1,4 +1,4 @@
-import type { User, Workout, ChatMessage, FavoriteWorkout, SportType, FitnessLevel, BugReport, AiPromptVariant, AiRequestLog, ErrorLog } from "@shared/schema";
+import type { User, Workout, ChatMessage, FavoriteWorkout, SportType, FitnessLevel, BugReport, AiPromptVariant, AiRequestLog, ErrorLog, GarminActivity } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 import * as fs from "fs";
@@ -77,6 +77,11 @@ export interface IStorage {
   addErrorLog(log: Omit<ErrorLog, "id" | "timestamp" | "status">): Promise<ErrorLog>;
   updateErrorLog(id: string, updates: Partial<ErrorLog>): Promise<ErrorLog | undefined>;
   deleteErrorLog(id: string): Promise<boolean>;
+
+  getCachedActivities(userId: string): Promise<GarminActivity[]>;
+  saveCachedActivities(userId: string, activities: GarminActivity[], source: string): Promise<void>;
+  getLatestCachedActivityDate(userId: string): Promise<string | null>;
+  clearCachedActivities(userId: string): Promise<void>;
 }
 
 export class FileStorage implements IStorage {
@@ -407,6 +412,32 @@ export class FileStorage implements IStorage {
     this.errorLogs.delete(id);
     this.saveErrorLogs();
     return true;
+  }
+
+  private cachedActivities: Map<string, { activities: GarminActivity[]; source: string }> = new Map();
+
+  async getCachedActivities(userId: string): Promise<GarminActivity[]> {
+    return this.cachedActivities.get(userId)?.activities || [];
+  }
+
+  async saveCachedActivities(userId: string, activities: GarminActivity[], source: string): Promise<void> {
+    const existing = this.cachedActivities.get(userId)?.activities || [];
+    const existingIds = new Set(existing.map(a => a.activityId));
+    const newActivities = activities.filter(a => !existingIds.has(a.activityId));
+    const merged = [...newActivities, ...existing].sort(
+      (a, b) => new Date(b.startTimeLocal).getTime() - new Date(a.startTimeLocal).getTime()
+    );
+    this.cachedActivities.set(userId, { activities: merged, source });
+  }
+
+  async getLatestCachedActivityDate(userId: string): Promise<string | null> {
+    const cached = this.cachedActivities.get(userId);
+    if (!cached || cached.activities.length === 0) return null;
+    return cached.activities[0].startTimeLocal;
+  }
+
+  async clearCachedActivities(userId: string): Promise<void> {
+    this.cachedActivities.delete(userId);
   }
 }
 

@@ -1,7 +1,8 @@
-import type { User, Workout, ChatMessage, FavoriteWorkout, SportType, FitnessLevel, BugReport, AiPromptVariant, AiRequestLog, ErrorLog } from "@shared/schema";
+import type { User, Workout, ChatMessage, FavoriteWorkout, SportType, FitnessLevel, BugReport, AiPromptVariant, AiRequestLog, ErrorLog, GarminActivity } from "@shared/schema";
 import {
   usersTable, workoutsTable, favoritesTable, messagesTable,
   bugReportsTable, aiLogsTable, promptVariantsTable, errorLogsTable,
+  cachedActivitiesTable,
 } from "@shared/schema";
 import type { IStorage } from "./storage";
 import { randomUUID } from "crypto";
@@ -515,5 +516,70 @@ export class PostgresStorage implements IStorage {
         createdAt: new Date().toISOString(),
       });
     }
+  }
+
+  async getCachedActivities(userId: string): Promise<GarminActivity[]> {
+    const rows = await db.select().from(cachedActivitiesTable)
+      .where(eq(cachedActivitiesTable.userId, userId))
+      .orderBy(desc(cachedActivitiesTable.startTimeLocal));
+    return rows.map(r => ({
+      activityId: r.activityId,
+      activityName: r.activityName,
+      activityType: r.activityType,
+      distance: r.distance,
+      duration: r.duration,
+      startTimeLocal: r.startTimeLocal,
+      averageHR: r.averageHR ?? undefined,
+      maxHR: r.maxHR ?? undefined,
+      averagePace: r.averagePace ?? undefined,
+      startLatitude: r.startLatitude ?? undefined,
+      startLongitude: r.startLongitude ?? undefined,
+      locationName: r.locationName ?? undefined,
+    }));
+  }
+
+  async saveCachedActivities(userId: string, activities: GarminActivity[], source: string): Promise<void> {
+    if (!activities.length) return;
+    const existing = await db.select({ activityId: cachedActivitiesTable.activityId })
+      .from(cachedActivitiesTable)
+      .where(eq(cachedActivitiesTable.userId, userId));
+    const existingIds = new Set(existing.map(r => r.activityId));
+    const newActivities = activities.filter(a => !existingIds.has(a.activityId));
+    if (!newActivities.length) return;
+    const now = new Date().toISOString();
+    const values = newActivities.map(a => ({
+      id: randomUUID(),
+      userId,
+      activityId: a.activityId,
+      activityName: a.activityName,
+      activityType: a.activityType,
+      distance: a.distance,
+      duration: a.duration,
+      startTimeLocal: a.startTimeLocal,
+      averageHR: a.averageHR ?? null,
+      maxHR: a.maxHR ?? null,
+      averagePace: a.averagePace ?? null,
+      startLatitude: a.startLatitude ?? null,
+      startLongitude: a.startLongitude ?? null,
+      locationName: a.locationName ?? null,
+      source,
+      cachedAt: now,
+    }));
+    for (let i = 0; i < values.length; i += 50) {
+      await db.insert(cachedActivitiesTable).values(values.slice(i, i + 50));
+    }
+  }
+
+  async getLatestCachedActivityDate(userId: string): Promise<string | null> {
+    const rows = await db.select({ startTimeLocal: cachedActivitiesTable.startTimeLocal })
+      .from(cachedActivitiesTable)
+      .where(eq(cachedActivitiesTable.userId, userId))
+      .orderBy(desc(cachedActivitiesTable.startTimeLocal))
+      .limit(1);
+    return rows.length ? rows[0].startTimeLocal : null;
+  }
+
+  async clearCachedActivities(userId: string): Promise<void> {
+    await db.delete(cachedActivitiesTable).where(eq(cachedActivitiesTable.userId, userId));
   }
 }

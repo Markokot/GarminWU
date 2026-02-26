@@ -498,6 +498,25 @@ export interface UpcomingWorkout {
   workoutId?: string;
 }
 
+export const cachedActivitiesTable = pgTable("cached_activities", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  activityId: integer("activity_id").notNull(),
+  activityName: text("activity_name").notNull(),
+  activityType: varchar("activity_type").notNull(),
+  distance: real("distance").notNull().default(0),
+  duration: real("duration").notNull().default(0),
+  startTimeLocal: text("start_time_local").notNull(),
+  averageHR: integer("average_hr"),
+  maxHR: integer("max_hr"),
+  averagePace: real("average_pace"),
+  startLatitude: real("start_latitude"),
+  startLongitude: real("start_longitude"),
+  locationName: text("location_name"),
+  source: varchar("source").notNull().default("garmin"),
+  cachedAt: text("cached_at").notNull(),
+});
+
 export const errorLogsTable = pgTable("error_logs", {
   id: varchar("id").primaryKey(),
   source: varchar("source").notNull(),

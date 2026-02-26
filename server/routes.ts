@@ -282,20 +282,44 @@ export async function registerRoutes(
 
   app.get("/api/activities", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUser(req.session.userId!);
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
 
-      const result = await fetchActivitiesWithFallback(req.session.userId!, user, 50);
+      const cached = await storage.getCachedActivities(userId);
+      const needsFullFetch = cached.length === 0;
+      const fetchCount = needsFullFetch ? 50 : 20;
+
+      let fetchSource = "garmin";
+      try {
+        const result = await fetchActivitiesWithFallback(userId, user, fetchCount);
+        fetchSource = result.source;
+
+        if (result.activities.length > 0) {
+          await storage.saveCachedActivities(userId, result.activities, result.source);
+          console.log(`[Activities] Synced ${result.activities.length} activities for user ${user.username} (${needsFullFetch ? "full" : "delta"}, source: ${result.source})`);
+        }
+      } catch (err: any) {
+        if (cached.length > 0) {
+          console.log(`[Activities] API failed for user ${user.username}, serving from cache (${cached.length} items): ${err.message}`);
+        } else {
+          throw err;
+        }
+      }
+
+      const allActivities = await storage.getCachedActivities(userId);
+
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const monthActivities = result.activities.filter(
-        (a: any) => new Date(a.startTimeLocal) >= thirtyDaysAgo
+      const monthActivities = allActivities.filter(
+        a => new Date(a.startTimeLocal) >= thirtyDaysAgo
       );
       const finalActivities = monthActivities.length >= 10
         ? monthActivities
-        : result.activities.slice(0, Math.max(10, monthActivities.length));
+        : allActivities.slice(0, Math.max(10, monthActivities.length));
+
       const enriched = await enrichActivitiesWithCity(finalActivities);
-      res.json({ activities: enriched, source: result.source });
+      res.json({ activities: enriched, source: fetchSource });
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
@@ -611,11 +635,14 @@ export async function registerRoutes(
 
   app.post("/api/refresh-data", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUser(req.session.userId!);
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
       if (!user) return res.status(401).json({ message: "Не авторизован" });
       if (user.garminConnected) {
-        invalidateGarminCache(req.session.userId!);
+        invalidateGarminCache(userId);
       }
+      await storage.clearCachedActivities(userId);
+      console.log(`[Activities] Cache cleared for user ${user.username} (manual refresh)`);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
