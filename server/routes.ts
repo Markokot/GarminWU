@@ -286,24 +286,44 @@ export async function registerRoutes(
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
 
-      const cached = await storage.getCachedActivities(userId);
-      const needsFullFetch = cached.length === 0;
-      const fetchCount = needsFullFetch ? 50 : 20;
+      const cachedIds = await storage.getCachedActivityIds(userId);
+      let fetchSource = user.garminConnected ? "garmin" : "intervals";
 
-      let fetchSource = "garmin";
-      try {
-        const result = await fetchActivitiesWithFallback(userId, user, fetchCount);
-        fetchSource = result.source;
-
-        if (result.activities.length > 0) {
-          await storage.saveCachedActivities(userId, result.activities, result.source);
-          console.log(`[Activities] Synced ${result.activities.length} activities for user ${user.username} (${needsFullFetch ? "full" : "delta"}, source: ${result.source})`);
-        }
-      } catch (err: any) {
-        if (cached.length > 0) {
-          console.log(`[Activities] API failed for user ${user.username}, serving from cache (${cached.length} items): ${err.message}`);
-        } else {
+      if (cachedIds.size === 0) {
+        try {
+          const result = await fetchActivitiesWithFallback(userId, user, 50);
+          fetchSource = result.source;
+          if (result.activities.length > 0) {
+            await storage.saveCachedActivities(userId, result.activities, result.source);
+            console.log(`[Activities] Initial fetch: cached ${result.activities.length} activities for ${user.username}`);
+          }
+        } catch (err: any) {
           throw err;
+        }
+      } else {
+        try {
+          const steps = [3, 10, 30, 50];
+          for (const count of steps) {
+            const result = await fetchActivitiesWithFallback(userId, user, count);
+            fetchSource = result.source;
+            const hasOverlap = result.activities.some((a: any) => cachedIds.has(a.activityId));
+            const newActivities = result.activities.filter((a: any) => !cachedIds.has(a.activityId));
+
+            if (newActivities.length > 0) {
+              await storage.saveCachedActivities(userId, newActivities, result.source);
+              for (const a of newActivities) cachedIds.add(a.activityId);
+              console.log(`[Activities] Delta step=${count}: saved ${newActivities.length} new for ${user.username}`);
+            }
+
+            if (hasOverlap) {
+              console.log(`[Activities] Delta step=${count}: overlap found for ${user.username}, stopping`);
+              break;
+            }
+
+            console.log(`[Activities] Delta step=${count}: no overlap for ${user.username}, expanding...`);
+          }
+        } catch (err: any) {
+          console.log(`[Activities] API failed for ${user.username}, serving from cache: ${err.message}`);
         }
       }
 

@@ -79,8 +79,8 @@ export interface IStorage {
   deleteErrorLog(id: string): Promise<boolean>;
 
   getCachedActivities(userId: string): Promise<GarminActivity[]>;
+  getCachedActivityIds(userId: string): Promise<Set<number>>;
   saveCachedActivities(userId: string, activities: GarminActivity[], source: string): Promise<void>;
-  getLatestCachedActivityDate(userId: string): Promise<string | null>;
   clearCachedActivities(userId: string): Promise<void>;
 }
 
@@ -420,6 +420,11 @@ export class FileStorage implements IStorage {
     return this.cachedActivities.get(userId)?.activities || [];
   }
 
+  async getCachedActivityIds(userId: string): Promise<Set<number>> {
+    const cached = this.cachedActivities.get(userId)?.activities || [];
+    return new Set(cached.map(a => a.activityId));
+  }
+
   async saveCachedActivities(userId: string, activities: GarminActivity[], source: string): Promise<void> {
     const existing = this.cachedActivities.get(userId)?.activities || [];
     const existingIds = new Set(existing.map(a => a.activityId));
@@ -428,12 +433,6 @@ export class FileStorage implements IStorage {
       (a, b) => new Date(b.startTimeLocal).getTime() - new Date(a.startTimeLocal).getTime()
     );
     this.cachedActivities.set(userId, { activities: merged, source });
-  }
-
-  async getLatestCachedActivityDate(userId: string): Promise<string | null> {
-    const cached = this.cachedActivities.get(userId);
-    if (!cached || cached.activities.length === 0) return null;
-    return cached.activities[0].startTimeLocal;
   }
 
   async clearCachedActivities(userId: string): Promise<void> {

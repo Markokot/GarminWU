@@ -570,13 +570,11 @@ export class PostgresStorage implements IStorage {
     }
   }
 
-  async getLatestCachedActivityDate(userId: string): Promise<string | null> {
-    const rows = await db.select({ startTimeLocal: cachedActivitiesTable.startTimeLocal })
+  async getCachedActivityIds(userId: string): Promise<Set<number>> {
+    const rows = await db.select({ activityId: cachedActivitiesTable.activityId })
       .from(cachedActivitiesTable)
-      .where(eq(cachedActivitiesTable.userId, userId))
-      .orderBy(desc(cachedActivitiesTable.startTimeLocal))
-      .limit(1);
-    return rows.length ? rows[0].startTimeLocal : null;
+      .where(eq(cachedActivitiesTable.userId, userId));
+    return new Set(rows.map(r => r.activityId));
   }
 
   async clearCachedActivities(userId: string): Promise<void> {
