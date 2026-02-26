@@ -418,7 +418,7 @@ export default function DashboardPage() {
 
   const showOnboardingSteps = onboardingSteps.some((s) => !s.completed);
 
-  const { data: activitiesData, isLoading: activitiesLoading } = useQuery<{ activities: GarminActivity[]; source: string; lastSyncedAt: string | null }>({
+  const { data: activitiesData, isLoading: activitiesLoading, error: activitiesError } = useQuery<{ activities: GarminActivity[]; source: string; lastSyncedAt: string | null }>({
     queryKey: ["/api/activities"],
     enabled: hasAnyConnection,
   });
@@ -659,6 +659,12 @@ export default function DashboardPage() {
                 </Card>
               ))}
             </div>
+          ) : activitiesError ? (
+            <Card>
+              <CardContent className="py-8 text-center text-sm text-red-500" data-testid="text-activities-error">
+                Ошибка загрузки активностей: {(activitiesError as any)?.message || "Неизвестная ошибка"}
+              </CardContent>
+            </Card>
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground text-sm">

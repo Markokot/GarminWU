@@ -348,7 +348,24 @@ export async function registerRoutes(
         console.log(`[Activities] Cooldown set for ${user.username} (next sync in 4h or manual refresh)`);
       }
 
-      const allActivities = await storage.getCachedActivities(userId);
+      let allActivities = await storage.getCachedActivities(userId);
+      console.log(`[Activities] Cache has ${allActivities.length} activities for ${user.username}`);
+
+      if (allActivities.length === 0) {
+        console.log(`[Activities] Cache empty after sync for ${user.username}, trying direct fetch as fallback`);
+        try {
+          const fallback = await fetchActivitiesWithFallback(userId, user, 30);
+          fetchSource = fallback.source;
+          if (fallback.activities.length > 0) {
+            await storage.saveCachedActivities(userId, fallback.activities, fallback.source);
+            allActivities = fallback.activities;
+            lastSyncTimes.set(userId, new Date().toISOString());
+            console.log(`[Activities] Fallback fetch saved ${fallback.activities.length} activities for ${user.username}`);
+          }
+        } catch (fallbackErr: any) {
+          console.log(`[Activities] Fallback fetch also failed for ${user.username}: ${fallbackErr.message}`);
+        }
+      }
 
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -358,6 +375,7 @@ export async function registerRoutes(
       const finalActivities = monthActivities.length >= 10
         ? monthActivities
         : allActivities.slice(0, Math.max(10, monthActivities.length));
+      console.log(`[Activities] Returning ${finalActivities.length} activities (30d: ${monthActivities.length}, total: ${allActivities.length})`);
 
       const enriched = await enrichActivitiesWithCity(finalActivities);
       res.json({
@@ -366,17 +384,23 @@ export async function registerRoutes(
         lastSyncedAt: lastSyncTimes.get(userId) || null,
       });
     } catch (error: any) {
+      console.log(`[Activities] ERROR for user: ${error.message}`);
       res.status(400).json({ message: error.message });
     }
   });
 
   app.get("/api/readiness", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUser(req.session.userId!);
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
 
-      const result = await fetchActivitiesWithFallback(req.session.userId!, user, 20);
-      const readiness = calculateReadiness(result.activities);
+      let activities = await storage.getCachedActivities(userId);
+      if (activities.length === 0) {
+        const result = await fetchActivitiesWithFallback(userId, user, 20);
+        activities = result.activities;
+      }
+      const readiness = calculateReadiness(activities);
       res.json(readiness);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
