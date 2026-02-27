@@ -356,6 +356,8 @@ export default function DashboardPage() {
     },
   });
 
+  const [showRefreshConfirm, setShowRefreshConfirm] = useState(false);
+
   const refreshMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("POST", "/api/refresh-data");
@@ -476,7 +478,7 @@ export default function DashboardPage() {
               variant="outline"
               size="sm"
               disabled={refreshMutation.isPending}
-              onClick={() => refreshMutation.mutate()}
+              onClick={() => setShowRefreshConfirm(true)}
               data-testid="button-refresh-data"
             >
               <RefreshCw className={`w-4 h-4 mr-1.5 ${refreshMutation.isPending ? "animate-spin" : ""}`} />
@@ -756,6 +758,35 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
       <OnboardingDialog open={showOnboarding} onClose={() => setShowOnboarding(false)} />
+
+      <Dialog open={showRefreshConfirm} onOpenChange={setShowRefreshConfirm}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-refresh-confirm">
+          <DialogHeader>
+            <DialogTitle>Обновить данные?</DialogTitle>
+            <DialogDescription>
+              Слишком частые обращения к серверам Garmin могут привести к временной блокировке вашего аккаунта. Данные автоматически обновляются каждые 4 часа.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setShowRefreshConfirm(false)}
+              data-testid="button-refresh-cancel"
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={() => {
+                setShowRefreshConfirm(false);
+                refreshMutation.mutate();
+              }}
+              data-testid="button-refresh-confirm"
+            >
+              Обновить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
