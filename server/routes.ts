@@ -914,6 +914,8 @@ export async function registerRoutes(
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
       chatUser = user;
 
+      debugLog("AI Chat", `Новое сообщение от ${user.username}`, { message: content });
+
       await storage.addMessage({
         userId: user.id,
         role: "user",
@@ -922,12 +924,23 @@ export async function registerRoutes(
       });
 
       const history = await storage.getMessages(user.id);
+      debugLog("AI Chat", `История: ${history.length} сообщений`);
 
       let activities: any[] | undefined;
       try {
         const result = await fetchActivitiesWithFallback(user.id, user, 10);
         activities = await enrichActivitiesWithCity(result.activities);
-      } catch {}
+        debugLog("AI Chat", `Активности для контекста: ${activities.length}`, {
+          summary: activities.slice(0, 5).map(a => ({
+            name: a.activityName,
+            type: a.activityType,
+            date: a.startTimeLocal,
+            distance: a.distance,
+          })),
+        });
+      } catch (err: any) {
+        debugLog("AI Chat", `Не удалось загрузить активности: ${err.message}`);
+      }
 
       let readinessCtx = "";
       if (activities && activities.length > 0) {
@@ -937,9 +950,9 @@ export async function registerRoutes(
           readiness.factors.forEach(f => {
             readinessCtx += `- ${f.name}: ${f.score}/${f.maxScore} — ${f.description}\n`;
           });
-          console.log(`[Readiness] score=${readiness.score} level=${readiness.level} for user=${user.username}`);
+          debugLog("AI Context", `Готовность: ${readiness.score}/100 (${readiness.label})`, { readinessCtx });
         } catch (err: any) {
-          console.log("[Readiness] Failed to calculate:", err.message);
+          debugLog("AI Context", `Ошибка расчёта готовности: ${err.message}`);
         }
       }
 
@@ -950,9 +963,12 @@ export async function registerRoutes(
           if (likelyCity) {
             const forecast = await getWeatherForecast(likelyCity.lat, likelyCity.lon, 3);
             weatherCtx = buildWeatherContext(likelyCity.city, forecast, !!likelyCity.recentCity);
+            debugLog("AI Context", `Погода: ${likelyCity.city}`, { weatherCtx });
+          } else {
+            debugLog("AI Context", `Город не определён — погода не добавлена`);
           }
         } catch (err: any) {
-          console.log("[Weather] Failed to get forecast for AI:", err.message);
+          debugLog("AI Context", `Ошибка получения погоды: ${err.message}`);
         }
       }
 
@@ -978,12 +994,13 @@ export async function registerRoutes(
 
           if (mergedItems.length > 0) {
             calendarCtx = buildCalendarContext({ calendarItems: mergedItems }, now);
-            console.log(`[Calendar] Injected ${mergedItems.filter((i: any) => i.itemType === "workout").length} workout items into AI context for user=${user.username}`);
+            const workoutItems = mergedItems.filter((i: any) => i.itemType === "workout");
+            debugLog("AI Context", `Календарь Garmin: ${workoutItems.length} тренировок`, { calendarCtx });
           } else {
-            console.log(`[Calendar] No calendar items found for user=${user.username}`);
+            debugLog("AI Context", `Календарь Garmin: пуст`);
           }
         } catch (err: any) {
-          console.log("[Calendar] Failed to get Garmin calendar for AI:", err.message);
+          debugLog("AI Context", `Ошибка получения календаря Garmin: ${err.message}`);
         }
       }
 
@@ -1000,19 +1017,43 @@ export async function registerRoutes(
       try {
         const userTimezone = typeof timezone === "string" ? timezone : undefined;
         const extraContext = readinessCtx + weatherCtx + calendarCtx;
-        console.log(`[Chat] user=${user.username} weatherCtx=${weatherCtx.length}chars calendarCtx=${calendarCtx.length}chars extraContext=${extraContext.length}chars`);
 
         const variants = await storage.getPromptVariants();
         const selectedVariant = pickPromptVariant(variants);
         chatVariantId = selectedVariant.id;
         chatVariantName = selectedVariant.name;
-        console.log(`[Chat] prompt variant: ${selectedVariant.name} (id=${selectedVariant.id})`);
+
+        debugLog("AI Prompt", `Вариант промпта: ${selectedVariant.name} (id=${selectedVariant.id})`, {
+          variantInstructions: selectedVariant.instructions || "(нет дополнительных инструкций)",
+        });
+
+        debugLog("AI Prompt", `Полный контекст для AI`, {
+          readinessCtxLength: readinessCtx.length,
+          weatherCtxLength: weatherCtx.length,
+          calendarCtxLength: calendarCtx.length,
+          extraContextLength: extraContext.length,
+          activitiesCount: activities?.length || 0,
+          historyMessages: history.length,
+          timezone: userTimezone || "не указан",
+        });
+
+        debugLog("AI Prompt", `Контекст отправляемый AI (extraContext)`, { extraContext: extraContext || "(пусто)" });
 
         const startTime = Date.now();
+        debugLog("AI Chat", `Отправляем запрос в DeepSeek...`);
         const aiResponse = await chatStream(user, content, history, activities, (chunk) => {
           res.write(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`);
         }, userTimezone, extraContext, selectedVariant.instructions || undefined);
         const responseTimeMs = Date.now() - startTime;
+
+        debugLog("AI Chat", `Ответ AI получен за ${responseTimeMs}ms`, {
+          responseLength: aiResponse.text.length,
+          hasWorkout: !!aiResponse.workout,
+          hasPlan: !!(aiResponse.workouts && aiResponse.workouts.length > 0),
+          hasReschedule: !!aiResponse.reschedule,
+          workoutName: aiResponse.workout?.name || null,
+          planWorkouts: aiResponse.workouts?.length || 0,
+        });
 
         const assistantMessage = await storage.addMessage({
           userId: user.id,
@@ -1044,6 +1085,7 @@ export async function registerRoutes(
       }
       res.end();
     } catch (error: any) {
+      debugLog("AI Chat", `ОШИБКА: ${error.message}`, { stack: error.stack });
       if (chatUser) {
         try {
           const msg = chatContent.length > 200 ? chatContent.substring(0, 200) + "..." : chatContent;
