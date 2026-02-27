@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { User, Workout, ChatMessage, GarminActivity, FitnessLevel, GarminWatchModel, AiPromptVariant } from "@shared/schema";
 import { fitnessLevelLabels, garminWatchLabels, swimStructuredWatchModels, nativeRunningPowerWatchModels } from "@shared/schema";
+import { debugLog } from "./debug-log";
 
 function getOpenAIClient(): OpenAI {
   if (!process.env.DEEPSEEK_API_KEY) {
@@ -550,6 +551,13 @@ function buildChatMessages(
   const weekCalendar = buildWeekCalendar(todayDate);
   const dateReminder = `[Сегодня: ${todayDate}, ${todayDow}. ${weekCalendar}]\n${userMessage}`;
   messages.push({ role: "user", content: dateReminder });
+
+  debugLog("AI Messages", `Мини-календарь дат`, { weekCalendar });
+  debugLog("AI Messages", `Финальное сообщение пользователя (с обёрткой дат)`, { dateReminder });
+  debugLog("AI Messages", `Итого сообщений для AI: ${messages.length}`, {
+    breakdown: messages.map(m => ({ role: m.role, length: (m.content as string).length })),
+  });
+
   return messages;
 }
 
