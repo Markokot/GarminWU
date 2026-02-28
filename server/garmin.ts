@@ -596,75 +596,111 @@ export async function getGarminDailyStats(userId: string): Promise<GarminDailySt
     const domain = c.url?.domain || "garmin.com";
     const apiBase = `https://connectapi.${domain}`;
 
-    try {
-      const stressUrl = `${apiBase}/usersummary-service/usersummary/daily/${today}/${today}`;
-      debugLog("Health API", `Stress URL: ${stressUrl}`);
-      const stressData = await c.get(stressUrl);
-      debugLog("Health API", `Stress raw response type: ${typeof stressData}, isArray: ${Array.isArray(stressData)}`, {
-        keys: stressData ? Object.keys(stressData).slice(0, 20) : null,
-        sample: stressData ? JSON.stringify(stressData).substring(0, 500) : null,
-      });
-      if (stressData) {
-        const stress = Array.isArray(stressData) ? stressData[0] : stressData;
-        if (stress?.averageStressLevel != null && stress.averageStressLevel > 0) {
-          result.stressLevel = stress.averageStressLevel;
+    const stressUrls = [
+      `${apiBase}/wellness-service/wellness/dailyStress/${today}`,
+      `${apiBase}/usersummary-service/usersummary/daily/${today}`,
+    ];
+
+    for (const stressUrl of stressUrls) {
+      if (result.stressLevel != null) break;
+      try {
+        debugLog("Health API", `Trying stress URL: ${stressUrl}`);
+        const stressData = await c.get(stressUrl);
+        debugLog("Health API", `Stress response type: ${typeof stressData}, isArray: ${Array.isArray(stressData)}`, {
+          keys: stressData ? Object.keys(stressData).slice(0, 20) : null,
+          sample: stressData ? JSON.stringify(stressData).substring(0, 800) : null,
+        });
+        if (stressData) {
+          const stress = Array.isArray(stressData) ? stressData[0] : stressData;
+          for (const key of ["averageStressLevel", "overallStressLevel", "avgStressLevel", "stressLevel"]) {
+            if (stress?.[key] != null && stress[key] > 0) {
+              result.stressLevel = stress[key];
+              debugLog("Health API", `Stress found via key '${key}': ${result.stressLevel}`);
+              break;
+            }
+          }
+          if (result.stressLevel == null && stress?.stressValuesArray) {
+            const arr = stress.stressValuesArray;
+            if (Array.isArray(arr) && arr.length > 0) {
+              const valid = arr.filter((v: any) => Array.isArray(v) && v.length >= 2 && v[1] > 0 && v[1] < 100);
+              if (valid.length > 0) {
+                const avg = Math.round(valid.reduce((s: number, v: any) => s + v[1], 0) / valid.length);
+                result.stressLevel = avg;
+                debugLog("Health API", `Stress from valuesArray avg: ${avg} (${valid.length} samples)`);
+              }
+            }
+          }
         }
-        debugLog("Health API", `Stress parsed: averageStressLevel=${stress?.averageStressLevel}, result=${result.stressLevel}`);
+      } catch (err: any) {
+        debugLog("Health API", `Stress URL failed: ${stressUrl} — ${err.message}`);
       }
-    } catch (err: any) {
-      debugLog("Health API", `Stress fetch FAILED: ${err.message}`, { stack: err.stack?.substring(0, 300) });
     }
 
-    try {
-      const bbUrl = `${apiBase}/wellness-service/wellness/bodyBattery/dates/${today}/${today}`;
-      debugLog("Health API", `Body Battery URL: ${bbUrl}`);
-      const bbData = await c.get(bbUrl);
-      debugLog("Health API", `BB raw response type: ${typeof bbData}, isArray: ${Array.isArray(bbData)}`, {
-        sample: bbData ? JSON.stringify(bbData).substring(0, 500) : null,
-      });
-      if (bbData && Array.isArray(bbData) && bbData.length > 0) {
-        const dayData = bbData[0];
-        debugLog("Health API", `BB dayData keys: ${Object.keys(dayData || {}).join(", ")}`, {
-          charged: dayData?.charged,
-          drained: dayData?.drained,
-          hasStatList: !!dayData?.bodyBatteryStatList,
-          statListLength: dayData?.bodyBatteryStatList?.length,
+    const bbUrls = [
+      { url: `${apiBase}/wellness-service/wellness/bodyBattery/dates/${today}/${today}`, type: "dates" },
+      { url: `${apiBase}/wellness-service/wellness/bodyBattery?date=${today}`, type: "query" },
+    ];
+
+    for (const { url: bbUrl, type: urlType } of bbUrls) {
+      if (result.bodyBattery != null) break;
+      try {
+        debugLog("Health API", `Trying BB URL (${urlType}): ${bbUrl}`);
+        const bbData = await c.get(bbUrl);
+        debugLog("Health API", `BB response type: ${typeof bbData}, isArray: ${Array.isArray(bbData)}`, {
+          sample: bbData ? JSON.stringify(bbData).substring(0, 800) : null,
         });
-        const charged = dayData?.charged;
-        const drained = dayData?.drained;
-        if (charged != null && drained != null) {
-          const currentBB = Math.max(0, Math.min(100, 100 + charged - drained));
-          result.bodyBattery = currentBB;
+
+        let dayData: any = null;
+        if (Array.isArray(bbData) && bbData.length > 0) {
+          dayData = bbData[0];
+        } else if (bbData && typeof bbData === "object" && !Array.isArray(bbData)) {
+          dayData = bbData;
         }
-        if (dayData?.bodyBatteryStatList) {
-          const list = dayData.bodyBatteryStatList;
-          if (Array.isArray(list) && list.length > 0) {
-            const latest = list[list.length - 1];
+
+        if (dayData) {
+          debugLog("Health API", `BB dayData keys: ${Object.keys(dayData).join(", ")}`, {
+            charged: dayData.charged,
+            drained: dayData.drained,
+          });
+
+          if (dayData.bodyBatteryStatList && Array.isArray(dayData.bodyBatteryStatList) && dayData.bodyBatteryStatList.length > 0) {
+            const latest = dayData.bodyBatteryStatList[dayData.bodyBatteryStatList.length - 1];
             if (latest?.bodyBatteryLevel != null) {
               result.bodyBattery = latest.bodyBatteryLevel;
+              debugLog("Health API", `BB from statList: ${result.bodyBattery}`);
+            }
+          }
+
+          if (result.bodyBattery == null && dayData.bodyBatteryValuesArray) {
+            const arr = dayData.bodyBatteryValuesArray;
+            if (Array.isArray(arr) && arr.length > 0) {
+              const valid = arr.filter((v: any) => Array.isArray(v) && v.length >= 2 && v[1] !== null && v[1] >= 0);
+              if (valid.length > 0) {
+                result.bodyBattery = valid[valid.length - 1][1];
+                debugLog("Health API", `BB from valuesArray (latest): ${result.bodyBattery}`);
+              }
+            }
+          }
+
+          if (result.bodyBattery == null && dayData.charged != null && dayData.drained != null) {
+            result.bodyBattery = Math.max(0, Math.min(100, 100 + dayData.charged - dayData.drained));
+            debugLog("Health API", `BB from charged/drained: ${result.bodyBattery}`);
+          }
+
+          for (const key of ["bodyBatteryLevel", "latestBodyBatteryLevel", "currentBodyBattery"]) {
+            if (result.bodyBattery == null && dayData[key] != null) {
+              result.bodyBattery = dayData[key];
+              debugLog("Health API", `BB from key '${key}': ${result.bodyBattery}`);
+              break;
             }
           }
         }
-      } else if (bbData && !Array.isArray(bbData)) {
-        debugLog("Health API", `BB unexpected format (not array)`, {
-          keys: Object.keys(bbData).slice(0, 20),
-          sample: JSON.stringify(bbData).substring(0, 500),
-        });
-        if (bbData?.bodyBatteryValuesArray) {
-          const arr = bbData.bodyBatteryValuesArray;
-          if (Array.isArray(arr) && arr.length > 0) {
-            const latest = arr[arr.length - 1];
-            if (Array.isArray(latest) && latest.length >= 2) {
-              result.bodyBattery = latest[1];
-            }
-          }
-          debugLog("Health API", `BB from bodyBatteryValuesArray: ${result.bodyBattery}`);
-        }
+      } catch (err: any) {
+        debugLog("Health API", `BB URL failed (${urlType}): ${err.message}`);
       }
-      debugLog("Health API", `Body Battery final: ${result.bodyBattery}`);
-    } catch (err: any) {
-      debugLog("Health API", `Body Battery fetch FAILED: ${err.message}`, { stack: err.stack?.substring(0, 300) });
     }
+
+    debugLog("Health API", `Stress final: ${result.stressLevel}, BB final: ${result.bodyBattery}`);
 
     debugLog("Health API", `Final results — Stress: ${result.stressLevel}, BB: ${result.bodyBattery}, Steps: ${result.steps}, StepsYesterday: ${result.stepsYesterday}`);
 
