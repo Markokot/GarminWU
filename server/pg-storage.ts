@@ -2,7 +2,7 @@ import type { User, Workout, ChatMessage, FavoriteWorkout, SportType, FitnessLev
 import {
   usersTable, workoutsTable, favoritesTable, messagesTable,
   bugReportsTable, aiLogsTable, promptVariantsTable, errorLogsTable,
-  cachedActivitiesTable,
+  cachedActivitiesTable, cachedHealthStatsTable,
 } from "@shared/schema";
 import type { IStorage } from "./storage";
 import { randomUUID } from "crypto";
@@ -588,5 +588,56 @@ export class PostgresStorage implements IStorage {
 
   async clearCachedActivities(userId: string): Promise<void> {
     await db.delete(cachedActivitiesTable).where(eq(cachedActivitiesTable.userId, userId));
+  }
+
+  async getCachedHealthStats(userId: string, date: string): Promise<{ stressLevel: number | null; bodyBattery: number | null; steps: number | null; stepsYesterday: number | null } | null> {
+    const id = `${userId}-${date}`;
+    const rows = await db.select().from(cachedHealthStatsTable)
+      .where(eq(cachedHealthStatsTable.id, id))
+      .limit(1);
+    if (rows.length === 0) return null;
+    const row = rows[0];
+    const cachedTime = new Date(row.cachedAt).getTime();
+    const hoursSinceCached = (Date.now() - cachedTime) / (1000 * 60 * 60);
+    if (hoursSinceCached > 6) return null;
+    return {
+      stressLevel: row.stressLevel,
+      bodyBattery: row.bodyBattery,
+      steps: row.steps,
+      stepsYesterday: row.stepsYesterday,
+    };
+  }
+
+  async saveCachedHealthStats(userId: string, date: string, stats: { stressLevel: number | null; bodyBattery: number | null; steps: number | null; stepsYesterday: number | null }): Promise<void> {
+    const id = `${userId}-${date}`;
+    const existing = await db.select().from(cachedHealthStatsTable)
+      .where(eq(cachedHealthStatsTable.id, id))
+      .limit(1);
+    if (existing.length > 0) {
+      await db.update(cachedHealthStatsTable)
+        .set({
+          stressLevel: stats.stressLevel,
+          bodyBattery: stats.bodyBattery,
+          steps: stats.steps,
+          stepsYesterday: stats.stepsYesterday,
+          cachedAt: new Date().toISOString(),
+        })
+        .where(eq(cachedHealthStatsTable.id, id));
+    } else {
+      await db.insert(cachedHealthStatsTable).values({
+        id,
+        userId,
+        date,
+        stressLevel: stats.stressLevel,
+        bodyBattery: stats.bodyBattery,
+        steps: stats.steps,
+        stepsYesterday: stats.stepsYesterday,
+        cachedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  async clearCachedHealthStats(userId: string): Promise<void> {
+    await db.delete(cachedHealthStatsTable).where(eq(cachedHealthStatsTable.userId, userId));
   }
 }

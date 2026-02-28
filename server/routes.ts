@@ -423,11 +423,22 @@ export async function registerRoutes(
         activities = result.activities;
       }
 
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
       let dailyStats = null;
-      if (isGarminConnected(userId.toString())) {
+
+      const cachedHealth = await storage.getCachedHealthStats(userId.toString(), today);
+      if (cachedHealth && (cachedHealth.stressLevel != null || cachedHealth.bodyBattery != null || cachedHealth.steps != null)) {
+        dailyStats = { ...cachedHealth };
+        debugLog("Health Data", `From DB cache: Stress: ${dailyStats.stressLevel}, BB: ${dailyStats.bodyBattery}, Steps: ${dailyStats.steps}, StepsY: ${dailyStats.stepsYesterday}`);
+      } else if (isGarminConnected(userId.toString())) {
         try {
           dailyStats = await getGarminDailyStats(userId.toString());
-          debugLog("Health Data", `Stress: ${dailyStats.stressLevel}, BB: ${dailyStats.bodyBattery}, Steps: ${dailyStats.steps}`);
+          debugLog("Health Data", `From Garmin API: Stress: ${dailyStats.stressLevel}, BB: ${dailyStats.bodyBattery}, Steps: ${dailyStats.steps}`);
+          if (dailyStats.stressLevel != null || dailyStats.bodyBattery != null || dailyStats.steps != null) {
+            await storage.saveCachedHealthStats(userId.toString(), today, dailyStats);
+            debugLog("Health Data", "Saved to DB cache");
+          }
         } catch (err: any) {
           debugLog("Health Data", `Failed to fetch daily stats: ${err.message}`);
         }
@@ -744,6 +755,7 @@ export async function registerRoutes(
         invalidateGarminCache(userId);
       }
       await storage.clearCachedActivities(userId);
+      await storage.clearCachedHealthStats(userId);
       lastSyncTimes.delete(userId);
       console.log(`[Activities] Cache + cooldown cleared for user ${user.username} (manual refresh)`);
       res.json({ success: true });
@@ -957,9 +969,17 @@ export async function registerRoutes(
       if (activities && activities.length > 0) {
         try {
           let dailyStatsForAI = null;
-          if (isGarminConnected(userId.toString())) {
+          const aiNow = new Date();
+          const aiToday = `${aiNow.getFullYear()}-${String(aiNow.getMonth() + 1).padStart(2, "0")}-${String(aiNow.getDate()).padStart(2, "0")}`;
+          const aiCachedHealth = await storage.getCachedHealthStats(userId.toString(), aiToday);
+          if (aiCachedHealth && (aiCachedHealth.stressLevel != null || aiCachedHealth.bodyBattery != null || aiCachedHealth.steps != null)) {
+            dailyStatsForAI = aiCachedHealth;
+          } else if (isGarminConnected(userId.toString())) {
             try {
               dailyStatsForAI = await getGarminDailyStats(userId.toString());
+              if (dailyStatsForAI && (dailyStatsForAI.stressLevel != null || dailyStatsForAI.bodyBattery != null || dailyStatsForAI.steps != null)) {
+                await storage.saveCachedHealthStats(userId.toString(), aiToday, dailyStatsForAI);
+              }
             } catch {}
           }
           const readiness = calculateReadiness(activities, dailyStatsForAI);

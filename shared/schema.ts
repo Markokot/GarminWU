@@ -517,6 +517,17 @@ export const cachedActivitiesTable = pgTable("cached_activities", {
   cachedAt: text("cached_at").notNull(),
 });
 
+export const cachedHealthStatsTable = pgTable("cached_health_stats", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  date: varchar("date").notNull(),
+  stressLevel: integer("stress_level"),
+  bodyBattery: integer("body_battery"),
+  steps: integer("steps"),
+  stepsYesterday: integer("steps_yesterday"),
+  cachedAt: text("cached_at").notNull(),
+});
+
 export const errorLogsTable = pgTable("error_logs", {
   id: varchar("id").primaryKey(),
   source: varchar("source").notNull(),

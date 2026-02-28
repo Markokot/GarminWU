@@ -83,6 +83,10 @@ export interface IStorage {
   saveCachedActivities(userId: string, activities: GarminActivity[], source: string): Promise<void>;
   getLastCachedAt(userId: string): Promise<string | null>;
   clearCachedActivities(userId: string): Promise<void>;
+
+  getCachedHealthStats(userId: string, date: string): Promise<{ stressLevel: number | null; bodyBattery: number | null; steps: number | null; stepsYesterday: number | null } | null>;
+  saveCachedHealthStats(userId: string, date: string, stats: { stressLevel: number | null; bodyBattery: number | null; steps: number | null; stepsYesterday: number | null }): Promise<void>;
+  clearCachedHealthStats(userId: string): Promise<void>;
 }
 
 export class FileStorage implements IStorage {
@@ -442,6 +446,16 @@ export class FileStorage implements IStorage {
 
   async clearCachedActivities(userId: string): Promise<void> {
     this.cachedActivities.delete(userId);
+  }
+
+  async getCachedHealthStats(userId: string, date: string): Promise<{ stressLevel: number | null; bodyBattery: number | null; steps: number | null; stepsYesterday: number | null } | null> {
+    return null;
+  }
+
+  async saveCachedHealthStats(userId: string, date: string, stats: { stressLevel: number | null; bodyBattery: number | null; steps: number | null; stepsYesterday: number | null }): Promise<void> {
+  }
+
+  async clearCachedHealthStats(userId: string): Promise<void> {
   }
 }
 
