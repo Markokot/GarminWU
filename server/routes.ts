@@ -971,6 +971,7 @@ export async function registerRoutes(
             if (dailyStatsForAI.stressLevel != null) readinessCtx += `- Стресс Garmin: ${dailyStatsForAI.stressLevel}\n`;
             if (dailyStatsForAI.bodyBattery != null) readinessCtx += `- Body Battery: ${dailyStatsForAI.bodyBattery}/100\n`;
             if (dailyStatsForAI.steps != null) readinessCtx += `- Шаги сегодня: ${dailyStatsForAI.steps}\n`;
+            if (dailyStatsForAI.stepsYesterday != null) readinessCtx += `- Шаги вчера: ${dailyStatsForAI.stepsYesterday}\n`;
           }
           debugLog("AI Context", `Готовность: ${readiness.score}/100 (${readiness.label})`, { readinessCtx });
         } catch (err: any) {

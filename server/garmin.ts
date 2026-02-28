@@ -1,6 +1,7 @@
 import GarminConnectModule from "@gooin/garmin-connect";
 const { GarminConnect } = GarminConnectModule;
 import type { Workout, WorkoutStep, User } from "@shared/schema";
+import { debugLog } from "./debug-log";
 
 
 const garminSessions: Map<string, any> = new Map();
@@ -21,6 +22,7 @@ export interface GarminDailyStats {
   stressLevel: number | null;
   bodyBattery: number | null;
   steps: number | null;
+  stepsYesterday: number | null;
 }
 
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
@@ -559,49 +561,80 @@ export async function getGarminDailyStats(userId: string): Promise<GarminDailySt
     return cached;
   }
 
-  const client = garminSessions.get(userId);
-  if (!client) return { stressLevel: null, bodyBattery: null, steps: null };
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
-  const result: GarminDailyStats = { stressLevel: null, bodyBattery: null, steps: null };
+  const client = garminSessions.get(userId);
+  if (!client) {
+    debugLog("Health API", "No Garmin client available for daily stats");
+    return { stressLevel: null, bodyBattery: null, steps: null, stepsYesterday: null };
+  }
+
+  const result: GarminDailyStats = { stressLevel: null, bodyBattery: null, steps: null, stepsYesterday: null };
 
   const fetchStats = async (c: any) => {
     try {
       const stepsVal = await c.getSteps(new Date());
       if (typeof stepsVal === "number") {
         result.steps = stepsVal;
-        console.log(`[Garmin] Steps: ${stepsVal}`);
       }
+      debugLog("Health API", `Steps today: ${result.steps}`);
     } catch (err: any) {
-      console.log(`[Garmin] Steps fetch failed: ${err.message}`);
+      debugLog("Health API", `Steps today fetch failed: ${err.message}`);
     }
 
     try {
-      const domain = c.url?.domain || "garmin.com";
-      const apiBase = `https://connectapi.${domain}`;
-      const stressData = await c.get(`${apiBase}/usersummary-service/usersummary/daily/${today}/${today}`);
+      const yesterdayDate = new Date(Date.now() - 86400000);
+      const stepsYesterdayVal = await c.getSteps(yesterdayDate);
+      if (typeof stepsYesterdayVal === "number") {
+        result.stepsYesterday = stepsYesterdayVal;
+      }
+      debugLog("Health API", `Steps yesterday: ${result.stepsYesterday}`);
+    } catch (err: any) {
+      debugLog("Health API", `Steps yesterday fetch failed: ${err.message}`);
+    }
+
+    const domain = c.url?.domain || "garmin.com";
+    const apiBase = `https://connectapi.${domain}`;
+
+    try {
+      const stressUrl = `${apiBase}/usersummary-service/usersummary/daily/${today}/${today}`;
+      debugLog("Health API", `Stress URL: ${stressUrl}`);
+      const stressData = await c.get(stressUrl);
+      debugLog("Health API", `Stress raw response type: ${typeof stressData}, isArray: ${Array.isArray(stressData)}`, {
+        keys: stressData ? Object.keys(stressData).slice(0, 20) : null,
+        sample: stressData ? JSON.stringify(stressData).substring(0, 500) : null,
+      });
       if (stressData) {
         const stress = Array.isArray(stressData) ? stressData[0] : stressData;
         if (stress?.averageStressLevel != null && stress.averageStressLevel > 0) {
           result.stressLevel = stress.averageStressLevel;
-          console.log(`[Garmin] Stress: ${result.stressLevel}`);
         }
+        debugLog("Health API", `Stress parsed: averageStressLevel=${stress?.averageStressLevel}, result=${result.stressLevel}`);
       }
     } catch (err: any) {
-      console.log(`[Garmin] Stress fetch failed: ${err.message}`);
+      debugLog("Health API", `Stress fetch FAILED: ${err.message}`, { stack: err.stack?.substring(0, 300) });
     }
 
     try {
-      const domain = c.url?.domain || "garmin.com";
-      const apiBase = `https://connectapi.${domain}`;
-      const bbData = await c.get(`${apiBase}/wellness-service/wellness/bodyBattery/dates/${today}/${today}`);
+      const bbUrl = `${apiBase}/wellness-service/wellness/bodyBattery/dates/${today}/${today}`;
+      debugLog("Health API", `Body Battery URL: ${bbUrl}`);
+      const bbData = await c.get(bbUrl);
+      debugLog("Health API", `BB raw response type: ${typeof bbData}, isArray: ${Array.isArray(bbData)}`, {
+        sample: bbData ? JSON.stringify(bbData).substring(0, 500) : null,
+      });
       if (bbData && Array.isArray(bbData) && bbData.length > 0) {
         const dayData = bbData[0];
+        debugLog("Health API", `BB dayData keys: ${Object.keys(dayData || {}).join(", ")}`, {
+          charged: dayData?.charged,
+          drained: dayData?.drained,
+          hasStatList: !!dayData?.bodyBatteryStatList,
+          statListLength: dayData?.bodyBatteryStatList?.length,
+        });
         const charged = dayData?.charged;
         const drained = dayData?.drained;
         if (charged != null && drained != null) {
           const currentBB = Math.max(0, Math.min(100, 100 + charged - drained));
           result.bodyBattery = currentBB;
-          console.log(`[Garmin] Body Battery: ${currentBB} (charged: ${charged}, drained: ${drained})`);
         }
         if (dayData?.bodyBatteryStatList) {
           const list = dayData.bodyBatteryStatList;
@@ -609,14 +642,31 @@ export async function getGarminDailyStats(userId: string): Promise<GarminDailySt
             const latest = list[list.length - 1];
             if (latest?.bodyBatteryLevel != null) {
               result.bodyBattery = latest.bodyBatteryLevel;
-              console.log(`[Garmin] Body Battery (latest): ${result.bodyBattery}`);
             }
           }
         }
+      } else if (bbData && !Array.isArray(bbData)) {
+        debugLog("Health API", `BB unexpected format (not array)`, {
+          keys: Object.keys(bbData).slice(0, 20),
+          sample: JSON.stringify(bbData).substring(0, 500),
+        });
+        if (bbData?.bodyBatteryValuesArray) {
+          const arr = bbData.bodyBatteryValuesArray;
+          if (Array.isArray(arr) && arr.length > 0) {
+            const latest = arr[arr.length - 1];
+            if (Array.isArray(latest) && latest.length >= 2) {
+              result.bodyBattery = latest[1];
+            }
+          }
+          debugLog("Health API", `BB from bodyBatteryValuesArray: ${result.bodyBattery}`);
+        }
       }
+      debugLog("Health API", `Body Battery final: ${result.bodyBattery}`);
     } catch (err: any) {
-      console.log(`[Garmin] Body Battery fetch failed: ${err.message}`);
+      debugLog("Health API", `Body Battery fetch FAILED: ${err.message}`, { stack: err.stack?.substring(0, 300) });
     }
+
+    debugLog("Health API", `Final results — Stress: ${result.stressLevel}, BB: ${result.bodyBattery}, Steps: ${result.steps}, StepsYesterday: ${result.stepsYesterday}`);
 
     garminLastUsed.set(userId, Date.now());
     setCache(dailyStatsCache, cacheKey, result);

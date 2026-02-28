@@ -19,6 +19,7 @@ export interface ReadinessResult {
     stressLevel: number | null;
     bodyBattery: number | null;
     steps: number | null;
+    stepsYesterday: number | null;
   };
 }
 
@@ -305,29 +306,30 @@ export function calculateReadiness(activities: GarminActivity[], dailyStats?: Ga
   }
 
   if (hasSteps) {
-    const steps = dailyStats!.steps!;
+    const stepsToday = dailyStats!.steps!;
+    const stepsYesterday = dailyStats!.stepsYesterday;
+    const effectiveSteps = stepsYesterday != null ? Math.round((stepsToday + stepsYesterday) / 2) : stepsToday;
     let stepsScore = healthWeight;
     let stepsLabel = "Нормально";
-    let stepsDesc = `${steps.toLocaleString("ru-RU")} шагов`;
+    let stepsDesc = stepsYesterday != null
+      ? `Сегодня ${stepsToday.toLocaleString("ru-RU")}, вчера ${stepsYesterday.toLocaleString("ru-RU")} (сред. ${effectiveSteps.toLocaleString("ru-RU")})`
+      : `${stepsToday.toLocaleString("ru-RU")} шагов сегодня`;
 
-    if (steps >= 25000) {
+    if (effectiveSteps >= 25000) {
       stepsScore = Math.round(healthWeight * 0.3);
       stepsLabel = "Очень много";
-      stepsDesc = `${steps.toLocaleString("ru-RU")} шагов — ноги устали`;
-    } else if (steps >= 18000) {
+      stepsDesc += " — ноги устали";
+    } else if (effectiveSteps >= 18000) {
       stepsScore = Math.round(healthWeight * 0.55);
       stepsLabel = "Много";
-      stepsDesc = `${steps.toLocaleString("ru-RU")} шагов — высокая бытовая нагрузка`;
-    } else if (steps >= 12000) {
+      stepsDesc += " — высокая бытовая нагрузка";
+    } else if (effectiveSteps >= 12000) {
       stepsScore = Math.round(healthWeight * 0.8);
       stepsLabel = "Выше среднего";
-      stepsDesc = `${steps.toLocaleString("ru-RU")} шагов`;
-    } else if (steps < 2000) {
+    } else if (effectiveSteps < 2000) {
       stepsScore = healthWeight;
       stepsLabel = "Мало";
-      stepsDesc = `${steps.toLocaleString("ru-RU")} шагов — низкая активность`;
-    } else {
-      stepsDesc = `${steps.toLocaleString("ru-RU")} шагов`;
+      stepsDesc += " — низкая активность";
     }
 
     factors.push({
@@ -370,6 +372,7 @@ export function calculateReadiness(activities: GarminActivity[], dailyStats?: Ga
       stressLevel: dailyStats.stressLevel,
       bodyBattery: dailyStats.bodyBattery,
       steps: dailyStats.steps,
+      stepsYesterday: dailyStats.stepsYesterday,
     } : undefined,
   };
 }
