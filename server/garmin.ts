@@ -630,6 +630,17 @@ export async function getGarminDailyStats(userId: string): Promise<GarminDailySt
               }
             }
           }
+
+          if (result.bodyBattery == null && stress?.bodyBatteryValuesArray) {
+            const bbArr = stress.bodyBatteryValuesArray;
+            if (Array.isArray(bbArr) && bbArr.length > 0) {
+              const valid = bbArr.filter((v: any) => Array.isArray(v) && v.length >= 2 && v[1] !== null && v[1] >= 0);
+              if (valid.length > 0) {
+                result.bodyBattery = valid[valid.length - 1][1];
+                debugLog("Health API", `BB from stress response bodyBatteryValuesArray (latest): ${result.bodyBattery}, total samples: ${valid.length}`);
+              }
+            }
+          }
         }
       } catch (err: any) {
         debugLog("Health API", `Stress URL failed: ${stressUrl} — ${err.message}`);

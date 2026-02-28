@@ -1,0 +1,49 @@
+Health Data
+28.02.2026, 17:47:58
+Stress: 29, BB: null, Steps: 15644
+Health API
+28.02.2026, 17:47:58
+Final results — Stress: 29, BB: null, Steps: 15644, StepsYesterday: 7283
+Health API
+28.02.2026, 17:47:58
+Stress final: 29, BB final: null
+Health API
+28.02.2026, 17:47:58
+BB URL failed (query): HTTP Error (404): Not Found
+Health API
+28.02.2026, 17:47:58
+Trying BB URL (query): https://connectapi.garmin.com/wellness-service/wellness/bodyBattery?date=2026-02-28
+Health API
+28.02.2026, 17:47:58
+BB URL failed (dates): HTTP Error (404): Not Found
+Health API
+28.02.2026, 17:47:57
+Trying BB URL (dates): https://connectapi.garmin.com/wellness-service/wellness/bodyBattery/dates/2026-02-28/2026-02-28
+Health API
+28.02.2026, 17:47:57
+Stress found via key 'avgStressLevel': 29
+Health API
+28.02.2026, 17:47:57
+Stress response type: object, isArray: false
+{
+  "keys": [
+    "userProfilePK",
+    "calendarDate",
+    "startTimestampGMT",
+    "endTimestampGMT",
+    "startTimestampLocal",
+    "endTimestampLocal",
+    "maxStressLevel",
+    "avgStressLevel",
+    "stressChartValueOffset",
+    "stressChartYAxisOrigin",
+    "stressValueDescriptorsDTOList",
+    "stressValuesArray",
+    "bodyBatteryValueDescriptorsDTOList",
+    "bodyBatteryValuesArray"
+  ],
+  "sample": "{\"userProfilePK\":68513225,\"calendarDate\":\"2026-02-28\",\"startTimestampGMT\":\"2026-02-27T21:00:00.0\",\"endTimestampGMT\":\"2026-02-28T13:47:00.0\",\"startTimestampLocal\":\"2026-02-28T00:00:00.0\",\"endTimestampLocal\":\"2026-02-28T16:47:00.0\",\"maxStressLevel\":83,\"avgStressLevel\":29,\"stressChartValueOffset\":1,\"stressChartYAxisOrigin\":-1,\"stressValueDescriptorsDTOList\":[{\"key\":\"timestamp\",\"index\":0},{\"key\":\"stressLevel\",\"index\":1}],\"stressValuesArray\":[[1772226000000,18],[1772226180000,20],[1772226360000,13],[1772226540000,14],[1772226720000,17],[1772226900000,15],[1772227080000,12],[1772227260000,22],[1772227440000,-1],[1772227620000,-1],[1772227800000,-1],[1772227980000,-1],[1772228160000,-1],[1772228340000,-1],[1772228520000,-1],[1772228700000,-1],[1772228880000,-1],[1772229060000,-1],[1772229240000,-"
+}
+Health API
+28.02.2026, 17:47:57
+Trying stress URL: https://connectapi.garmin.com/wellness-service/wellness/dailyStress/2026-02-28
