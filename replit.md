@@ -1,100 +1,206 @@
 # GarminCoach AI
 
 ## Overview
-GarminCoach AI is an AI-powered web application designed to act as a personal training coach. It integrates with Garmin Connect and Intervals.icu to allow users to generate and push structured workouts and multi-week training plans directly to their Garmin watches or other platforms like Zwift, Polar, Suunto, COROS, and Huawei via Intervals.icu. The core purpose is to provide personalized, AI-generated training guidance based on natural language input, aiming to enhance athletic performance and prevent overtraining.
+GarminCoach AI — AI-powered web application acting as a personal training coach. Integrates with Garmin Connect and Intervals.icu to generate and push structured workouts and multi-week training plans directly to Garmin watches or other platforms (Zwift, Polar, Suunto, COROS, Huawei via Intervals.icu). All UI is in Russian. AI coach persona is an "experienced triathlon coach" that analyzes activity data, profile, weather, and readiness to provide personalized recommendations.
 
 ## User Preferences
-- Admin username: "Andrey" (hardcoded in server/routes.ts as ADMIN_USERNAME)
-- Admin-only pages: /admin (statistics), /test-workouts (push tests), /auto-tests (automated tests), /bug-reports (bug reports), /ai-logs (AI request logs), /prompt-variants (A/B prompt testing), /debug-logs (in-memory debug logs)
-- App language: Russian throughout
-- The user deploys to external VPS via deploy.sh, NOT via Replit deployment
+- Admin username: "Andrey" (hardcoded in server/routes.ts line ~1160 as `ADMIN_USERNAME`), password: "1232"
+- Admin-only pages: /admin, /test-workouts, /auto-tests, /bug-reports, /ai-logs, /prompt-variants, /debug-logs
+- App language: Russian throughout (all UI text, AI responses, error messages)
+- The user deploys to external VPS via deploy.sh (NOT via Replit deployment)
+- Current version: **1.010** — defined in `client/src/pages/version-page.tsx` as `CURRENT_VERSION`
+
+## Tech Stack
+- **Frontend**: React 18 + Vite + shadcn/ui + Tailwind CSS v4 + TanStack Query v5 + wouter (routing) + framer-motion
+- **Backend**: Express.js v5 + TypeScript (tsx)
+- **Database**: PostgreSQL with Drizzle ORM (`STORAGE_MODE=pg`)
+- **AI**: DeepSeek API (model "deepseek-chat") via OpenAI SDK
+- **Garmin**: `@gooin/garmin-connect` npm package (unofficial)
+- **Intervals.icu**: REST API integration
+- **Encryption**: AES-256-GCM for Garmin passwords and Intervals API keys (`server/crypto.ts`)
+- **Password hashing**: bcryptjs
+
+## Environment Variables
+| Variable | Purpose |
+|----------|---------|
+| `STORAGE_MODE` | `pg` for PostgreSQL (default: `json`) |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `SESSION_SECRET` | Express session secret + AES encryption key |
+| `DEEPSEEK_API_KEY` | DeepSeek AI API key |
+| `PORT` | Server port (default: 5000) |
 
 ## System Architecture
-The application features a modern web stack with React 18, Vite, shadcn/ui, and TanStack Query v5 for the frontend, and an Express.js v5 backend. UI styling is managed with Tailwind CSS v4, supporting both dark and light themes. All UI text is localized in Russian. AI capabilities are powered by DeepSeek API, generating structured workouts for running, cycling, and swimming, and multi-week training plans. Garmin Connect integration uses the `@gooin/garmin-connect` npm package, while Intervals.icu integration is achieved via its REST API. Sensitive information like Garmin passwords and Intervals.icu API keys are encrypted using AES-256-GCM. The AI coach persona is an "experienced triathlon coach" that analyzes user activity data, profile information, and weather forecasts to provide personalized and safe recommendations, adhering to principles like the 80/20 rule and disagreeing with unsafe requests. AI responses are streamed via SSE for a smoother user experience, and a robust parsing system extracts structured workout data from natural language outputs. Garmin watch compatibility is dynamically handled, adapting workout recommendations based on the user's specific watch model.
 
-### Key Files
-- **shared/schema.ts** — All TypeScript interfaces, Drizzle table definitions, and Zod validation schemas
-- **server/routes.ts** — All Express API endpoints (auth, workouts, Garmin, Intervals, AI, admin)
-- **server/storage.ts** — IStorage interface + FileStorage (JSON mode)
-- **server/pg-storage.ts** — PostgresStorage (PG mode, Drizzle ORM)
-- **server/garmin.ts** — Garmin Connect session management, workout push/schedule/reschedule/delete, calendar fetch, daily health stats (stress, body battery, steps), caching
-- **server/readiness.ts** — Training readiness calculation: 4 training factors + up to 3 health factors (stress, body battery, steps) from Garmin
-- **server/intervals.ts** — Intervals.icu API integration (activities, calendar, workout push/reschedule)
-- **server/ai.ts** — DeepSeek AI chat/stream, prompt construction, response parsing
-- **server/debug-log.ts** — In-memory debug logging system (up to 500 entries, cleared on restart or via API)
-- **server/crypto.ts** — AES-256-GCM encryption/decryption for credentials
-- **client/src/App.tsx** — Frontend routing and layout
-- **client/src/components/app-sidebar.tsx** — Sidebar navigation with admin section
-- **client/src/pages/dashboard-page.tsx** — Main dashboard with onboarding and upcoming workouts
-- **client/src/pages/coach-page.tsx** — AI chat interface with workout generation
-- **client/src/pages/settings-page.tsx** — User profile, Garmin/Intervals connection settings
-- **client/src/pages/debug-logs-page.tsx** — Admin debug logs viewer with clear button
+### File Structure (by importance and size)
 
-### Storage
-- **Switchable storage**: controlled by `STORAGE_MODE` env var (`json` or `pg`, default: `json`)
-- **JSON mode**: FileStorage class in server/storage.ts — uses .data/*.json files (original approach)
-- **PostgreSQL mode**: PostgresStorage class in server/pg-storage.ts — uses Drizzle ORM with pg driver
-- Both implement the same `IStorage` interface — no changes needed in routes or other code
-- Drizzle table definitions are in shared/schema.ts alongside existing TypeScript interfaces
-- Migration script: `npx tsx scripts/migrate-json-to-pg.ts` — reads JSON files, writes to PG, uses onConflictDoNothing (safe to re-run)
-- JSON files are never deleted during migration (kept as backup)
-- Base prompt variant (id="base") is auto-created in both modes
+**Server (server/):**
+| File | Lines | Purpose |
+|------|-------|---------|
+| `routes.ts` | ~1515 | ALL Express API endpoints (auth, workouts, Garmin, Intervals, AI chat, admin) |
+| `garmin.ts` | ~764 | Garmin Connect session management, workout CRUD, calendar, health stats, in-memory caching |
+| `ai.ts` | ~679 | DeepSeek AI chat/stream, prompt construction, structured workout parsing from AI output |
+| `pg-storage.ts` | ~647 | PostgresStorage class — Drizzle ORM implementation of IStorage |
+| `storage.ts` | ~479 | IStorage interface + FileStorage (JSON mode fallback) |
+| `tests.ts` | ~401 | Automated test scenarios for workout generation |
+| `intervals.ts` | ~386 | Intervals.icu API integration (activities, calendar, workout push/reschedule) |
+| `readiness.ts` | ~378 | Training readiness calculation algorithm |
+| `weather.ts` | ~264 | Open-Meteo weather forecast + Nominatim geocoding |
+| `index.ts` | ~117 | Express server bootstrap |
+| `debug-log.ts` | ~35 | In-memory debug logging (max 500 entries) |
+| `crypto.ts` | ~33 | AES-256-GCM encrypt/decrypt |
+| `vite.ts` | ~58 | Vite dev server setup (DO NOT MODIFY) |
 
-### Debug Logging System
-- **server/debug-log.ts** provides `debugLog(category, message, data?)` function for in-memory logging
-- Logs stored in-memory (max 500 entries), auto-cleared on server restart
-- API: `GET /api/admin/debug-logs` (fetch), `DELETE /api/admin/debug-logs` (clear all)
-- Frontend page at `/debug-logs` with auto-refresh every 5 seconds
-- Use `debugLog("Category", "message", optionalData)` anywhere in server code to add entries
-- Import: `import { debugLog } from "./debug-log";`
+**Client (client/src/):**
+| File | Lines | Purpose |
+|------|-------|---------|
+| `pages/coach-page.tsx` | ~1044 | AI chat interface — main feature page, workout generation with SSE streaming |
+| `pages/dashboard-page.tsx` | ~792 | Main dashboard with onboarding steps, upcoming workouts, activity history |
+| `pages/faq-page.tsx` | ~613 | FAQ page with accordion sections |
+| `pages/settings-page.tsx` | ~571 | User profile, Garmin/Intervals connection, watch model selection |
+| `pages/admin-page.tsx` | ~562 | Admin statistics dashboard |
+| `components/readiness-card.tsx` | ~341 | Readiness score display with expandable factors |
+| `components/app-sidebar.tsx` | ~270 | Sidebar navigation with admin section |
+| `pages/auth-page.tsx` | ~238 | Login/register page |
+| `lib/auth.tsx` | ~67 | Auth context provider, useUser/useAuth hooks |
+| `lib/queryClient.ts` | ~57 | TanStack Query client config, apiRequest helper |
+| `lib/theme-provider.tsx` | ~43 | Dark/light theme provider |
 
-### Dashboard — Upcoming Workouts & Onboarding
-- Dashboard (`/`) is the start page with onboarding steps (profile, device, first workout)
-- Onboarding block auto-hides when all steps completed; shows progress bar
-- Endpoint `/api/upcoming-workouts` fetches planned workouts from Garmin calendar and/or Intervals.icu events for the next 14 days
-- Returns `{ workouts: UpcomingWorkout[], sources: { garmin: boolean, intervals: boolean } }`
-- `UpcomingWorkout` interface defined in shared/schema.ts (id, source, date, name, sportType, isToday, workoutId)
-- Each workout card has "Перенести" button to reschedule via calendar picker dialog
-- Reschedule calls `/api/garmin/reschedule-workout` or `/api/intervals/reschedule-workout` depending on source
-- Both sources fetched in parallel; errors from one source don't block the other
+**Shared:**
+| File | Lines | Purpose |
+|------|-------|---------|
+| `shared/schema.ts` | ~540 | ALL TypeScript interfaces, Drizzle table definitions, Zod validation schemas |
 
-### Activity Caching (DB-backed, Progressive Fetch + 4h Cooldown)
-- Activities are cached in `cached_activities` PostgreSQL table (defined in shared/schema.ts)
-- **First load** (empty cache): fetches 50 activities from Garmin/Intervals and saves to DB
-- **Subsequent loads** (progressive delta): fetches in steps [3, 10, 30, 50], stops as soon as overlap with cached activityIds is found. Typical case: user trains daily, step=3 finds overlap immediately → only 1 small API call
-- **4-hour cooldown**: after a successful sync, no API calls are made for 4 hours — data served entirely from DB cache. Cooldown tracked in-memory via `lastSyncTimes` Map in routes.ts
-- **Manual refresh** (button "Обновить"): clears DB cache + Garmin in-memory cache + cooldown timer, triggers full re-fetch
-- **Sync status on dashboard**: shows "X мин/ч назад" next to refresh button with tooltip warning about not refreshing too often
-- **API failure fallback**: if Garmin/Intervals API fails but cache exists, serves cached data
-- **Dashboard logic**: shows activities from last 30 days; if fewer than 10, shows at least 10 latest
-- Storage methods: `getCachedActivities`, `getCachedActivityIds`, `saveCachedActivities`, `clearCachedActivities`
+### Database Tables (PostgreSQL, Drizzle ORM)
+All defined in `shared/schema.ts`:
 
-### Garmin API Caching (In-Memory)
-- Additional server-side cache (5 min TTL) for activities and calendar data in server/garmin.ts
-- Session alive check skipped if session used within last 10 minutes (avoids extra getUserProfile calls)
-- Cache invalidated after workout reschedule/push operations
-- Reduces Garmin API calls from ~6 per dashboard load to ~3 first time, 0 on refresh within 5 min
+| Table | Primary Key | Purpose |
+|-------|-------------|---------|
+| `users` | `varchar` (UUID) | User accounts with profile, settings, encrypted credentials |
+| `workouts` | `varchar` (UUID) | Generated workouts with structured steps |
+| `favorites` | `varchar` (UUID) | Saved favorite workouts |
+| `messages` | `varchar` (UUID) | AI chat message history |
+| `bug_reports` | `varchar` (UUID) | User bug reports |
+| `ai_logs` | `varchar` (UUID) | AI request/response logs for analysis |
+| `prompt_variants` | `varchar` (UUID) | A/B testing prompt variants |
+| `error_logs` | `varchar` (UUID) | System error logs |
+| `cached_activities` | `varchar` (composite) | Cached Garmin/Intervals activities (`activityId` is `bigint`) |
+| `cached_health_stats` | `varchar` (userId-date) | Cached daily health data (stress, body battery, steps), 6h TTL |
 
-### VPS Deployment
-- deploy.sh located on VPS at /root/GarminWU/deploy.sh (not in git repo)
-- Includes `npm install --include=dev` for build tools
-- Automatically runs `npm run db:push` to sync DB schema when STORAGE_MODE=pg
-- Loads env vars from /home/Garmin/.env before build/migration steps
+### Frontend Routes
+| Path | Component | Access |
+|------|-----------|--------|
+| `/` | DashboardPage | All users |
+| `/coach` | CoachPage | All users |
+| `/favorites` | FavoritesPage | All users |
+| `/settings` | SettingsPage | All users |
+| `/faq` | FaqPage | All users |
+| `/version` | VersionPage | All users |
+| `/admin` | AdminPage | Admin only |
+| `/test-workouts` | TestWorkoutsPage | Admin only |
+| `/auto-tests` | AutoTestsPage | Admin only |
+| `/bug-reports` | BugReportsPage | Admin only |
+| `/ai-logs` | AiLogsPage | Admin only |
+| `/prompt-variants` | PromptVariantsPage | Admin only |
+| `/debug-logs` | DebugLogsPage | Admin only |
 
-### Versioning
-- Current version: **1.010** — defined in `client/src/pages/version-page.tsx` as `CURRENT_VERSION`
-- Version page (`/version`) is accessible to all users, shows full feature list by category
-- **For future AI agents**: When adding significant new functionality (new integrations, major features, new pages), propose incrementing the version number and updating the `features` array in `version-page.tsx`. Minor bug fixes don't require version bumps. Increment by 0.001 for small features, 0.010 for medium features, 0.100 for major features.
+### API Endpoints Summary
+**Auth:** POST `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`; GET `/api/auth/me`; PATCH `/api/auth/profile`; POST `/api/auth/onboarding-shown`
+
+**Garmin:** POST `/api/garmin/connect`, `/api/garmin/disconnect`, `/api/garmin/push-workout`, `/api/garmin/reschedule-workout`; GET `/api/garmin/activities`, `/api/garmin/calendar`; DELETE `/api/garmin/workout/:workoutId`
+
+**Intervals.icu:** POST `/api/intervals/connect`, `/api/intervals/disconnect`, `/api/intervals/push-workout`, `/api/intervals/reschedule-workout`
+
+**Activities & Readiness:** GET `/api/activities`, `/api/readiness`, `/api/upcoming-workouts`; POST `/api/refresh-data`
+
+**Workouts & Favorites:** GET/POST `/api/workouts`; DELETE `/api/workouts/:id`; GET/POST `/api/favorites`; DELETE `/api/favorites/:id`
+
+**AI Chat:** GET `/api/chat/messages`; POST `/api/chat/send` (SSE streaming); DELETE `/api/chat/messages`
+
+**Admin:** GET `/api/admin/stats`, `/api/admin/users/:userId/profile`, `/api/admin/users/:userId/messages`, `/api/admin/bug-reports`, `/api/admin/error-logs`, `/api/admin/debug-logs`, `/api/admin/ai-logs`, `/api/admin/prompt-variants`, `/api/admin/prompt-variants/metrics`; POST `/api/admin/prompt-variants`, `/api/admin/run-tests`; PATCH/DELETE endpoints for all admin resources
+
+## Critical Implementation Details
+
+### Garmin API — RATE LIMITING IS THE #1 PRIORITY
+Garmin aggressively blocks accounts for too many API calls. The entire caching architecture exists to minimize calls.
+
+**Three-layer caching:**
+1. **In-memory cache** (5-min TTL) in `server/garmin.ts` — for activities, calendar data. Session alive check skipped if session used within last 10 minutes
+2. **PostgreSQL `cached_activities`** table — progressive delta-sync: fetches in steps [3, 10, 30, 50], stops when overlap with cached IDs found. 4-hour cooldown between syncs (tracked in-memory via `lastSyncTimes` Map in routes.ts)
+3. **PostgreSQL `cached_health_stats`** table — health data (stress, body battery, steps) cached per user per date, 6-hour TTL. Checked before any Garmin health API call
+
+**Manual refresh** (button "Обновить"): clears ALL caches (in-memory + DB activities + DB health + cooldown timer). User warned about rate limiting via confirmation dialog.
+
+**API failure fallback**: if Garmin API fails but DB cache exists, cached data is served.
+
+### Readiness Score Algorithm (server/readiness.ts)
+Dynamic weight system:
+- **4 training factors** (20pts each = 80pts base): load, recovery time, intensity, consistency
+- **Up to 3 health factors** (15pts each from Garmin): stress level, body battery, steps
+- Score normalized 0-100: `round(totalRawScore / totalMaxRaw × 100)`
+- If health data unavailable, factors silently omitted; score based on training factors only
+- Health data: stress + body battery from single endpoint `wellness-service/wellness/dailyStress/{date}` (BB in `bodyBatteryValuesArray`); steps via `getSteps()` method
+
+### AI Chat (server/ai.ts + pages/coach-page.tsx)
+- Uses DeepSeek API with OpenAI SDK (baseURL override)
+- SSE streaming for real-time response
+- AI context includes: user profile (sport type, fitness level, zones), recent activities (last 30 days), readiness score with health factors, weather forecast, Garmin watch model capabilities
+- AI parses structured workouts from natural language, generates Garmin-compatible `WorkoutStep[]`
+- Prompt variants system for A/B testing different AI prompts
+- Chat history stored in `messages` table
+
+### Garmin Workout Format
+Workouts have structured `WorkoutStep[]` with: stepType (warmup/interval/recovery/rest/cooldown/repeat), durationType (time/distance/lap.button), targetType (pace.zone/heart.rate.zone/power.zone/cadence/no.target), target values. Steps are nested for repeat blocks.
+
+### Garmin Reschedule Workflow
+1. Find `scheduleId` via calendar API (NOT the workoutId — it's the calendar item ID)
+2. DELETE old schedule
+3. POST new schedule with `scheduleWorkout()`
+
+### Date Formatting
+**NEVER** use `toISOString().split("T")[0]` for dates — converts to UTC, shifts by -1 day in UTC+3 (Moscow). Always use `getFullYear()`/`getMonth()`/`getDate()` for local date formatting.
+
+### Credential Encryption
+Garmin passwords and Intervals.icu API keys encrypted with AES-256-GCM using `SESSION_SECRET` as key. Functions: `encrypt(text)` / `decrypt(encrypted)` in `server/crypto.ts`.
+
+### Debug Logging
+- `debugLog(category, message, data?)` — in-memory, max 500 entries, cleared on restart
+- Categories used: "Health API", "Health Data", "AI Context", "AI Chat", "Garmin", "Activities", etc.
+- Viewable at `/debug-logs` (admin only), auto-refresh 5s
+
+### Storage Architecture
+- `IStorage` interface in `server/storage.ts` — all CRUD methods
+- `FileStorage` (JSON mode) and `PostgresStorage` (PG mode) both implement it
+- Switched by `STORAGE_MODE` env var
+- `PostgresStorage` auto-creates base prompt variant on startup
+- Migration script: `npx tsx scripts/migrate-json-to-pg.ts`
 
 ## Known Issues & Lessons Learned
-- **Date formatting on frontend**: NEVER use `toISOString().split("T")[0]` for user-selected dates — it converts to UTC and shifts the date by -1 day in positive timezones (e.g., UTC+3 Moscow). Always use `getFullYear()`, `getMonth()`, `getDate()` for local date formatting.
-- **Garmin API rate limiting**: Two-layer caching: 1) in-memory 5-min TTL in garmin.ts, 2) PostgreSQL `cached_activities` table with 4-hour cooldown and progressive delta-sync (3→10→30). Manual refresh clears both caches. `activityId` uses `bigint` (Garmin IDs exceed int32 max).
-- **Readiness score**: Dynamic weight system — 4 training factors (20pts each = 80pts base) + up to 3 health factors (15pts each from Garmin: stress, body battery, steps). Score normalized to 0-100 regardless of available factors. If health data unavailable, factors silently omitted and score based on training factors only. Health data fetched via Garmin API direct calls (stress+BB from dailyStress endpoint, steps from getSteps method). Health data cached in `cached_health_stats` PostgreSQL table (6-hour TTL), survives server restarts. Manual refresh clears both activity and health caches.
-- **Garmin reschedule workflow**: 1) Find scheduleId via calendar API, 2) DELETE old schedule, 3) POST new schedule with `scheduleWorkout()`. The scheduleId is NOT the workoutId — it's the calendar item id.
+- **`activityId` in `cached_activities` must be `bigint`** — Garmin activity IDs exceed PostgreSQL `integer` max (>2^31)
+- **Date formatting**: see Date Formatting section above
+- **Garmin session**: unofficial `@gooin/garmin-connect` library — sessions can expire unpredictably. Code handles re-login gracefully.
+- **AI date inconsistency**: AI prompt includes explicit rule requiring verification of relative day references ("завтра"/"послезавтра") throughout entire response including `explanation.why` field
 
-## External Dependencies
-- **AI Service**: DeepSeek API (model "deepseek-chat")
-- **Garmin Integration**: `@gooin/garmin-connect` npm package
-- **Intervals.icu Integration**: Intervals.icu REST API
-- **Weather and Geocoding**: Open-Meteo API (weather forecast), Nominatim API (GPS reverse geocoding)
-- **Hashing**: `bcryptjs` for password hashing
+## VPS Deployment
+- deploy.sh located on VPS at `/root/GarminWU/deploy.sh` (not in git repo)
+- Includes `npm install --include=dev` for build tools
+- Automatically runs `npm run db:push` to sync DB schema
+- Loads env vars from `/home/Garmin/.env`
+- Build: `npm run build` → production: `npm run start`
+
+## Versioning
+- Version in `client/src/pages/version-page.tsx` as `CURRENT_VERSION` (currently "1.010")
+- `ChangelogEntry` interface: `{ version, date, changes: { category, items }[] }`
+- Increment: +0.001 small, +0.010 medium, +0.100 major features
+- Version page at `/version` accessible to all users
+
+## NPM Scripts
+- `npm run dev` — development (tsx, hot reload)
+- `npm run build` — production build (esbuild)
+- `npm run start` — production server
+- `npm run db:push` — sync Drizzle schema to PostgreSQL
+- `npm run check` — TypeScript type check
+
+## DO NOT MODIFY
+- `server/vite.ts` and `vite.config.ts` — Vite setup, already configured
+- `drizzle.config.ts` — Drizzle config
+- `package.json` — ask user before modifying scripts
