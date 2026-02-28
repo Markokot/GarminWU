@@ -9,6 +9,9 @@ import {
   Zap,
   BedDouble,
   HeartPulse,
+  Brain,
+  Battery,
+  Footprints,
 } from "lucide-react";
 
 interface ReadinessFactor {
@@ -25,6 +28,11 @@ interface ReadinessResult {
   label: string;
   factors: ReadinessFactor[];
   summary: string;
+  dailyStats?: {
+    stressLevel: number | null;
+    bodyBattery: number | null;
+    steps: number | null;
+  };
 }
 
 const factorIcons: Record<string, typeof Activity> = {
@@ -32,6 +40,9 @@ const factorIcons: Record<string, typeof Activity> = {
   consecutiveIntense: Zap,
   restDays: BedDouble,
   recovery: HeartPulse,
+  stress: Brain,
+  bodyBattery: Battery,
+  steps: Footprints,
 };
 
 const factorNames: Record<string, string> = {
@@ -39,6 +50,9 @@ const factorNames: Record<string, string> = {
   consecutiveIntense: "Интенсивность",
   restDays: "Дни отдыха",
   recovery: "Восстановление",
+  stress: "Стресс",
+  bodyBattery: "Body Battery",
+  steps: "Шаги",
 };
 
 const levelColors: Record<string, { bg: string; text: string; ring: string; dot: string }> = {
@@ -139,8 +153,14 @@ export function ReadinessBadge() {
             <span className="text-xs text-muted-foreground ml-auto">{readiness.score}/100</span>
           </div>
           <p className="text-xs text-muted-foreground mb-3">{readiness.summary}</p>
-          <div className="space-y-2.5 border-t pt-2.5">
-            {readiness.factors.map((factor) => {
+          {(() => {
+            const trainingFactors = readiness.factors.filter(f =>
+              ["weeklyLoad", "consecutiveIntense", "restDays", "recovery"].includes(f.name)
+            );
+            const healthFactors = readiness.factors.filter(f =>
+              ["stress", "bodyBattery", "steps"].includes(f.name)
+            );
+            const renderBadgeFactor = (factor: ReadinessFactor) => {
               const Icon = factorIcons[factor.name] || Activity;
               const pct = (factor.score / factor.maxScore) * 100;
               return (
@@ -166,8 +186,27 @@ export function ReadinessBadge() {
                   </div>
                 </div>
               );
-            })}
-          </div>
+            };
+            return (
+              <div className="border-t pt-2.5">
+                <div className="space-y-2.5">
+                  {trainingFactors.map(renderBadgeFactor)}
+                </div>
+                {healthFactors.length > 0 && (
+                  <>
+                    <div className="flex items-center gap-2 mt-2.5 mb-2">
+                      <div className="flex-1 border-t" />
+                      <span className="text-[9px] text-muted-foreground uppercase tracking-wider">Здоровье</span>
+                      <div className="flex-1 border-t" />
+                    </div>
+                    <div className="space-y-2.5">
+                      {healthFactors.map(renderBadgeFactor)}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
     </>
@@ -239,38 +278,63 @@ export function ReadinessCard() {
           </div>
         </div>
 
-        {expanded && (
-          <div className="mt-4 space-y-2.5 border-t pt-3" data-testid="readiness-factors">
-            {readiness.factors.map((factor) => {
-              const Icon = factorIcons[factor.name] || Activity;
-              const pct = (factor.score / factor.maxScore) * 100;
-              return (
-                <div key={factor.name} className="flex items-center gap-3">
-                  <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium">
-                        {factorNames[factor.name] || factor.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {factor.label}
-                      </span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-1.5">
-                      <div
-                        className={`rounded-full h-1.5 transition-all ${
-                          pct >= 70 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-red-500"
-                        }`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{factor.description}</p>
+        {expanded && (() => {
+          const trainingFactors = readiness.factors.filter(f =>
+            ["weeklyLoad", "consecutiveIntense", "restDays", "recovery"].includes(f.name)
+          );
+          const healthFactors = readiness.factors.filter(f =>
+            ["stress", "bodyBattery", "steps"].includes(f.name)
+          );
+
+          const renderFactor = (factor: ReadinessFactor) => {
+            const Icon = factorIcons[factor.name] || Activity;
+            const pct = (factor.score / factor.maxScore) * 100;
+            return (
+              <div key={factor.name} className="flex items-center gap-3">
+                <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium">
+                      {factorNames[factor.name] || factor.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {factor.label}
+                    </span>
                   </div>
+                  <div className="w-full bg-muted rounded-full h-1.5">
+                    <div
+                      className={`rounded-full h-1.5 transition-all ${
+                        pct >= 70 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-red-500"
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{factor.description}</p>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+            );
+          };
+
+          return (
+            <div className="mt-4 border-t pt-3" data-testid="readiness-factors">
+              <div className="space-y-2.5">
+                {trainingFactors.map(renderFactor)}
+              </div>
+              {healthFactors.length > 0 && (
+                <>
+                  <div className="flex items-center gap-2 mt-3 mb-2.5">
+                    <div className="flex-1 border-t" />
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Здоровье</span>
+                    <div className="flex-1 border-t" />
+                  </div>
+                  <div className="space-y-2.5">
+                    {healthFactors.map(renderFactor)}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })()}
       </CardContent>
     </Card>
   );

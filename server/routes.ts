@@ -5,7 +5,7 @@ import MemoryStore from "memorystore";
 import { storage } from "./storage";
 import { loginSchema, registerSchema, garminConnectSchema, intervalsConnectSchema, createWorkoutSchema, workoutStepSchema, swimStructuredWatchModels, type GarminWatchModel } from "@shared/schema";
 import { z } from "zod";
-import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected, getGarminCalendar, rescheduleGarminWorkout, deleteGarminWorkout, invalidateGarminCache } from "./garmin";
+import { connectGarmin, disconnectGarmin, getGarminActivities, pushWorkoutToGarmin, isGarminConnected, getGarminCalendar, rescheduleGarminWorkout, deleteGarminWorkout, invalidateGarminCache, getGarminDailyStats } from "./garmin";
 import { debugLog, getDebugLogs, clearDebugLogs } from "./debug-log";
 import { verifyIntervalsConnection, pushWorkoutToIntervals, getIntervalsActivities, rescheduleIntervalsWorkout, getIntervalsCalendarEvents } from "./intervals";
 import { chat, chatStream, parseAiResponse, pickPromptVariant } from "./ai";
@@ -422,7 +422,18 @@ export async function registerRoutes(
         const result = await fetchActivitiesWithFallback(userId, user, 20);
         activities = result.activities;
       }
-      const readiness = calculateReadiness(activities);
+
+      let dailyStats = null;
+      if (isGarminConnected(userId.toString())) {
+        try {
+          dailyStats = await getGarminDailyStats(userId.toString());
+          debugLog("Health Data", `Stress: ${dailyStats.stressLevel}, BB: ${dailyStats.bodyBattery}, Steps: ${dailyStats.steps}`);
+        } catch (err: any) {
+          debugLog("Health Data", `Failed to fetch daily stats: ${err.message}`);
+        }
+      }
+
+      const readiness = calculateReadiness(activities, dailyStats);
       res.json(readiness);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -945,11 +956,22 @@ export async function registerRoutes(
       let readinessCtx = "";
       if (activities && activities.length > 0) {
         try {
-          const readiness = calculateReadiness(activities);
+          let dailyStatsForAI = null;
+          if (isGarminConnected(userId.toString())) {
+            try {
+              dailyStatsForAI = await getGarminDailyStats(userId.toString());
+            } catch {}
+          }
+          const readiness = calculateReadiness(activities, dailyStatsForAI);
           readinessCtx = `\n\n===== ГОТОВНОСТЬ К ТРЕНИРОВКЕ =====\nScore: ${readiness.score}/100 (${readiness.label})\n${readiness.summary}\n`;
           readiness.factors.forEach(f => {
             readinessCtx += `- ${f.name}: ${f.score}/${f.maxScore} — ${f.description}\n`;
           });
+          if (dailyStatsForAI) {
+            if (dailyStatsForAI.stressLevel != null) readinessCtx += `- Стресс Garmin: ${dailyStatsForAI.stressLevel}\n`;
+            if (dailyStatsForAI.bodyBattery != null) readinessCtx += `- Body Battery: ${dailyStatsForAI.bodyBattery}/100\n`;
+            if (dailyStatsForAI.steps != null) readinessCtx += `- Шаги сегодня: ${dailyStatsForAI.steps}\n`;
+          }
           debugLog("AI Context", `Готовность: ${readiness.score}/100 (${readiness.label})`, { readinessCtx });
         } catch (err: any) {
           debugLog("AI Context", `Ошибка расчёта готовности: ${err.message}`);

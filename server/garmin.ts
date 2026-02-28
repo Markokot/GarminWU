@@ -15,6 +15,13 @@ interface CacheEntry<T> {
 const CACHE_TTL = 5 * 60 * 1000;
 const activitiesCache: Map<string, CacheEntry<any[]>> = new Map();
 const calendarCache: Map<string, CacheEntry<any>> = new Map();
+const dailyStatsCache: Map<string, CacheEntry<GarminDailyStats>> = new Map();
+
+export interface GarminDailyStats {
+  stressLevel: number | null;
+  bodyBattery: number | null;
+  steps: number | null;
+}
 
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
   const entry = cache.get(key);
@@ -36,6 +43,9 @@ export function invalidateGarminCache(userId: string): void {
   }
   for (const key of calendarCache.keys()) {
     if (key.startsWith(userId)) calendarCache.delete(key);
+  }
+  for (const key of dailyStatsCache.keys()) {
+    if (key.startsWith(userId)) dailyStatsCache.delete(key);
   }
 }
 
@@ -538,6 +548,92 @@ async function doPushAndSchedule(
   }
 
   return { workoutId, scheduled, scheduledDate };
+}
+
+export async function getGarminDailyStats(userId: string): Promise<GarminDailyStats> {
+  const today = new Date().toISOString().split("T")[0];
+  const cacheKey = `${userId}-${today}`;
+  const cached = getCached(dailyStatsCache, cacheKey);
+  if (cached) {
+    console.log(`[Garmin] DailyStats cache hit for user ${userId}`);
+    return cached;
+  }
+
+  const client = garminSessions.get(userId);
+  if (!client) return { stressLevel: null, bodyBattery: null, steps: null };
+
+  const result: GarminDailyStats = { stressLevel: null, bodyBattery: null, steps: null };
+
+  const fetchStats = async (c: any) => {
+    try {
+      const stepsVal = await c.getSteps(new Date());
+      if (typeof stepsVal === "number") {
+        result.steps = stepsVal;
+        console.log(`[Garmin] Steps: ${stepsVal}`);
+      }
+    } catch (err: any) {
+      console.log(`[Garmin] Steps fetch failed: ${err.message}`);
+    }
+
+    try {
+      const domain = c.url?.domain || "garmin.com";
+      const apiBase = `https://connectapi.${domain}`;
+      const stressData = await c.get(`${apiBase}/usersummary-service/usersummary/daily/${today}/${today}`);
+      if (stressData) {
+        const stress = Array.isArray(stressData) ? stressData[0] : stressData;
+        if (stress?.averageStressLevel != null && stress.averageStressLevel > 0) {
+          result.stressLevel = stress.averageStressLevel;
+          console.log(`[Garmin] Stress: ${result.stressLevel}`);
+        }
+      }
+    } catch (err: any) {
+      console.log(`[Garmin] Stress fetch failed: ${err.message}`);
+    }
+
+    try {
+      const domain = c.url?.domain || "garmin.com";
+      const apiBase = `https://connectapi.${domain}`;
+      const bbData = await c.get(`${apiBase}/wellness-service/wellness/bodyBattery/dates/${today}/${today}`);
+      if (bbData && Array.isArray(bbData) && bbData.length > 0) {
+        const dayData = bbData[0];
+        const charged = dayData?.charged;
+        const drained = dayData?.drained;
+        if (charged != null && drained != null) {
+          const currentBB = Math.max(0, Math.min(100, 100 + charged - drained));
+          result.bodyBattery = currentBB;
+          console.log(`[Garmin] Body Battery: ${currentBB} (charged: ${charged}, drained: ${drained})`);
+        }
+        if (dayData?.bodyBatteryStatList) {
+          const list = dayData.bodyBatteryStatList;
+          if (Array.isArray(list) && list.length > 0) {
+            const latest = list[list.length - 1];
+            if (latest?.bodyBatteryLevel != null) {
+              result.bodyBattery = latest.bodyBatteryLevel;
+              console.log(`[Garmin] Body Battery (latest): ${result.bodyBattery}`);
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      console.log(`[Garmin] Body Battery fetch failed: ${err.message}`);
+    }
+
+    garminLastUsed.set(userId, Date.now());
+    setCache(dailyStatsCache, cacheKey, result);
+    return result;
+  };
+
+  try {
+    return await fetchStats(client);
+  } catch (error: any) {
+    console.log("[Garmin] DailyStats fetch failed, attempting reconnect:", error.message);
+    garminSessions.delete(userId);
+    if (await reconnectFromCredentials(userId)) {
+      const newClient = garminSessions.get(userId);
+      if (newClient) return await fetchStats(newClient);
+    }
+    return result;
+  }
 }
 
 export async function pushWorkoutToGarmin(

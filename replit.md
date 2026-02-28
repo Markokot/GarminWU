@@ -17,7 +17,8 @@ The application features a modern web stack with React 18, Vite, shadcn/ui, and 
 - **server/routes.ts** — All Express API endpoints (auth, workouts, Garmin, Intervals, AI, admin)
 - **server/storage.ts** — IStorage interface + FileStorage (JSON mode)
 - **server/pg-storage.ts** — PostgresStorage (PG mode, Drizzle ORM)
-- **server/garmin.ts** — Garmin Connect session management, workout push/schedule/reschedule/delete, calendar fetch, caching
+- **server/garmin.ts** — Garmin Connect session management, workout push/schedule/reschedule/delete, calendar fetch, daily health stats (stress, body battery, steps), caching
+- **server/readiness.ts** — Training readiness calculation: 4 training factors + up to 3 health factors (stress, body battery, steps) from Garmin
 - **server/intervals.ts** — Intervals.icu API integration (activities, calendar, workout push/reschedule)
 - **server/ai.ts** — DeepSeek AI chat/stream, prompt construction, response parsing
 - **server/debug-log.ts** — In-memory debug logging system (up to 500 entries, cleared on restart or via API)
@@ -88,6 +89,7 @@ The application features a modern web stack with React 18, Vite, shadcn/ui, and 
 ## Known Issues & Lessons Learned
 - **Date formatting on frontend**: NEVER use `toISOString().split("T")[0]` for user-selected dates — it converts to UTC and shifts the date by -1 day in positive timezones (e.g., UTC+3 Moscow). Always use `getFullYear()`, `getMonth()`, `getDate()` for local date formatting.
 - **Garmin API rate limiting**: Two-layer caching: 1) in-memory 5-min TTL in garmin.ts, 2) PostgreSQL `cached_activities` table with 4-hour cooldown and progressive delta-sync (3→10→30). Manual refresh clears both caches. `activityId` uses `bigint` (Garmin IDs exceed int32 max).
+- **Readiness score**: Dynamic weight system — 4 training factors (20pts each = 80pts base) + up to 3 health factors (15pts each from Garmin: stress, body battery, steps). Score normalized to 0-100 regardless of available factors. If health data unavailable, factors silently omitted and score based on training factors only. Health data fetched via Garmin API direct calls (stress: usersummary-service, body battery: wellness-service, steps: getSteps method).
 - **Garmin reschedule workflow**: 1) Find scheduleId via calendar API, 2) DELETE old schedule, 3) POST new schedule with `scheduleWorkout()`. The scheduleId is NOT the workoutId — it's the calendar item id.
 
 ## External Dependencies
