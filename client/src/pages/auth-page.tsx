@@ -120,8 +120,8 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
-      <div className="absolute top-4 right-4">
-        <LanguageSwitcher />
+      <div className="absolute top-4 right-4 z-10">
+        <LanguageSwitcher variant="full" />
       </div>
       <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-8 items-center">
         <div className="flex-1 space-y-6 text-center lg:text-left">
