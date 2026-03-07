@@ -197,6 +197,13 @@ Garmin passwords and Intervals.icu API keys encrypted with AES-256-GCM using `SE
 - Loads env vars from `/home/Garmin/.env`
 - Build: `npm run build` → production: `npm run start`
 
+## SEO
+- `client/index.html` — meta tags (title, description, keywords), Open Graph, Twitter Card, JSON-LD structured data
+- `robots.txt` and `sitemap.xml` — generated dynamically by server routes in `server/routes.ts` (absolute URLs based on request host)
+- `<noscript>` fallback in index.html for crawlers without JS
+- Admin pages blocked in robots.txt (Disallow: /admin, /api/, etc.)
+- When a domain is set up, add `<link rel="canonical">` and `og:url` with the absolute domain URL to index.html
+
 ## Versioning
 - Version in `client/src/pages/version-page.tsx` as `CURRENT_VERSION` (currently "1.010")
 - `ChangelogEntry` interface: `{ version, date, changes: { category, items }[] }`

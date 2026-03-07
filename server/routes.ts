@@ -124,6 +124,36 @@ export async function registerRoutes(
     })
   );
 
+  app.get("/sitemap.xml", (req, res) => {
+    const proto = req.headers["x-forwarded-proto"] || req.protocol;
+    const host = req.headers["x-forwarded-host"] || req.headers.host;
+    const base = `${proto}://${host}`;
+    res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>${base}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>${base}/faq</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+</urlset>`);
+  });
+
+  app.get("/robots.txt", (_req, res) => {
+    const proto = _req.headers["x-forwarded-proto"] || _req.protocol;
+    const host = _req.headers["x-forwarded-host"] || _req.headers.host;
+    const base = `${proto}://${host}`;
+    res.type("text/plain").send(`User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /bug-reports
+Disallow: /ai-logs
+Disallow: /prompt-variants
+Disallow: /test-workouts
+Disallow: /auto-tests
+Disallow: /debug-logs
+Disallow: /api/
+
+Sitemap: ${base}/sitemap.xml
+`);
+  });
+
   // Auth routes
   app.post("/api/auth/register", async (req, res) => {
     try {
