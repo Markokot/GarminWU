@@ -173,22 +173,22 @@ function ActivityDonutChart({ activities }: { activities: GarminActivity[] }) {
             <div className="bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-xl p-4 text-center" data-testid="stat-total-count">
               <Zap className="w-5 h-5 text-green-500 mx-auto mb-1.5" />
               <p className="text-2xl font-bold">{stats.totalCount}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("dashboard.workouts")}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">{t("dashboard.workouts")}</p>
             </div>
             <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-4 text-center" data-testid="stat-total-distance">
               <Route className="w-5 h-5 text-blue-500 mx-auto mb-1.5" />
               <p className="text-2xl font-bold">{stats.totalDistance >= 1000 ? `${(stats.totalDistance / 1000).toFixed(0)}` : `${Math.round(stats.totalDistance)}`}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{stats.totalDistance >= 1000 ? t("common.km") : t("common.m")}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">{stats.totalDistance >= 1000 ? t("common.km") : t("common.m")}</p>
             </div>
             <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-xl p-4 text-center" data-testid="stat-total-duration">
               <Clock className="w-5 h-5 text-orange-500 mx-auto mb-1.5" />
               <p className="text-2xl font-bold">{Math.round(stats.totalDuration / 3600)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("common.hours")}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">{t("common.hours")}</p>
             </div>
             <div className="bg-gradient-to-br from-red-500/10 to-red-600/5 rounded-xl p-4 text-center" data-testid="stat-avg-hr">
               <Heart className="w-5 h-5 text-red-500 mx-auto mb-1.5" />
               <p className="text-2xl font-bold">{stats.avgHR || "—"}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("dashboard.avgHR")}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">{t("dashboard.avgHR")}</p>
             </div>
           </div>
 
@@ -577,7 +577,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-sm text-muted-foreground">
                         {new Date(w.date + "T12:00:00").toLocaleDateString(locale, {
                           weekday: "short",
                           day: "numeric",
@@ -641,14 +641,14 @@ export default function DashboardPage() {
                       <div className="min-w-0">
                         <h3 className="font-medium text-sm truncate">{activity.activityName}</h3>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                             {new Date(activity.startTimeLocal).toLocaleDateString(locale, {
                               day: "numeric",
                               month: "short",
                             })}
                           </p>
                           {activity.locationName && (
-                            <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-0.5 text-sm text-muted-foreground">
                               <MapPin className="w-3 h-3" />
                               {activity.locationName}
                             </span>
@@ -659,24 +659,24 @@ export default function DashboardPage() {
                         {activity.activityType}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
-                        <Activity className="w-3 h-3" />
+                        <Activity className="w-3.5 h-3.5" />
                         <span>{formatDistance(activity.distance, t)}</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
+                        <Clock className="w-3.5 h-3.5" />
                         <span>{formatDuration(activity.duration, t)}</span>
                       </div>
                       {activity.averageHR && (
                         <div className="flex items-center gap-1">
-                          <Heart className="w-3 h-3" />
+                          <Heart className="w-3.5 h-3.5" />
                           <span>{activity.averageHR}</span>
                         </div>
                       )}
                     </div>
                     {activity.averagePace && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground mt-2">
                         <Flame className="w-3 h-3" />
                         <span>{t("dashboard.pace")}: {formatPace(activity.averagePace, t)}</span>
                       </div>

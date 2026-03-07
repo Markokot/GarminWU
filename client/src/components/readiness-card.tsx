@@ -152,9 +152,9 @@ export function ReadinessBadge() {
           <div className="flex items-center gap-2 mb-2">
             <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} />
             <span className={`text-sm font-semibold ${colors.text}`}>{readiness.label}</span>
-            <span className="text-xs text-muted-foreground ml-auto">{readiness.score}/100</span>
+            <span className="text-sm text-muted-foreground ml-auto">{readiness.score}/100</span>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">{readiness.summary}</p>
+          <p className="text-sm text-muted-foreground mb-3">{readiness.summary}</p>
           {(() => {
             const trainingFactors = readiness.factors.filter(f =>
               ["weeklyLoad", "consecutiveIntense", "restDays", "recovery"].includes(f.name)
@@ -265,7 +265,7 @@ export function ReadinessCard() {
                 {readiness.label}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+            <p className="text-sm text-muted-foreground mt-0.5 truncate">
               {readiness.summary}
             </p>
           </div>
@@ -297,10 +297,10 @@ export function ReadinessCard() {
                 <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium">
+                    <span className="text-sm font-medium">
                       {t(factorNameKeys[factor.name] || factor.name)}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-sm text-muted-foreground">
                       {factor.label}
                     </span>
                   </div>

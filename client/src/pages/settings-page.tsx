@@ -221,7 +221,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <h2 className="font-semibold text-sm">{t("settings.garminConnect")}</h2>
-                <p className="text-xs text-muted-foreground">{t("settings.garminSubtitle")}</p>
+                <p className="text-sm text-muted-foreground">{t("settings.garminSubtitle")}</p>
               </div>
             </div>
             {user?.garminConnected ? (
@@ -326,7 +326,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <h2 className="font-semibold text-sm">{t("settings.intervalsTitle")}</h2>
-                <p className="text-xs text-muted-foreground">{t("settings.intervalsSubtitle")}</p>
+                <p className="text-sm text-muted-foreground">{t("settings.intervalsSubtitle")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -451,7 +451,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader className="pb-4">
           <h2 className="font-semibold text-sm">{t("settings.profileTitle")}</h2>
-          <p className="text-xs text-muted-foreground">{t("settings.profileSubtitle")}</p>
+          <p className="text-sm text-muted-foreground">{t("settings.profileSubtitle")}</p>
         </CardHeader>
         <CardContent className="space-y-5">
           <div>

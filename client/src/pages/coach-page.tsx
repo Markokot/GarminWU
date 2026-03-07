@@ -118,17 +118,17 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
           </Badge>
         </div>
         {workout.description && (
-          <p className="text-xs text-muted-foreground mb-2" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>{workout.description}</p>
+          <p className="text-sm text-muted-foreground mb-2" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>{workout.description}</p>
         )}
         {workout.scheduledDate && (
-          <div className="flex items-center gap-1.5 mb-3 text-xs text-muted-foreground">
-            <CalendarDays className="w-3 h-3" />
+          <div className="flex items-center gap-1.5 mb-3 text-sm text-muted-foreground">
+            <CalendarDays className="w-3.5 h-3.5" />
             <span>{formatDate(workout.scheduledDate, language)}</span>
           </div>
         )}
         <div className="space-y-1.5 mb-4">
           {workout.steps.map((step, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs">
+            <div key={i} className="flex items-center gap-2 text-sm">
               <div className="w-5 h-5 rounded-md bg-accent flex items-center justify-center flex-shrink-0 text-[10px] font-medium text-accent-foreground">
                 {i + 1}
               </div>
@@ -161,7 +161,7 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
         </div>
         {workout.explanation && <WorkoutExplanationBlock explanation={workout.explanation} />}
         {swimWarning && workout.sportType === "swimming" && (
-          <div className="flex items-start gap-2 mb-3 p-2 rounded-md bg-accent/50 text-xs text-muted-foreground">
+          <div className="flex items-start gap-2 mb-3 p-2 rounded-md bg-accent/50 text-sm text-muted-foreground">
             <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
             <span>{swimWarning}</span>
           </div>
@@ -262,8 +262,8 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
         </div>
 
         {dateRange && (
-          <div className="flex items-center gap-1.5 mb-3 text-xs text-muted-foreground">
-            <CalendarDays className="w-3 h-3" />
+          <div className="flex items-center gap-1.5 mb-3 text-sm text-muted-foreground">
+            <CalendarDays className="w-3.5 h-3.5" />
             <span>{formatDate(dateRange.from, language)} — {formatDate(dateRange.to, language)}</span>
           </div>
         )}
@@ -289,7 +289,7 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
         {showGarmin && onShowGuide && (
           <button
             onClick={onShowGuide}
-            className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="mb-3 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             data-testid="link-plan-garmin-guide"
           >
             <HelpCircle className="w-3.5 h-3.5" />

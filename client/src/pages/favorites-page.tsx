@@ -70,7 +70,7 @@ function StepSummary({ steps }: { steps: FavoriteWorkout["steps"] }) {
         }
 
         return (
-          <div key={i} className="flex items-center gap-2 text-xs">
+          <div key={i} className="flex items-center gap-2 text-sm">
             <div className="w-5 h-5 rounded-md bg-accent flex items-center justify-center flex-shrink-0 text-[10px] font-medium text-accent-foreground">
               {i + 1}
             </div>
