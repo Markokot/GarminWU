@@ -1,7 +1,7 @@
 # GarminCoach AI
 
 ## Overview
-GarminCoach AI — AI-powered web application acting as a personal training coach. Integrates with Garmin Connect and Intervals.icu to generate and push structured workouts and multi-week training plans directly to Garmin watches or other platforms (Zwift, Polar, Suunto, COROS, Huawei via Intervals.icu). All UI is in Russian. AI coach persona is an "experienced triathlon coach" that analyzes activity data, profile, weather, and readiness to provide personalized recommendations.
+GarminCoach AI — AI-powered web application acting as a personal training coach. Integrates with Garmin Connect and Intervals.icu to generate and push structured workouts and multi-week training plans directly to Garmin watches or other platforms (Zwift, Polar, Suunto, COROS, Huawei via Intervals.icu). Multi-language UI (ru/en/zh/fr, Russian is always default). AI coach persona is an "experienced triathlon coach" that analyzes activity data, profile, weather, and readiness to provide personalized recommendations. Domain: https://coach.andkn.ru/
 
 ## User Preferences
 - Admin username: "Andrey" (hardcoded in server/routes.ts line ~1160 as `ADMIN_USERNAME`), password: "1232"
@@ -68,12 +68,17 @@ GarminCoach AI — AI-powered web application acting as a personal training coac
 **i18n (client/src/i18n/):**
 | File | Purpose |
 |------|---------|
-| `types.ts` | Language type ("ru"/"en"/"zh"/"fr"), language list with flags, DEFAULT_LANGUAGE="ru" |
+| `types.ts` | Language type ("ru"/"en"/"zh"/"fr"), language list with flags/labels, DEFAULT_LANGUAGE="ru" |
 | `context.tsx` | I18nProvider, useTranslation hook (returns {language, setLanguage, t}), nested key support, {{param}} interpolation |
-| `locales/ru.json` | Russian translations (default) |
-| `locales/en.json` | English translations |
-| `locales/zh.json` | Chinese translations |
-| `locales/fr.json` | French translations |
+| `locales/ru.json` | Russian translations (418 keys, default/reference) |
+| `locales/en.json` | English translations (418 keys, same structure) |
+| `locales/zh.json` | Chinese translations (418 keys, same structure) |
+| `locales/fr.json` | French translations (418 keys, same structure) |
+
+**Language Switcher:**
+| File | Purpose |
+|------|---------|
+| `components/language-switcher.tsx` | LanguageSwitcher component with `variant` prop: "compact" (icon-only, used in header) or "full" (globe icon + flag + label, used on login page) |
 
 **Shared:**
 | File | Lines | Purpose |
@@ -197,12 +202,100 @@ Garmin passwords and Intervals.icu API keys encrypted with AES-256-GCM using `SE
 - Loads env vars from `/home/Garmin/.env`
 - Build: `npm run build` → production: `npm run start`
 
+## Internationalization (i18n)
+
+### Architecture
+- Custom lightweight i18n (no external libraries like react-i18next)
+- Provider: `I18nProvider` in `client/src/i18n/context.tsx` — **MUST be inside `QueryClientProvider`** (placing outside causes React hook error)
+- Hook: `useTranslation()` returns `{ language, setLanguage, t }`
+- `t("key.nested.path")` — dot-notation access to nested JSON keys
+- `t("key", { param: "value" })` — `{{param}}` interpolation support
+- Persistence: `localStorage` key `garmincoach_language`, fallback `"ru"`
+
+### Critical Rules
+- **Russian is ALWAYS the default language.** Never auto-detect from browser `navigator.language`, VPN, IP, or geolocation
+- `DEFAULT_LANGUAGE = "ru"` defined in `client/src/i18n/types.ts`
+- All 4 locale JSON files (`ru.json`, `en.json`, `zh.json`, `fr.json`) must have identical 418-key structure
+- When adding new UI strings: add key to ALL 4 locale files with translations
+- If a key is missing in a locale file, `t()` returns the key itself (no crash)
+
+### What IS translated
+- All user-facing pages: auth, dashboard, coach, settings, favorites, FAQ, version, workouts
+- Sidebar navigation labels
+- All dialog/modal text, toast messages, form labels, button text
+- Sport types via `t("sport.running")`, fitness levels via `t("fitness.beginner")`, etc.
+- `formatDuration()` uses `t("common.hours")` / `t("common.min")` for localized units
+- Date formatting: language mapped to locale code — ru→"ru-RU", en→"en-US", zh→"zh-CN", fr→"fr-FR"
+
+### What is NOT translated (intentional)
+- Admin-only pages: /admin, /bug-reports, /ai-logs, /prompt-variants, /debug-logs, /auto-tests, /test-workouts (only used by admin "Andrey")
+- Version changelog entries (historical data, always Russian)
+- Server-side readiness factor labels in `server/readiness.ts` (returned as Russian strings)
+- AI coach system prompt and responses (AI responds in language matching user's locale via instructions in prompt)
+
+### Language Switcher
+- Component: `client/src/components/language-switcher.tsx`
+- Two variants via `variant` prop:
+  - `"compact"` (default) — small icon-only button showing current flag. Used in app header next to theme toggle
+  - `"full"` — larger button with Globe icon + flag + language name (e.g. "🌐 🇷🇺 Русский"). Used on login page (top-right corner) so unauthenticated users of any language can find it
+- Languages defined in `client/src/i18n/types.ts` as `languages` array: `[{code, label, flag}]`
+  - ru: "Русский" 🇷🇺, en: "English" 🇬🇧, zh: "中文" 🇨🇳, fr: "Français" 🇫🇷
+- Dropdown menu shows all 4 languages with flags; current language highlighted
+
+### Adding a New Language
+1. Add language code to `Language` type in `client/src/i18n/types.ts`
+2. Add entry to `languages` array with `code`, `label`, `flag`
+3. Create `client/src/i18n/locales/{code}.json` copying structure from `ru.json`
+4. Import and register in `client/src/i18n/context.tsx` (translations object)
+5. Add `og:locale:alternate` in `client/index.html`
+6. Add locale mapping in date formatting code (search for `ru-RU` in codebase)
+
 ## SEO
-- `client/index.html` — meta tags (title, description, keywords), Open Graph, Twitter Card, JSON-LD structured data
-- `robots.txt` and `sitemap.xml` — generated dynamically by server routes in `server/routes.ts` (absolute URLs based on request host)
-- `<noscript>` fallback in index.html for crawlers without JS
-- Admin pages blocked in robots.txt (Disallow: /admin, /api/, etc.)
-- Domain: `https://coach.andkn.ru/` — used in canonical, og:url, og:image, twitter:image, JSON-LD
+
+### Domain
+- Production URL: `https://coach.andkn.ru/`
+- All absolute URLs in meta tags reference this domain
+
+### Meta Tags (`client/index.html`)
+- `<html lang="ru">` — Russian as primary language
+- `<title>` — "GarminCoach AI — Персональный AI-тренер для Garmin | Бег, Велосипед, Плавание"
+- `<meta name="description">` — detailed Russian description with keywords
+- `<meta name="keywords">` — Garmin тренер, AI тренер, марафон, Ironman, триатлон, etc.
+- `<link rel="canonical" href="https://coach.andkn.ru/">` — canonical URL
+- `<meta name="robots" content="index, follow">` — allow indexing
+- `<meta name="theme-color" content="#16a34a">` — green theme for mobile browsers
+
+### Open Graph (social sharing — VK, Telegram, Facebook)
+- `og:url` — `https://coach.andkn.ru/`
+- `og:title`, `og:description` — Russian text
+- `og:image` — `https://coach.andkn.ru/favicon.png` (absolute URL required)
+- `og:locale` — `ru_RU` primary, alternates: `en_US`, `zh_CN`, `fr_FR`
+- `og:site_name` — "GarminCoach AI"
+
+### Twitter/X Card
+- `twitter:card` — "summary"
+- `twitter:title`, `twitter:description`, `twitter:image` — same as OG with absolute URLs
+
+### JSON-LD Structured Data
+- Type: `SoftwareApplication` (schema.org)
+- Category: `HealthApplication`
+- Price: 0 RUB (free)
+- Feature list: 7 items covering AI generation, Garmin integration, sports, multi-language
+
+### robots.txt & sitemap.xml
+- **Generated dynamically** by Express routes in `server/routes.ts` (NOT static files)
+- Uses `req.headers["x-forwarded-proto"]` and `req.headers["x-forwarded-host"]` to build absolute URLs automatically
+- robots.txt allows `/`, blocks admin pages (`/admin`, `/bug-reports`, `/ai-logs`, `/prompt-variants`, `/test-workouts`, `/auto-tests`, `/debug-logs`) and `/api/`
+- sitemap.xml lists `/` (priority 1.0, weekly) and `/faq` (priority 0.8, monthly)
+
+### noscript Fallback
+- `<noscript>` block in `<body>` with app name and description in Russian + English
+- Helps search engine crawlers that don't execute JavaScript to understand the page content
+
+### Future SEO Improvements
+- Create an OG image (1200x630 PNG) with app branding instead of favicon.png for better social sharing previews
+- Consider adding hreflang tags if multi-language SEO becomes important
+- Submit sitemap to Google Search Console and Yandex Webmaster
 
 ## Versioning
 - Version in `client/src/pages/version-page.tsx` as `CURRENT_VERSION` (currently "1.010")
