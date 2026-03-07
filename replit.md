@@ -202,7 +202,7 @@ Garmin passwords and Intervals.icu API keys encrypted with AES-256-GCM using `SE
 - `robots.txt` and `sitemap.xml` — generated dynamically by server routes in `server/routes.ts` (absolute URLs based on request host)
 - `<noscript>` fallback in index.html for crawlers without JS
 - Admin pages blocked in robots.txt (Disallow: /admin, /api/, etc.)
-- When a domain is set up, add `<link rel="canonical">` and `og:url` with the absolute domain URL to index.html
+- Domain: `https://coach.andkn.ru/` — used in canonical, og:url, og:image, twitter:image, JSON-LD
 
 ## Versioning
 - Version in `client/src/pages/version-page.tsx` as `CURRENT_VERSION` (currently "1.010")
