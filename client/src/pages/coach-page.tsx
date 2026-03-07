@@ -610,7 +610,7 @@ export default function CoachPage() {
       triggerGarminGuide();
     },
     onError: (error: Error) => {
-      toast({ title: t("coach.sendError"), description: error.message, variant: "destructive" });
+      toast({ title: t("coach.sendError"), description: `${error.message}. ${t("settings.garminPushHint")}`, variant: "destructive" });
     },
   });
 
@@ -731,7 +731,7 @@ export default function CoachPage() {
       if (!data.swimIncompatible) triggerGarminGuide();
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     } catch (error: any) {
-      toast({ title: t("coach.sendError"), description: error.message, variant: "destructive" });
+      toast({ title: t("coach.sendError"), description: `${error.message}. ${t("settings.garminPushHint")}`, variant: "destructive" });
     } finally {
       setSinglePushIdx(null);
     }

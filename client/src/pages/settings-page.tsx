@@ -57,7 +57,7 @@ export default function SettingsPage() {
       garminForm.reset({ garminEmail: data.garminEmail || "", garminPassword: "" });
     },
     onError: (error: Error) => {
-      toast({ title: t("settings.connectionError"), description: error.message, variant: "destructive" });
+      toast({ title: t("settings.connectionError"), description: `${error.message}. ${t("settings.garminConnectionHint")}`, variant: "destructive" });
     },
   });
 
@@ -94,7 +94,7 @@ export default function SettingsPage() {
       intervalsForm.reset({ athleteId: data.intervalsAthleteId || "", apiKey: "" });
     },
     onError: (error: Error) => {
-      toast({ title: t("settings.connectionError"), description: error.message, variant: "destructive" });
+      toast({ title: t("settings.connectionError"), description: `${error.message}. ${t("settings.intervalsConnectionHint")}`, variant: "destructive" });
     },
   });
 
