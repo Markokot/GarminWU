@@ -12,6 +12,7 @@ import { sportTypes } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { Watch, Activity, Zap } from "lucide-react";
 import { useTranslation } from "@/i18n/context";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 export default function AuthPage() {
   const [tab, setTab] = useState<"login" | "register">("login");
@@ -118,7 +119,10 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
       <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-8 items-center">
         <div className="flex-1 space-y-6 text-center lg:text-left">
           <div className="flex items-center gap-3 justify-center lg:justify-start">
