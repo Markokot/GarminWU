@@ -1,0 +1,125 @@
+Health API
+07.03.2026, 09:50:38
+Stress final: 26, BB final: null
+Health API
+07.03.2026, 09:50:38
+BB fallback: no known BB key found. Battery-related keys: none
+{
+  "values": {}
+}
+Health API
+07.03.2026, 09:50:38
+Trying BB fallback URL: https://connectapi.garmin.com/wellness-service/wellness/dailySummaryChart?date=2026-03-07
+Health API
+07.03.2026, 09:50:38
+BB fallback URL failed: https://connectapi.garmin.com/wellness-service/wellness/dailySummaryChart/2026-03-07 — HTTP Error (403): Forbidden
+Health API
+07.03.2026, 09:50:38
+Trying BB fallback URL: https://connectapi.garmin.com/wellness-service/wellness/dailySummaryChart/2026-03-07
+Health API
+07.03.2026, 09:50:38
+BB fallback URL failed: https://connectapi.garmin.com/usersummary-service/usersummary/daily/2026-03-07 — HTTP Error (403): Forbidden
+Health API
+07.03.2026, 09:50:37
+Trying BB fallback URL: https://connectapi.garmin.com/usersummary-service/usersummary/daily/2026-03-07
+Health API
+07.03.2026, 09:50:37
+BB URL failed (query): HTTP Error (404): Not Found
+Health API
+07.03.2026, 09:50:37
+Trying BB URL (query): https://connectapi.garmin.com/wellness-service/wellness/bodyBattery?date=2026-03-07
+Health API
+07.03.2026, 09:50:37
+BB URL failed (dates): HTTP Error (404): Not Found
+Health API
+07.03.2026, 09:50:37
+Trying BB URL (dates): https://connectapi.garmin.com/wellness-service/wellness/bodyBattery/dates/2026-03-07/2026-03-07
+Health API
+07.03.2026, 09:50:37
+Stress URL failed: https://connectapi.garmin.com/usersummary-service/usersummary/daily/2026-03-07 — HTTP Error (403): Forbidden
+Health API
+07.03.2026, 09:50:37
+Trying stress URL: https://connectapi.garmin.com/usersummary-service/usersummary/daily/2026-03-07
+Health API
+07.03.2026, 09:50:37
+BB stress: no direct BB key found. Battery-related keys: bodyBatteryValueDescriptorsDTOList, bodyBatteryValuesArray
+{
+  "values": {
+    "bodyBatteryValueDescriptorsDTOList": "[object]",
+    "bodyBatteryValuesArray": "[object]"
+  }
+}
+Health API
+07.03.2026, 09:50:37
+BB stress array: ALL values filtered out — no positive values found (all negative or null)
+Health API
+07.03.2026, 09:50:37
+BB stress array filter: validPositive=0 out of 195
+Health API
+07.03.2026, 09:50:37
+BB stress array: total=195, unique values=[null,"RESET"], first5=[[1772830800000,null,null,2],[1772830980000,null,null,2],[1772831160000,null,null,2],[1772831340000,null,null,2],[1772831520000,null,null,2]], last5=[[1772865000000,null,null,2],[1772865180000,null,null,2],[1772865360000,null,null,2],[1772865540000,null,null,2],[1772865720000,"RESET",75,2]]
+Health API
+07.03.2026, 09:50:37
+Stress found via key 'avgStressLevel': 26
+Health API
+07.03.2026, 09:50:37
+Stress response type: object, isArray: false
+{
+  "keys": [
+    "userProfilePK",
+    "calendarDate",
+    "startTimestampGMT",
+    "endTimestampGMT",
+    "startTimestampLocal",
+    "endTimestampLocal",
+    "maxStressLevel",
+    "avgStressLevel",
+    "stressChartValueOffset",
+    "stressChartYAxisOrigin",
+    "stressValueDescriptorsDTOList",
+    "stressValuesArray",
+    "bodyBatteryValueDescriptorsDTOList",
+    "bodyBatteryValuesArray"
+  ],
+  "sample": "{\"userProfilePK\":68513225,\"calendarDate\":\"2026-03-07\",\"startTimestampGMT\":\"2026-03-06T21:00:00.0\",\"endTimestampGMT\":\"2026-03-07T06:45:00.0\",\"startTimestampLocal\":\"2026-03-07T00:00:00.0\",\"endTimestampLocal\":\"2026-03-07T09:45:00.0\",\"maxStressLevel\":28,\"avgStressLevel\":26,\"stressChartValueOffset\":1,\"stressChartYAxisOrigin\":-1,\"stressValueDescriptorsDTOList\":[{\"index\":0,\"key\":\"timestamp\"},{\"index\":1,\"key\":\"stressLevel\"}],\"stressValuesArray\":[[1772830800000,-1],[1772830980000,-1],[1772831160000,-1],[1772831340000,-1],[1772831520000,-1],[1772831700000,-1],[1772831880000,-1],[1772832060000,-1],[1772832240000,-1],[1772832420000,-1],[1772832600000,-1],[1772832780000,-1],[1772832960000,-1],[1772833140000,-1],[1772833320000,-1],[1772833500000,-1],[1772833680000,-1],[1772833860000,-1],[1772834040000,-"
+}
+Health API
+07.03.2026, 09:50:37
+Trying stress URL: https://connectapi.garmin.com/wellness-service/wellness/dailyStress/2026-03-07
+Health API
+07.03.2026, 09:50:37
+Steps yesterday: 13377
+Activities
+07.03.2026, 09:50:37
+Итог: карточки=10, статистика за 30д=4, всего=30
+Activities
+07.03.2026, 09:50:37
+Из кэша получено 30 активностей
+Activities
+07.03.2026, 09:50:37
+Сохранено в кэш: 30 активностей
+Health API
+07.03.2026, 09:50:37
+Steps today: null
+Activities
+07.03.2026, 09:50:37
+Начальная загрузка: получено 30 активностей из garmin
+Activities
+07.03.2026, 09:50:36
+Кэш пуст — начальная загрузка 30 активностей
+Activities
+07.03.2026, 09:50:36
+Состояние кэша
+{
+  "cachedCount": 0,
+  "cooldownActive": false,
+  "lastSync": "нет",
+  "sinceLastSyncMin": 29547771
+}
+Activities
+07.03.2026, 09:50:36
+Запрос активностей для Andrey
+{
+  "garminConnected": true,
+  "intervalsConnected": false
+}
