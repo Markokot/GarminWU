@@ -634,12 +634,22 @@ export async function getGarminDailyStats(userId: string): Promise<GarminDailySt
           if (result.bodyBattery == null && stress?.bodyBatteryValuesArray) {
             const bbArr = stress.bodyBatteryValuesArray;
             if (Array.isArray(bbArr) && bbArr.length > 0) {
+              const allValues = bbArr.filter((v: any) => Array.isArray(v) && v.length >= 2).map((v: any) => v[1]);
+              const uniqueValues = [...new Set(allValues)].sort((a: any, b: any) => Number(a) - Number(b));
+              debugLog("Health API", `BB stress array: total=${bbArr.length}, unique values=${JSON.stringify(uniqueValues.slice(0, 30))}, first5=${JSON.stringify(bbArr.slice(0, 5))}, last5=${JSON.stringify(bbArr.slice(-5))}`);
               const valid = bbArr.filter((v: any) => Array.isArray(v) && v.length >= 2 && v[1] !== null && v[1] >= 0);
+              debugLog("Health API", `BB stress array filter: valid=${valid.length} out of ${bbArr.length}`);
               if (valid.length > 0) {
                 result.bodyBattery = valid[valid.length - 1][1];
                 debugLog("Health API", `BB from stress response bodyBatteryValuesArray (latest): ${result.bodyBattery}, total samples: ${valid.length}`);
+              } else {
+                debugLog("Health API", `BB stress array: ALL values filtered out (all negative or null)`);
               }
+            } else {
+              debugLog("Health API", `BB stress array: empty or not array, type=${typeof bbArr}, isArray=${Array.isArray(bbArr)}, length=${bbArr?.length}`);
             }
+          } else if (result.bodyBattery == null) {
+            debugLog("Health API", `BB stress: bodyBatteryValuesArray missing from response, available keys: ${stress ? Object.keys(stress).filter(k => k.toLowerCase().includes('battery') || k.toLowerCase().includes('bb')).join(', ') || 'none with battery/bb' : 'no stress obj'}`);
           }
         }
       } catch (err: any) {
@@ -685,10 +695,16 @@ export async function getGarminDailyStats(userId: string): Promise<GarminDailySt
           if (result.bodyBattery == null && dayData.bodyBatteryValuesArray) {
             const arr = dayData.bodyBatteryValuesArray;
             if (Array.isArray(arr) && arr.length > 0) {
+              const allVals = arr.filter((v: any) => Array.isArray(v) && v.length >= 2).map((v: any) => v[1]);
+              const uniqueVals = [...new Set(allVals)].sort((a: any, b: any) => Number(a) - Number(b));
+              debugLog("Health API", `BB dedicated array: total=${arr.length}, unique values=${JSON.stringify(uniqueVals.slice(0, 30))}, last5=${JSON.stringify(arr.slice(-5))}`);
               const valid = arr.filter((v: any) => Array.isArray(v) && v.length >= 2 && v[1] !== null && v[1] >= 0);
+              debugLog("Health API", `BB dedicated array filter: valid=${valid.length} out of ${arr.length}`);
               if (valid.length > 0) {
                 result.bodyBattery = valid[valid.length - 1][1];
                 debugLog("Health API", `BB from valuesArray (latest): ${result.bodyBattery}`);
+              } else {
+                debugLog("Health API", `BB dedicated array: ALL values filtered out`);
               }
             }
           }
