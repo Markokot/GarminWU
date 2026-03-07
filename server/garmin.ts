@@ -602,7 +602,7 @@ export async function getGarminDailyStats(userId: string): Promise<GarminDailySt
     ];
 
     for (const stressUrl of stressUrls) {
-      if (result.stressLevel != null) break;
+      if (result.stressLevel != null && result.bodyBattery != null) break;
       try {
         debugLog("Health API", `Trying stress URL: ${stressUrl}`);
         const stressData = await c.get(stressUrl);
@@ -637,19 +637,44 @@ export async function getGarminDailyStats(userId: string): Promise<GarminDailySt
               const allValues = bbArr.filter((v: any) => Array.isArray(v) && v.length >= 2).map((v: any) => v[1]);
               const uniqueValues = [...new Set(allValues)].sort((a: any, b: any) => Number(a) - Number(b));
               debugLog("Health API", `BB stress array: total=${bbArr.length}, unique values=${JSON.stringify(uniqueValues.slice(0, 30))}, first5=${JSON.stringify(bbArr.slice(0, 5))}, last5=${JSON.stringify(bbArr.slice(-5))}`);
-              const valid = bbArr.filter((v: any) => Array.isArray(v) && v.length >= 2 && v[1] !== null && v[1] >= 0);
-              debugLog("Health API", `BB stress array filter: valid=${valid.length} out of ${bbArr.length}`);
-              if (valid.length > 0) {
-                result.bodyBattery = valid[valid.length - 1][1];
-                debugLog("Health API", `BB from stress response bodyBatteryValuesArray (latest): ${result.bodyBattery}, total samples: ${valid.length}`);
+
+              const validPositive = bbArr.filter((v: any) => Array.isArray(v) && v.length >= 2 && v[1] !== null && v[1] > 0 && v[1] <= 100);
+              debugLog("Health API", `BB stress array filter: validPositive=${validPositive.length} out of ${bbArr.length}`);
+              if (validPositive.length > 0) {
+                result.bodyBattery = validPositive[validPositive.length - 1][1];
+                debugLog("Health API", `BB from stress bodyBatteryValuesArray (latest positive): ${result.bodyBattery}, total samples: ${validPositive.length}`);
               } else {
-                debugLog("Health API", `BB stress array: ALL values filtered out (all negative or null)`);
+                const withZero = bbArr.filter((v: any) => Array.isArray(v) && v.length >= 2 && v[1] !== null && v[1] === 0);
+                if (withZero.length > 0) {
+                  result.bodyBattery = 0;
+                  debugLog("Health API", `BB from stress array: found 0 values (battery depleted)`);
+                } else {
+                  debugLog("Health API", `BB stress array: ALL values filtered out — no positive values found (all negative or null)`);
+                }
               }
             } else {
               debugLog("Health API", `BB stress array: empty or not array, type=${typeof bbArr}, isArray=${Array.isArray(bbArr)}, length=${bbArr?.length}`);
             }
-          } else if (result.bodyBattery == null) {
-            debugLog("Health API", `BB stress: bodyBatteryValuesArray missing from response, available keys: ${stress ? Object.keys(stress).filter(k => k.toLowerCase().includes('battery') || k.toLowerCase().includes('bb')).join(', ') || 'none with battery/bb' : 'no stress obj'}`);
+          }
+          if (result.bodyBattery == null && stress) {
+            const directBBKeys = [
+              "bodyBatteryMostRecentValue", "bodyBatteryHighestValue",
+              "bodyBatteryLowestValue", "lastBodyBatteryValue",
+              "bodyBattery", "currentBodyBatteryLevel", "bodyBatteryLevel",
+            ];
+            for (const key of directBBKeys) {
+              if (stress[key] != null && stress[key] > 0 && stress[key] <= 100) {
+                result.bodyBattery = stress[key];
+                debugLog("Health API", `BB from stress direct key '${key}': ${result.bodyBattery}`);
+                break;
+              }
+            }
+            if (result.bodyBattery == null) {
+              const batteryKeys = Object.keys(stress).filter(k => k.toLowerCase().includes('battery') || k.toLowerCase().includes('body'));
+              debugLog("Health API", `BB stress: no direct BB key found. Battery-related keys: ${batteryKeys.join(', ') || 'none'}`, {
+                values: batteryKeys.reduce((acc: any, k) => { acc[k] = stress[k] != null ? (typeof stress[k] === 'object' ? `[${typeof stress[k]}]` : stress[k]) : null; return acc; }, {}),
+              });
+            }
           }
         }
       } catch (err: any) {
@@ -724,6 +749,46 @@ export async function getGarminDailyStats(userId: string): Promise<GarminDailySt
         }
       } catch (err: any) {
         debugLog("Health API", `BB URL failed (${urlType}): ${err.message}`);
+      }
+    }
+
+    if (result.bodyBattery == null) {
+      const fallbackBBUrls = [
+        `${apiBase}/usersummary-service/usersummary/daily/${today}`,
+        `${apiBase}/wellness-service/wellness/dailySummaryChart/${today}`,
+        `${apiBase}/wellness-service/wellness/dailySummaryChart?date=${today}`,
+      ];
+      for (const fbUrl of fallbackBBUrls) {
+        if (result.bodyBattery != null) break;
+        try {
+          debugLog("Health API", `Trying BB fallback URL: ${fbUrl}`);
+          const fbData = await c.get(fbUrl);
+          if (fbData && typeof fbData === "object") {
+            const obj = Array.isArray(fbData) ? fbData[0] : fbData;
+            if (obj) {
+              const bbKeys = [
+                "bodyBatteryMostRecentValue", "bodyBatteryHighestValue",
+                "bodyBatteryLowestValue", "lastBodyBatteryValue",
+                "bodyBattery", "currentBodyBatteryLevel",
+              ];
+              for (const key of bbKeys) {
+                if (obj[key] != null && obj[key] > 0 && obj[key] <= 100) {
+                  result.bodyBattery = obj[key];
+                  debugLog("Health API", `BB from fallback key '${key}': ${result.bodyBattery} (URL: ${fbUrl})`);
+                  break;
+                }
+              }
+              if (result.bodyBattery == null) {
+                const relevantKeys = Object.keys(obj).filter(k => k.toLowerCase().includes('battery') || k.toLowerCase().includes('body'));
+                debugLog("Health API", `BB fallback: no known BB key found. Battery-related keys: ${relevantKeys.join(', ') || 'none'}`, {
+                  values: relevantKeys.reduce((acc: any, k) => { acc[k] = obj[k]; return acc; }, {}),
+                });
+              }
+            }
+          }
+        } catch (err: any) {
+          debugLog("Health API", `BB fallback URL failed: ${fbUrl} — ${err.message}`);
+        }
       }
     }
 
