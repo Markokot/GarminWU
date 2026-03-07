@@ -6,7 +6,7 @@ GarminCoach AI — AI-powered web application acting as a personal training coac
 ## User Preferences
 - Admin username: "Andrey" (hardcoded in server/routes.ts line ~1160 as `ADMIN_USERNAME`), password: "1232"
 - Admin-only pages: /admin, /test-workouts, /auto-tests, /bug-reports, /ai-logs, /prompt-variants, /debug-logs
-- App language: Russian throughout (all UI text, AI responses, error messages)
+- App language: Multi-language support (ru, en, zh, fr). Russian is ALWAYS default. No auto-detection from browser/VPN/IP. Language stored in localStorage key `garmincoach_language`
 - The user deploys to external VPS via deploy.sh (NOT via Replit deployment)
 - Current version: **1.010** — defined in `client/src/pages/version-page.tsx` as `CURRENT_VERSION`
 
@@ -64,6 +64,16 @@ GarminCoach AI — AI-powered web application acting as a personal training coac
 | `lib/auth.tsx` | ~67 | Auth context provider, useUser/useAuth hooks |
 | `lib/queryClient.ts` | ~57 | TanStack Query client config, apiRequest helper |
 | `lib/theme-provider.tsx` | ~43 | Dark/light theme provider |
+
+**i18n (client/src/i18n/):**
+| File | Purpose |
+|------|---------|
+| `types.ts` | Language type ("ru"/"en"/"zh"/"fr"), language list with flags, DEFAULT_LANGUAGE="ru" |
+| `context.tsx` | I18nProvider, useTranslation hook (returns {language, setLanguage, t}), nested key support, {{param}} interpolation |
+| `locales/ru.json` | Russian translations (default) |
+| `locales/en.json` | English translations |
+| `locales/zh.json` | Chinese translations |
+| `locales/fr.json` | French translations |
 
 **Shared:**
 | File | Lines | Purpose |

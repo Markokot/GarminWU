@@ -8,14 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
-import { sportTypes, sportTypeLabels } from "@shared/schema";
+import { sportTypes } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { Watch, Activity, Zap } from "lucide-react";
+import { useTranslation } from "@/i18n/context";
 
 export default function AuthPage() {
   const [tab, setTab] = useState<"login" | "register">("login");
   const { login } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -28,14 +30,16 @@ export default function AuthPage() {
   const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
   const [regErrors, setRegErrors] = useState<Record<string, string>>({});
 
+  const VALIDATION_SENTINEL = "__validation_error__";
+
   const loginMutation = useMutation({
     mutationFn: async () => {
       const errors: Record<string, string> = {};
-      if (loginUsername.length < 2) errors.username = "Минимум 2 символа";
-      if (loginPassword.length < 4) errors.password = "Минимум 4 символа";
+      if (loginUsername.length < 2) errors.username = t("common.min2chars");
+      if (loginPassword.length < 4) errors.password = t("common.min4chars");
       if (Object.keys(errors).length > 0) {
         setLoginErrors(errors);
-        throw new Error("Заполните все поля");
+        throw new Error(VALIDATION_SENTINEL);
       }
       setLoginErrors({});
       const res = await apiRequest("POST", "/api/auth/login", {
@@ -48,8 +52,8 @@ export default function AuthPage() {
       login(data);
     },
     onError: (error: Error) => {
-      if (error.message !== "Заполните все поля") {
-        toast({ title: "Ошибка входа", description: error.message, variant: "destructive" });
+      if (error.message !== VALIDATION_SENTINEL) {
+        toast({ title: t("auth.loginError"), description: error.message, variant: "destructive" });
       }
     },
   });
@@ -57,12 +61,12 @@ export default function AuthPage() {
   const registerMutation = useMutation({
     mutationFn: async () => {
       const errors: Record<string, string> = {};
-      if (regUsername.length < 2) errors.username = "Минимум 2 символа";
-      if (regPassword.length < 4) errors.password = "Минимум 4 символа";
-      if (regSportTypes.length === 0) errors.sportTypes = "Выберите хотя бы один вид спорта";
+      if (regUsername.length < 2) errors.username = t("common.min2chars");
+      if (regPassword.length < 4) errors.password = t("common.min4chars");
+      if (regSportTypes.length === 0) errors.sportTypes = t("common.selectAtLeastOneSport");
       if (Object.keys(errors).length > 0) {
         setRegErrors(errors);
-        throw new Error("Заполните все поля");
+        throw new Error(VALIDATION_SENTINEL);
       }
       setRegErrors({});
       const res = await apiRequest("POST", "/api/auth/register", {
@@ -77,8 +81,8 @@ export default function AuthPage() {
       login(data);
     },
     onError: (error: Error) => {
-      if (error.message !== "Заполните все поля") {
-        toast({ title: "Ошибка регистрации", description: error.message, variant: "destructive" });
+      if (error.message !== VALIDATION_SENTINEL) {
+        toast({ title: t("auth.registerError"), description: error.message, variant: "destructive" });
       }
     },
   });
@@ -101,6 +105,18 @@ export default function AuthPage() {
     );
   };
 
+  const sportTranslationKey: Record<string, string> = {
+    running: "sport.running",
+    cycling: "sport.cycling",
+    swimming: "sport.swimming",
+    trail_running: "sport.trail_running",
+    strength_training: "sport.strength_training",
+    walking: "sport.walking",
+    hiking: "sport.hiking",
+    yoga: "sport.yoga",
+    other: "sport.other",
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-8 items-center">
@@ -112,26 +128,26 @@ export default function AuthPage() {
             <h1 className="text-3xl font-bold tracking-tight" data-testid="text-app-title">GarminCoach AI</h1>
           </div>
           <p className="text-lg text-muted-foreground max-w-md mx-auto lg:mx-0">
-            Персональный AI-тренер с интеграцией Garmin. Умные тренировки прямо на ваших часах.
+            {t("auth.appSubtitle")}
           </p>
           <div className="space-y-4 max-w-sm mx-auto lg:mx-0">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-md bg-accent flex items-center justify-center flex-shrink-0">
                 <Activity className="w-4 h-4 text-accent-foreground" />
               </div>
-              <span className="text-sm text-muted-foreground">AI анализирует ваши тренировки и предлагает план</span>
+              <span className="text-sm text-muted-foreground">{t("auth.feature1")}</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-md bg-accent flex items-center justify-center flex-shrink-0">
                 <Watch className="w-4 h-4 text-accent-foreground" />
               </div>
-              <span className="text-sm text-muted-foreground">Тренировки загружаются прямо на часы Garmin</span>
+              <span className="text-sm text-muted-foreground">{t("auth.feature2")}</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-md bg-accent flex items-center justify-center flex-shrink-0">
                 <Zap className="w-4 h-4 text-accent-foreground" />
               </div>
-              <span className="text-sm text-muted-foreground">Бег, велосипед, плавание — включая подготовку к Ironman</span>
+              <span className="text-sm text-muted-foreground">{t("auth.feature3")}</span>
             </div>
           </div>
         </div>
@@ -140,8 +156,8 @@ export default function AuthPage() {
           <CardHeader className="pb-4">
             <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "register")}>
               <TabsList className="w-full">
-                <TabsTrigger value="login" className="flex-1" data-testid="tab-login">Вход</TabsTrigger>
-                <TabsTrigger value="register" className="flex-1" data-testid="tab-register">Регистрация</TabsTrigger>
+                <TabsTrigger value="login" className="flex-1" data-testid="tab-login">{t("auth.login")}</TabsTrigger>
+                <TabsTrigger value="register" className="flex-1" data-testid="tab-register">{t("auth.register")}</TabsTrigger>
               </TabsList>
             </Tabs>
           </CardHeader>
@@ -149,7 +165,7 @@ export default function AuthPage() {
             {tab === "login" ? (
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-username">Имя пользователя</Label>
+                  <Label htmlFor="login-username">{t("auth.username")}</Label>
                   <Input
                     id="login-username"
                     value={loginUsername}
@@ -159,7 +175,7 @@ export default function AuthPage() {
                   {loginErrors.username && <p className="text-sm text-destructive">{loginErrors.username}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Пароль</Label>
+                  <Label htmlFor="login-password">{t("auth.password")}</Label>
                   <Input
                     id="login-password"
                     type="password"
@@ -170,13 +186,13 @@ export default function AuthPage() {
                   {loginErrors.password && <p className="text-sm text-destructive">{loginErrors.password}</p>}
                 </div>
                 <Button type="submit" className="w-full" disabled={loginMutation.isPending} data-testid="button-login">
-                  {loginMutation.isPending ? "Вход..." : "Войти"}
+                  {loginMutation.isPending ? t("auth.loggingIn") : t("auth.loginButton")}
                 </Button>
               </form>
             ) : (
               <form onSubmit={handleRegisterSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="reg-username">Имя пользователя</Label>
+                  <Label htmlFor="reg-username">{t("auth.username")}</Label>
                   <Input
                     id="reg-username"
                     value={regUsername}
@@ -186,7 +202,7 @@ export default function AuthPage() {
                   {regErrors.username && <p className="text-sm text-destructive">{regErrors.username}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reg-password">Пароль</Label>
+                  <Label htmlFor="reg-password">{t("auth.password")}</Label>
                   <Input
                     id="reg-password"
                     type="password"
@@ -197,7 +213,7 @@ export default function AuthPage() {
                   {regErrors.password && <p className="text-sm text-destructive">{regErrors.password}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label>Виды спорта</Label>
+                  <Label>{t("auth.sportTypes")}</Label>
                   <div className="flex flex-wrap gap-4">
                     {sportTypes.map((sport) => (
                       <div key={sport} className="flex items-center gap-2">
@@ -208,7 +224,7 @@ export default function AuthPage() {
                           data-testid={`checkbox-sport-${sport}`}
                         />
                         <Label htmlFor={`sport-${sport}`} className="text-sm font-normal cursor-pointer">
-                          {sportTypeLabels[sport]}
+                          {t(sportTranslationKey[sport] || `sport.${sport}`)}
                         </Label>
                       </div>
                     ))}
@@ -216,17 +232,17 @@ export default function AuthPage() {
                   {regErrors.sportTypes && <p className="text-sm text-destructive">{regErrors.sportTypes}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reg-goals">Цели (необязательно)</Label>
+                  <Label htmlFor="reg-goals">{t("auth.goals")}</Label>
                   <Input
                     id="reg-goals"
-                    placeholder="Например: пробежать марафон за 3:30"
+                    placeholder={t("auth.goalsPlaceholder")}
                     value={regGoals}
                     onChange={(e) => setRegGoals(e.target.value)}
                     data-testid="input-register-goals"
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={registerMutation.isPending} data-testid="button-register">
-                  {registerMutation.isPending ? "Регистрация..." : "Зарегистрироваться"}
+                  {registerMutation.isPending ? t("auth.registering") : t("auth.registerButton")}
                 </Button>
               </form>
             )}

@@ -14,9 +14,12 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
-import { garminConnectSchema, intervalsConnectSchema, sportTypes, sportTypeLabels, fitnessLevels, fitnessLevelLabels, garminWatchModels, garminWatchLabels, swimStructuredWatchModels } from "@shared/schema";
+import { garminConnectSchema, intervalsConnectSchema, sportTypes, fitnessLevels, garminWatchModels, garminWatchLabels, swimStructuredWatchModels } from "@shared/schema";
 import type { GarminWatchModel } from "@shared/schema";
 import type { GarminConnectInput, IntervalsConnectInput } from "@shared/schema";
+import { useTranslation } from "@/i18n/context";
+import { languages } from "@/i18n/types";
+import type { Language } from "@/i18n/types";
 import {
   Watch,
   Loader2,
@@ -27,11 +30,13 @@ import {
   BarChart3,
   FlaskConical,
   ExternalLink,
+  Globe,
 } from "lucide-react";
 
 export default function SettingsPage() {
   const { user, updateUser } = useAuth();
   const { toast } = useToast();
+  const { t, language, setLanguage } = useTranslation();
 
   const garminForm = useForm<GarminConnectInput>({
     resolver: zodResolver(garminConnectSchema),
@@ -48,11 +53,11 @@ export default function SettingsPage() {
     },
     onSuccess: (data) => {
       updateUser(data);
-      toast({ title: "Garmin подключён" });
+      toast({ title: t("settings.garminConnected") });
       garminForm.reset({ garminEmail: data.garminEmail || "", garminPassword: "" });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка подключения", description: error.message, variant: "destructive" });
+      toast({ title: t("settings.connectionError"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -63,10 +68,10 @@ export default function SettingsPage() {
     },
     onSuccess: (data) => {
       updateUser(data);
-      toast({ title: "Garmin отключён" });
+      toast({ title: t("settings.garminDisconnected") });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -85,11 +90,11 @@ export default function SettingsPage() {
     },
     onSuccess: (data) => {
       updateUser(data);
-      toast({ title: "Intervals.icu подключён" });
+      toast({ title: t("settings.intervalsConnected") });
       intervalsForm.reset({ athleteId: data.intervalsAthleteId || "", apiKey: "" });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка подключения", description: error.message, variant: "destructive" });
+      toast({ title: t("settings.connectionError"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -100,10 +105,10 @@ export default function SettingsPage() {
     },
     onSuccess: (data) => {
       updateUser(data);
-      toast({ title: "Intervals.icu отключён" });
+      toast({ title: t("settings.intervalsDisconnected") });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -114,10 +119,10 @@ export default function SettingsPage() {
     },
     onSuccess: (data) => {
       updateUser(data);
-      toast({ title: "Профиль обновлён" });
+      toast({ title: t("settings.profileUpdated") });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -131,6 +136,25 @@ export default function SettingsPage() {
   const [personalRecords, setPersonalRecords] = useState(user?.personalRecords || "");
   const [preferences, setPreferences] = useState(user?.preferences || "");
   const [garminWatch, setGarminWatch] = useState(user?.garminWatch || "");
+
+  const sportLabelMap: Record<string, string> = {
+    running: t("sport.running"),
+    cycling: t("sport.cycling"),
+    swimming: t("sport.swimming"),
+    trail_running: t("sport.trail_running"),
+    strength_training: t("sport.strength_training"),
+    walking: t("sport.walking"),
+    hiking: t("sport.hiking"),
+    yoga: t("sport.yoga"),
+    other: t("sport.other"),
+  };
+
+  const fitnessLabelMap: Record<string, string> = {
+    beginner: t("fitness.beginner"),
+    intermediate: t("fitness.intermediate"),
+    advanced: t("fitness.advanced"),
+    elite: t("fitness.elite"),
+  };
 
   const handleSaveProfile = () => {
     updateProfileMutation.mutate({
@@ -152,12 +176,41 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight" data-testid="text-settings-title">
           <Settings className="w-6 h-6 inline mr-2" />
-          Настройки
+          {t("settings.title")}
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Управление аккаунтом и подключениями
+          {t("settings.subtitle")}
         </p>
       </div>
+
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-md bg-accent flex items-center justify-center flex-shrink-0">
+                <Globe className="w-5 h-5 text-accent-foreground" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-sm">{t("settings.language")}</h2>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Select value={language} onValueChange={(val) => setLanguage(val as Language)}>
+            <SelectTrigger data-testid="select-language">
+              <SelectValue placeholder={t("settings.languagePlaceholder")} />
+            </SelectTrigger>
+            <SelectContent>
+              {languages.map((lang) => (
+                <SelectItem key={lang.code} value={lang.code}>
+                  {lang.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-4">
@@ -167,19 +220,19 @@ export default function SettingsPage() {
                 <Watch className="w-5 h-5 text-accent-foreground" />
               </div>
               <div>
-                <h2 className="font-semibold text-sm">Garmin Connect</h2>
-                <p className="text-xs text-muted-foreground">Подключение к часам</p>
+                <h2 className="font-semibold text-sm">{t("settings.garminConnect")}</h2>
+                <p className="text-xs text-muted-foreground">{t("settings.garminSubtitle")}</p>
               </div>
             </div>
             {user?.garminConnected ? (
               <Badge variant="secondary">
                 <div className="w-1.5 h-1.5 rounded-full bg-status-online mr-1.5" />
-                Подключено
+                {t("common.connected")}
               </Badge>
             ) : (
               <Badge variant="outline">
                 <div className="w-1.5 h-1.5 rounded-full bg-status-offline mr-1.5" />
-                Не подключено
+                {t("common.disconnected")}
               </Badge>
             )}
           </div>
@@ -188,7 +241,7 @@ export default function SettingsPage() {
           {user?.garminConnected ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Аккаунт: <span className="font-medium text-foreground">{user.garminEmail}</span>
+                {t("settings.account")}: <span className="font-medium text-foreground">{user.garminEmail}</span>
               </p>
               <Button
                 variant="outline"
@@ -202,7 +255,7 @@ export default function SettingsPage() {
                 ) : (
                   <Unlink className="w-3 h-3 mr-1" />
                 )}
-                Отключить
+                {t("common.disconnect")}
               </Button>
             </div>
           ) : (
@@ -216,7 +269,7 @@ export default function SettingsPage() {
                   name="garminEmail"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email Garmin Connect</FormLabel>
+                      <FormLabel>{t("settings.garminEmail")}</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
@@ -234,7 +287,7 @@ export default function SettingsPage() {
                   name="garminPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Пароль Garmin Connect</FormLabel>
+                      <FormLabel>{t("settings.garminPassword")}</FormLabel>
                       <FormControl>
                         <Input
                           type="password"
@@ -256,7 +309,7 @@ export default function SettingsPage() {
                   ) : (
                     <Watch className="w-4 h-4 mr-2" />
                   )}
-                  Подключить Garmin
+                  {t("settings.connectGarmin")}
                 </Button>
               </form>
             </Form>
@@ -272,24 +325,24 @@ export default function SettingsPage() {
                 <BarChart3 className="w-5 h-5 text-accent-foreground" />
               </div>
               <div>
-                <h2 className="font-semibold text-sm">Intervals.icu</h2>
-                <p className="text-xs text-muted-foreground">Zwift, Polar, Suunto, COROS, Huawei</p>
+                <h2 className="font-semibold text-sm">{t("settings.intervalsTitle")}</h2>
+                <p className="text-xs text-muted-foreground">{t("settings.intervalsSubtitle")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className="text-xs">
                 <FlaskConical className="w-3 h-3 mr-1" />
-                Эксперимент
+                {t("common.experiment")}
               </Badge>
               {user?.intervalsConnected ? (
                 <Badge variant="secondary">
                   <div className="w-1.5 h-1.5 rounded-full bg-status-online mr-1.5" />
-                  Подключено
+                  {t("common.connected")}
                 </Badge>
               ) : (
                 <Badge variant="outline">
                   <div className="w-1.5 h-1.5 rounded-full bg-status-offline mr-1.5" />
-                  Не подключено
+                  {t("common.disconnected")}
                 </Badge>
               )}
             </div>
@@ -313,31 +366,26 @@ export default function SettingsPage() {
                 ) : (
                   <Unlink className="w-3 h-3 mr-1" />
                 )}
-                Отключить
+                {t("common.disconnect")}
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="text-sm text-muted-foreground space-y-2 bg-accent/50 rounded-md p-3">
-                <p className="font-medium text-foreground">Для чего это нужно?</p>
-                <p>
-                  Intervals.icu — бесплатная платформа для анализа тренировок. Через неё можно отправлять
-                  тренировки в <span className="font-medium text-foreground">Zwift</span> и другие сервисы.
-                  Подходит для часов <span className="font-medium text-foreground">Polar, Suunto, COROS, Huawei</span> и всех,
-                  кто не использует Garmin.
-                </p>
-                <p className="font-medium text-foreground">Как подключить:</p>
+                <p className="font-medium text-foreground">{t("settings.intervalsWhy")}</p>
+                <p>{t("settings.intervalsDesc")}</p>
+                <p className="font-medium text-foreground">{t("settings.intervalsHowTo")}</p>
                 <ol className="list-decimal list-inside space-y-1">
                   <li>
-                    Зарегистрируйтесь на{" "}
+                    {t("settings.intervalsStep1")}{" "}
                     <a href="https://intervals.icu" target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-0.5">
                       intervals.icu <ExternalLink className="w-3 h-3" />
                     </a>
                   </li>
-                  <li>Подключите Zwift/Strava/часы в настройках Intervals.icu</li>
-                  <li>Откройте Settings &rarr; Developer Settings</li>
-                  <li>Скопируйте <span className="font-medium text-foreground">Athlete ID</span> (начинается с &quot;i&quot;) и <span className="font-medium text-foreground">API Key</span></li>
-                  <li>Вставьте их ниже</li>
+                  <li>{t("settings.intervalsStep2")}</li>
+                  <li>{t("settings.intervalsStep3")}</li>
+                  <li>{t("settings.intervalsStep4Copy")}</li>
+                  <li>{t("settings.intervalsStep5")}</li>
                 </ol>
               </div>
               <Form {...intervalsForm}>
@@ -350,7 +398,7 @@ export default function SettingsPage() {
                     name="athleteId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Athlete ID</FormLabel>
+                        <FormLabel>{t("settings.athleteId")}</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="i12345"
@@ -367,7 +415,7 @@ export default function SettingsPage() {
                     name="apiKey"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>API Key</FormLabel>
+                        <FormLabel>{t("settings.apiKey")}</FormLabel>
                         <FormControl>
                           <Input
                             type="password"
@@ -389,7 +437,7 @@ export default function SettingsPage() {
                     ) : (
                       <BarChart3 className="w-4 h-4 mr-2" />
                     )}
-                    Подключить Intervals.icu
+                    {t("settings.connectIntervals")}
                   </Button>
                 </form>
               </Form>
@@ -402,12 +450,12 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader className="pb-4">
-          <h2 className="font-semibold text-sm">Профиль спортсмена</h2>
-          <p className="text-xs text-muted-foreground">Чем больше тренер знает о вас, тем точнее рекомендации</p>
+          <h2 className="font-semibold text-sm">{t("settings.profileTitle")}</h2>
+          <p className="text-xs text-muted-foreground">{t("settings.profileSubtitle")}</p>
         </CardHeader>
         <CardContent className="space-y-5">
           <div>
-            <label className="text-sm font-medium mb-2 block">Виды спорта</label>
+            <label className="text-sm font-medium mb-2 block">{t("settings.sportTypes")}</label>
             <div className="flex flex-wrap gap-4">
               {sportTypes.map((sport) => (
                 <label key={sport} className="flex items-center gap-2 cursor-pointer">
@@ -422,17 +470,17 @@ export default function SettingsPage() {
                     }}
                     data-testid={`checkbox-setting-sport-${sport}`}
                   />
-                  <span className="text-sm">{sportTypeLabels[sport]}</span>
+                  <span className="text-sm">{sportLabelMap[sport] || sport}</span>
                 </label>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-2 block">Модель часов Garmin</label>
+            <label className="text-sm font-medium mb-2 block">{t("settings.watchModel")}</label>
             <Select value={garminWatch} onValueChange={setGarminWatch}>
               <SelectTrigger data-testid="select-garmin-watch">
-                <SelectValue placeholder="Выберите модель часов" />
+                <SelectValue placeholder={t("settings.watchPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {garminWatchModels.map((model) => (
@@ -444,29 +492,29 @@ export default function SettingsPage() {
             </Select>
             {garminWatch && !swimStructuredWatchModels.includes(garminWatch as GarminWatchModel) && garminWatch !== "other" && selectedSports.includes("swimming") && (
               <p className="text-xs text-muted-foreground mt-2">
-                {garminWatchLabels[garminWatch as GarminWatchModel]} не поддерживает структурированные плавательные тренировки с интервалами. AI-тренер учтёт это и создаст совместимый формат.
+                {t("settings.watchSwimWarning", { model: garminWatchLabels[garminWatch as GarminWatchModel] })}
               </p>
             )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Уровень подготовки</label>
+              <label className="text-sm font-medium mb-2 block">{t("settings.fitnessLevel")}</label>
               <Select value={fitnessLevel} onValueChange={setFitnessLevel}>
                 <SelectTrigger data-testid="select-fitness-level">
-                  <SelectValue placeholder="Выберите уровень" />
+                  <SelectValue placeholder={t("settings.fitnessPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {fitnessLevels.map((level) => (
                     <SelectItem key={level} value={level}>
-                      {fitnessLevelLabels[level]}
+                      {fitnessLabelMap[level] || level}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Возраст</label>
+              <label className="text-sm font-medium mb-2 block">{t("settings.age")}</label>
               <Input
                 type="number"
                 value={age}
@@ -481,7 +529,7 @@ export default function SettingsPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Часов тренировок в неделю</label>
+              <label className="text-sm font-medium mb-2 block">{t("settings.weeklyHours")}</label>
               <Input
                 type="number"
                 value={weeklyHours}
@@ -494,7 +542,7 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Лет в спорте</label>
+              <label className="text-sm font-medium mb-2 block">{t("settings.experienceYears")}</label>
               <Input
                 type="number"
                 value={experienceYears}
@@ -508,21 +556,21 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-2 block">Цели</label>
+            <label className="text-sm font-medium mb-2 block">{t("settings.goals")}</label>
             <Input
               value={goals}
               onChange={(e) => setGoals(e.target.value)}
-              placeholder="Марафон за 3:30, Ironman 70.3, выбежать 5 км из 20 мин"
+              placeholder={t("settings.goalsPlaceholder")}
               data-testid="input-goals"
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-2 block">Личные рекорды</label>
+            <label className="text-sm font-medium mb-2 block">{t("settings.personalRecords")}</label>
             <Textarea
               value={personalRecords}
               onChange={(e) => setPersonalRecords(e.target.value)}
-              placeholder="5 км — 22:30, 10 км — 48:00, полумарафон — 1:50"
+              placeholder={t("settings.personalRecordsPlaceholder")}
               className="resize-none"
               rows={2}
               data-testid="input-personal-records"
@@ -530,11 +578,11 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-2 block">Травмы и ограничения</label>
+            <label className="text-sm font-medium mb-2 block">{t("settings.injuries")}</label>
             <Textarea
               value={injuries}
               onChange={(e) => setInjuries(e.target.value)}
-              placeholder="Колено беспокоит после длительных, проблемы с ахиллом..."
+              placeholder={t("settings.injuriesPlaceholder")}
               className="resize-none"
               rows={2}
               data-testid="input-injuries"
@@ -542,11 +590,11 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-2 block">Предпочтения по тренировкам</label>
+            <label className="text-sm font-medium mb-2 block">{t("settings.preferences")}</label>
             <Textarea
               value={preferences}
               onChange={(e) => setPreferences(e.target.value)}
-              placeholder="Люблю интервалы, не люблю длительные больше 2 часов, тренируюсь утром"
+              placeholder={t("settings.preferencesPlaceholder")}
               className="resize-none"
               rows={2}
               data-testid="input-preferences"
@@ -562,7 +610,7 @@ export default function SettingsPage() {
             {updateProfileMutation.isPending ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : null}
-            Сохранить профиль
+            {t("settings.saveProfile")}
           </Button>
         </CardContent>
       </Card>

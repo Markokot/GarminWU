@@ -33,30 +33,44 @@ import {
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import type { GarminActivity, UpcomingWorkout } from "@shared/schema";
-import { sportTypeLabels } from "@shared/schema";
 import { OnboardingDialog } from "@/components/onboarding-dialog";
 import { ReadinessCard } from "@/components/readiness-card";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ru } from "date-fns/locale";
+import { useTranslation } from "@/i18n/context";
+import { ru, enUS, zhCN, fr } from "date-fns/locale";
 
-function formatDuration(seconds: number): string {
+const LOCALE_MAP: Record<string, string> = {
+  ru: "ru-RU",
+  en: "en-US",
+  zh: "zh-CN",
+  fr: "fr-FR",
+};
+
+const DATE_FNS_LOCALES: Record<string, any> = {
+  ru,
+  en: enUS,
+  zh: zhCN,
+  fr,
+};
+
+function formatDuration(seconds: number, t: (key: string) => string): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}ч ${m}м`;
-  return `${m}м`;
+  if (h > 0) return `${h} ${t("common.hours").toLowerCase()} ${m} ${t("common.min")}`;
+  return `${m} ${t("common.min")}`;
 }
 
-function formatDistance(meters: number): string {
-  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} км`;
-  return `${Math.round(meters)} м`;
+function formatDistance(meters: number, t: (key: string) => string): string {
+  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} ${t("common.km")}`;
+  return `${Math.round(meters)} ${t("common.m")}`;
 }
 
-function formatPace(secondsPerKm: number | undefined): string {
+function formatPace(secondsPerKm: number | undefined, t: (key: string) => string): string {
   if (!secondsPerKm) return "-";
   const m = Math.floor(secondsPerKm / 60);
   const s = Math.round(secondsPerKm % 60);
-  return `${m}:${s.toString().padStart(2, "0")} /км`;
+  return `${m}:${s.toString().padStart(2, "0")} /${t("common.km")}`;
 }
 
 const ACTIVITY_COLORS: Record<string, string> = {
@@ -69,18 +83,6 @@ const ACTIVITY_COLORS: Record<string, string> = {
   hiking: "#84cc16",
   yoga: "#ec4899",
   other: "#94a3b8",
-};
-
-const ACTIVITY_LABELS: Record<string, string> = {
-  running: "Бег",
-  trail_running: "Трейл",
-  cycling: "Велосипед",
-  swimming: "Плавание",
-  strength_training: "Силовая",
-  walking: "Ходьба",
-  hiking: "Хайкинг",
-  yoga: "Йога",
-  other: "Другое",
 };
 
 function normalizeActivityType(raw: string): string {
@@ -97,6 +99,20 @@ function normalizeActivityType(raw: string): string {
 }
 
 function ActivityDonutChart({ activities }: { activities: GarminActivity[] }) {
+  const { t } = useTranslation();
+
+  const activityLabels: Record<string, string> = {
+    running: t("sport.running"),
+    trail_running: t("sport.trail_running"),
+    cycling: t("sport.cycling"),
+    swimming: t("sport.swimming"),
+    strength_training: t("sport.strength_training"),
+    walking: t("sport.walking"),
+    hiking: t("sport.hiking"),
+    yoga: t("sport.yoga"),
+    other: t("sport.other"),
+  };
+
   const stats = useMemo(() => {
     if (!activities.length) return null;
 
@@ -119,7 +135,7 @@ function ActivityDonutChart({ activities }: { activities: GarminActivity[] }) {
 
     const chartData = Object.entries(byType)
       .map(([type, data]) => ({
-        name: ACTIVITY_LABELS[type] || type,
+        name: activityLabels[type] || type,
         value: data.count,
         duration: data.duration,
         distance: data.distance,
@@ -128,7 +144,7 @@ function ActivityDonutChart({ activities }: { activities: GarminActivity[] }) {
       .sort((a, b) => b.value - a.value);
 
     return { totalDistance, totalDuration, totalCount, avgHR, chartData };
-  }, [activities]);
+  }, [activities, activityLabels]);
 
   if (!stats) return null;
 
@@ -138,9 +154,9 @@ function ActivityDonutChart({ activities }: { activities: GarminActivity[] }) {
     return (
       <div className="bg-popover border rounded-lg shadow-lg px-3 py-2 text-sm" data-testid="tooltip-donut">
         <p className="font-medium" style={{ color: d.color }}>{d.name}</p>
-        <p className="text-muted-foreground">{d.value} тренировок</p>
-        <p className="text-muted-foreground">{formatDuration(d.duration)}</p>
-        {d.distance > 0 && <p className="text-muted-foreground">{formatDistance(d.distance)}</p>}
+        <p className="text-muted-foreground">{d.value} {t("dashboard.workoutCount")}</p>
+        <p className="text-muted-foreground">{formatDuration(d.duration, t)}</p>
+        {d.distance > 0 && <p className="text-muted-foreground">{formatDistance(d.distance, t)}</p>}
       </div>
     );
   };
@@ -150,29 +166,29 @@ function ActivityDonutChart({ activities }: { activities: GarminActivity[] }) {
       <CardContent className="p-4 sm:p-6">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-primary" />
-          Статистика за месяц
+          {t("dashboard.monthStats")}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-xl p-4 text-center" data-testid="stat-total-count">
               <Zap className="w-5 h-5 text-green-500 mx-auto mb-1.5" />
               <p className="text-2xl font-bold">{stats.totalCount}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Тренировок</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("dashboard.workouts")}</p>
             </div>
             <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-4 text-center" data-testid="stat-total-distance">
               <Route className="w-5 h-5 text-blue-500 mx-auto mb-1.5" />
               <p className="text-2xl font-bold">{stats.totalDistance >= 1000 ? `${(stats.totalDistance / 1000).toFixed(0)}` : `${Math.round(stats.totalDistance)}`}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{stats.totalDistance >= 1000 ? "км" : "м"}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{stats.totalDistance >= 1000 ? t("common.km") : t("common.m")}</p>
             </div>
             <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-xl p-4 text-center" data-testid="stat-total-duration">
               <Clock className="w-5 h-5 text-orange-500 mx-auto mb-1.5" />
               <p className="text-2xl font-bold">{Math.round(stats.totalDuration / 3600)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Часов</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("common.hours")}</p>
             </div>
             <div className="bg-gradient-to-br from-red-500/10 to-red-600/5 rounded-xl p-4 text-center" data-testid="stat-avg-hr">
               <Heart className="w-5 h-5 text-red-500 mx-auto mb-1.5" />
               <p className="text-2xl font-bold">{stats.avgHR || "—"}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Ср. пульс</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("dashboard.avgHR")}</p>
             </div>
           </div>
 
@@ -199,7 +215,7 @@ function ActivityDonutChart({ activities }: { activities: GarminActivity[] }) {
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <p className="text-2xl font-bold">{stats.chartData.length}</p>
-                <p className="text-[10px] text-muted-foreground leading-tight">видов<br/>спорта</p>
+                <p className="text-[10px] text-muted-foreground leading-tight text-center">{t("dashboard.sportTypes")}</p>
               </div>
             </div>
             <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 max-w-[220px]">
@@ -228,6 +244,7 @@ interface OnboardingStep {
 }
 
 function OnboardingSteps({ steps }: { steps: OnboardingStep[] }) {
+  const { t } = useTranslation();
   const completedCount = steps.filter((s) => s.completed).length;
   const totalSteps = steps.length;
   const allDone = completedCount === totalSteps;
@@ -241,9 +258,9 @@ function OnboardingSteps({ steps }: { steps: OnboardingStep[] }) {
       <CardContent className="p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-lg font-semibold" data-testid="text-onboarding-title">Начало работы</h2>
+            <h2 className="text-lg font-semibold" data-testid="text-onboarding-title">{t("dashboard.onboardingTitle")}</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {completedCount} из {totalSteps} шагов выполнено
+              {t("dashboard.onboardingProgress", { done: String(completedCount), total: String(totalSteps) })}
             </p>
           </div>
           <span className="text-2xl font-bold text-primary" data-testid="text-onboarding-progress">
@@ -316,9 +333,15 @@ function OnboardingSteps({ steps }: { steps: OnboardingStep[] }) {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t, language } = useTranslation();
+  const locale = LOCALE_MAP[language] || "ru-RU";
+  const dateFnsLocale = DATE_FNS_LOCALES[language] || ru;
+
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [rescheduleWorkout, setRescheduleWorkout] = useState<UpcomingWorkout | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+
+  const sportLabel = (type: string) => t(`sport.${type}`) !== `sport.${type}` ? t(`sport.${type}`) : type;
 
   useEffect(() => {
     if (user && !user.onboardingShown) {
@@ -329,7 +352,7 @@ export default function DashboardPage() {
   const rescheduleMutation = useMutation({
     mutationFn: async ({ workout, newDate }: { workout: UpcomingWorkout; newDate: string }) => {
       const workoutId = workout.workoutId || workout.id.replace(/^(garmin|intervals)-/, "");
-      if (!workoutId) throw new Error("Не удалось определить ID тренировки");
+      if (!workoutId) throw new Error(t("coach.couldNotDetermineId"));
       const url = workout.source === "garmin"
         ? "/api/garmin/reschedule-workout"
         : "/api/intervals/reschedule-workout";
@@ -339,18 +362,18 @@ export default function DashboardPage() {
         currentDate: workout.date,
       });
       const result = await res.json();
-      if (!result.success) throw new Error(result.message || "Ошибка переноса");
+      if (!result.success) throw new Error(result.message || t("dashboard.rescheduleError"));
     },
     onSuccess: () => {
-      toast({ title: "Тренировка перенесена" });
+      toast({ title: t("dashboard.workoutRescheduled") });
       queryClient.invalidateQueries({ queryKey: ["/api/upcoming-workouts"] });
       setRescheduleWorkout(null);
       setSelectedDate(undefined);
     },
     onError: (error: any) => {
       toast({
-        title: "Ошибка переноса",
-        description: error.message || "Попробуйте позже",
+        title: t("dashboard.rescheduleError"),
+        description: error.message || t("dashboard.tryLater"),
         variant: "destructive",
       });
     },
@@ -366,10 +389,10 @@ export default function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
       queryClient.invalidateQueries({ queryKey: ["/api/upcoming-workouts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/readiness"] });
-      toast({ title: "Данные обновлены" });
+      toast({ title: t("dashboard.dataUpdated") });
     },
     onError: () => {
-      toast({ title: "Ошибка обновления", variant: "destructive" });
+      toast({ title: t("dashboard.updateError"), variant: "destructive" });
     },
   });
 
@@ -391,30 +414,30 @@ export default function DashboardPage() {
   const onboardingSteps: OnboardingStep[] = [
     {
       id: "profile",
-      title: "Заполните профиль",
-      description: "Укажите виды спорта, уровень и цели",
+      title: t("dashboard.stepProfile"),
+      description: t("dashboard.stepProfileDesc"),
       icon: UserCircle,
       completed: profileFilled,
       href: "/settings",
-      buttonText: "Заполнить",
+      buttonText: t("dashboard.stepProfileButton"),
     },
     {
       id: "device",
-      title: "Подключите устройство",
-      description: "Garmin Connect или Intervals.icu",
+      title: t("dashboard.stepDevice"),
+      description: t("dashboard.stepDeviceDesc"),
       icon: Wifi,
       completed: hasAnyConnection,
       href: "/settings",
-      buttonText: "Подключить",
+      buttonText: t("dashboard.stepDeviceButton"),
     },
     {
       id: "workout",
-      title: "Создайте тренировку",
-      description: "Попросите AI тренера составить план",
+      title: t("dashboard.stepWorkout"),
+      description: t("dashboard.stepWorkoutDesc"),
       icon: Dumbbell,
       completed: hasWorkout,
       href: "/coach",
-      buttonText: "Создать",
+      buttonText: t("dashboard.stepWorkoutButton"),
     },
   ];
 
@@ -441,12 +464,12 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight" data-testid="text-welcome">
-            Привет, {user?.username}
+            {t("dashboard.welcome", { name: user?.username || "" })}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             {showOnboardingSteps
-              ? "Выполните несколько шагов, чтобы начать тренироваться"
-              : "Обзор ваших тренировок и активности"}
+              ? t("dashboard.subtitleOnboarding")
+              : t("dashboard.subtitleDefault")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -459,16 +482,16 @@ export default function DashboardPage() {
                     {(() => {
                       const diff = Date.now() - new Date(lastSyncedAt).getTime();
                       const mins = Math.round(diff / 60000);
-                      if (mins < 1) return "Только что";
-                      if (mins < 60) return `${mins} мин назад`;
+                      if (mins < 1) return t("common.justNow");
+                      if (mins < 60) return t("common.minAgo", { count: mins });
                       const hrs = Math.round(mins / 60);
-                      if (hrs < 24) return `${hrs} ч назад`;
-                      return new Date(lastSyncedAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+                      if (hrs < 24) return t("common.hrsAgo", { count: hrs });
+                      return new Date(lastSyncedAt).toLocaleDateString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
                     })()}
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-[250px] text-center">
-                  <p className="text-xs">Данные синхронизируются каждые 4 часа. Не обновляйте слишком часто — Garmin может временно заблокировать аккаунт.</p>
+                  <p className="text-xs">{t("dashboard.syncTooltip")}</p>
                 </TooltipContent>
               </UITooltip>
             </TooltipProvider>
@@ -482,13 +505,13 @@ export default function DashboardPage() {
               data-testid="button-refresh-data"
             >
               <RefreshCw className={`w-4 h-4 mr-1.5 ${refreshMutation.isPending ? "animate-spin" : ""}`} />
-              Обновить
+              {t("common.refresh")}
             </Button>
           )}
           <Link href="/coach">
             <Button data-testid="button-goto-coach">
               <MessageSquare className="w-4 h-4 mr-2" />
-              AI Тренер
+              {t("dashboard.goToCoach")}
             </Button>
           </Link>
         </div>
@@ -503,7 +526,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between gap-4 mb-4">
             <h2 className="text-lg font-semibold flex items-center gap-2" data-testid="text-upcoming-header">
               <CalendarDays className="w-5 h-5" />
-              Предстоящие тренировки
+              {t("dashboard.upcomingWorkouts")}
             </h2>
             {upcomingData?.sources && (
               <div className="flex gap-1">
@@ -536,7 +559,7 @@ export default function DashboardPage() {
                       <h3 className="font-medium text-sm truncate">{w.name}</h3>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         {w.isToday && (
-                          <Badge className="text-xs" data-testid="badge-today">Сегодня</Badge>
+                          <Badge className="text-xs" data-testid="badge-today">{t("dashboard.today")}</Badge>
                         )}
                         <Button
                           variant="ghost"
@@ -549,20 +572,20 @@ export default function DashboardPage() {
                           }}
                         >
                           <CalendarDays className="w-3 h-3 mr-1" />
-                          Перенести
+                          {t("dashboard.reschedule")}
                         </Button>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs text-muted-foreground">
-                        {new Date(w.date + "T12:00:00").toLocaleDateString("ru-RU", {
+                        {new Date(w.date + "T12:00:00").toLocaleDateString(locale, {
                           weekday: "short",
                           day: "numeric",
                           month: "short",
                         })}
                       </span>
                       <Badge variant="outline" className="text-xs">
-                        {w.sportType === "running" ? "Бег" : w.sportType === "cycling" ? "Велосипед" : w.sportType === "swimming" ? "Плавание" : w.sportType}
+                        {sportLabel(w.sportType)}
                       </Badge>
                       <Badge variant="secondary" className="text-xs">
                         {w.source === "garmin" ? "Garmin" : "Intervals"}
@@ -575,7 +598,7 @@ export default function DashboardPage() {
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground text-sm" data-testid="text-no-upcoming">
-                Нет запланированных тренировок на ближайшие 14 дней
+                {t("dashboard.noUpcoming")}
               </CardContent>
             </Card>
           )}
@@ -585,7 +608,7 @@ export default function DashboardPage() {
       {hasAnyConnection && (
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Последние активности</h2>
+            <h2 className="text-lg font-semibold">{t("dashboard.recentActivities")}</h2>
             {activitiesSource && (
               <Badge variant="secondary" className="text-xs">
                 <div className="w-1.5 h-1.5 rounded-full bg-status-online mr-1.5" />
@@ -619,7 +642,7 @@ export default function DashboardPage() {
                         <h3 className="font-medium text-sm truncate">{activity.activityName}</h3>
                         <div className="flex items-center gap-2 mt-0.5">
                           <p className="text-xs text-muted-foreground">
-                            {new Date(activity.startTimeLocal).toLocaleDateString("ru-RU", {
+                            {new Date(activity.startTimeLocal).toLocaleDateString(locale, {
                               day: "numeric",
                               month: "short",
                             })}
@@ -639,11 +662,11 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Activity className="w-3 h-3" />
-                        <span>{formatDistance(activity.distance)}</span>
+                        <span>{formatDistance(activity.distance, t)}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        <span>{formatDuration(activity.duration)}</span>
+                        <span>{formatDuration(activity.duration, t)}</span>
                       </div>
                       {activity.averageHR && (
                         <div className="flex items-center gap-1">
@@ -655,7 +678,7 @@ export default function DashboardPage() {
                     {activity.averagePace && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
                         <Flame className="w-3 h-3" />
-                        <span>Темп: {formatPace(activity.averagePace)}</span>
+                        <span>{t("dashboard.pace")}: {formatPace(activity.averagePace, t)}</span>
                       </div>
                     )}
                   </CardContent>
@@ -665,13 +688,13 @@ export default function DashboardPage() {
           ) : activitiesError ? (
             <Card>
               <CardContent className="py-8 text-center text-sm text-red-500" data-testid="text-activities-error">
-                Ошибка загрузки активностей: {(activitiesError as any)?.message || "Неизвестная ошибка"}
+                {t("dashboard.activitiesError")}: {(activitiesError as any)?.message || t("dashboard.unknownError")}
               </CardContent>
             </Card>
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground text-sm">
-                Нет недавних активностей
+                {t("dashboard.noActivities")}
               </CardContent>
             </Card>
           )}
@@ -693,13 +716,13 @@ export default function DashboardPage() {
       >
         <DialogContent className="sm:max-w-md" data-testid="dialog-reschedule">
           <DialogHeader>
-            <DialogTitle>Перенести тренировку</DialogTitle>
+            <DialogTitle>{t("dashboard.rescheduleTitle")}</DialogTitle>
             <DialogDescription>
               {rescheduleWorkout && (
                 <>
                   <span className="font-medium text-foreground">{rescheduleWorkout.name}</span>
                   {" — "}
-                  {new Date(rescheduleWorkout.date + "T12:00:00").toLocaleDateString("ru-RU", {
+                  {new Date(rescheduleWorkout.date + "T12:00:00").toLocaleDateString(locale, {
                     weekday: "long",
                     day: "numeric",
                     month: "long",
@@ -713,7 +736,7 @@ export default function DashboardPage() {
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              locale={ru}
+              locale={dateFnsLocale}
               disabled={(date) => {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -731,7 +754,7 @@ export default function DashboardPage() {
               }}
               data-testid="button-reschedule-cancel"
             >
-              Отмена
+              {t("common.cancel")}
             </Button>
             <Button
               disabled={!selectedDate || rescheduleMutation.isPending}
@@ -748,10 +771,10 @@ export default function DashboardPage() {
               {rescheduleMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Переносим...
+                  {t("dashboard.rescheduleRescheduling")}
                 </>
               ) : (
-                "Перенести"
+                t("dashboard.rescheduleButton")
               )}
             </Button>
           </DialogFooter>
@@ -762,9 +785,9 @@ export default function DashboardPage() {
       <Dialog open={showRefreshConfirm} onOpenChange={setShowRefreshConfirm}>
         <DialogContent className="sm:max-w-md" data-testid="dialog-refresh-confirm">
           <DialogHeader>
-            <DialogTitle>Обновить данные?</DialogTitle>
+            <DialogTitle>{t("dashboard.confirmRefreshTitle")}</DialogTitle>
             <DialogDescription>
-              Слишком частые обращения к серверам Garmin могут привести к временной блокировке вашего аккаунта. Данные автоматически обновляются каждые 4 часа.
+              {t("dashboard.confirmRefreshDesc")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2 sm:justify-end">
@@ -773,7 +796,7 @@ export default function DashboardPage() {
               onClick={() => setShowRefreshConfirm(false)}
               data-testid="button-refresh-cancel"
             >
-              Отмена
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={() => {
@@ -782,7 +805,7 @@ export default function DashboardPage() {
               }}
               data-testid="button-refresh-confirm"
             >
-              Обновить
+              {t("dashboard.confirmRefreshButton")}
             </Button>
           </DialogFooter>
         </DialogContent>

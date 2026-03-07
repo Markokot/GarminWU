@@ -13,6 +13,7 @@ import {
   Battery,
   Footprints,
 } from "lucide-react";
+import { useTranslation } from "@/i18n/context";
 
 interface ReadinessFactor {
   name: string;
@@ -45,14 +46,14 @@ const factorIcons: Record<string, typeof Activity> = {
   steps: Footprints,
 };
 
-const factorNames: Record<string, string> = {
-  weeklyLoad: "Нагрузка 7д",
-  consecutiveIntense: "Интенсивность",
-  restDays: "Дни отдыха",
-  recovery: "Восстановление",
-  stress: "Стресс",
-  bodyBattery: "Body Battery",
-  steps: "Шаги",
+const factorNameKeys: Record<string, string> = {
+  weeklyLoad: "readiness.weeklyLoad",
+  consecutiveIntense: "readiness.consecutiveIntense",
+  restDays: "readiness.restDays",
+  recovery: "readiness.recovery",
+  stress: "readiness.stress",
+  bodyBattery: "readiness.bodyBattery",
+  steps: "readiness.steps",
 };
 
 const levelColors: Record<string, { bg: string; text: string; ring: string; dot: string }> = {
@@ -81,6 +82,7 @@ export function ReadinessBadge() {
   const btnRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
+  const { t } = useTranslation();
 
   const { data: readiness, isLoading, error } = useQuery<ReadinessResult>({
     queryKey: ["/api/readiness"],
@@ -137,7 +139,7 @@ export function ReadinessBadge() {
         data-testid="badge-readiness"
       >
         <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} />
-        <span className={colors.text}>Готовность {readiness.score}</span>
+        <span className={colors.text}>{t("readiness.readiness")} {readiness.score}</span>
         {expanded ? (
           <ChevronUp className={`w-3.5 h-3.5 ${colors.text}`} />
         ) : (
@@ -169,7 +171,7 @@ export function ReadinessBadge() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
                       <span className="text-xs font-medium">
-                        {factorNames[factor.name] || factor.name}
+                        {t(factorNameKeys[factor.name] || factor.name)}
                       </span>
                       <span className="text-[10px] text-muted-foreground">
                         {factor.label}
@@ -196,7 +198,7 @@ export function ReadinessBadge() {
                   <>
                     <div className="flex items-center gap-2 mt-2.5 mb-2">
                       <div className="flex-1 border-t" />
-                      <span className="text-[9px] text-muted-foreground uppercase tracking-wider">Здоровье</span>
+                      <span className="text-[9px] text-muted-foreground uppercase tracking-wider">{t("readiness.health")}</span>
                       <div className="flex-1 border-t" />
                     </div>
                     <div className="space-y-2.5">
@@ -215,6 +217,7 @@ export function ReadinessBadge() {
 
 export function ReadinessCard() {
   const [expanded, setExpanded] = useState(false);
+  const { t } = useTranslation();
 
   const { data: readiness, isLoading, error } = useQuery<ReadinessResult>({
     queryKey: ["/api/readiness"],
@@ -295,7 +298,7 @@ export function ReadinessCard() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-medium">
-                      {factorNames[factor.name] || factor.name}
+                      {t(factorNameKeys[factor.name] || factor.name)}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {factor.label}
@@ -324,7 +327,7 @@ export function ReadinessCard() {
                 <>
                   <div className="flex items-center gap-2 mt-3 mb-2.5">
                     <div className="flex-1 border-t" />
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Здоровье</span>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{t("readiness.health")}</span>
                     <div className="flex-1 border-t" />
                   </div>
                   <div className="space-y-2.5">

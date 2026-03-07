@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronLeft, ChevronRight, X, Settings, User, MessageSquare, Watch, CalendarDays } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useTranslation } from "@/i18n/context";
 
 import stepConnect from "@assets/onboarding-step1-connect.png";
 import stepProfile from "@assets/onboarding-step2-profile.png";
@@ -11,37 +12,14 @@ import stepChat from "@assets/onboarding-step3-chat.png";
 import stepPush from "@assets/onboarding-step4-push.png";
 import stepPlan from "@assets/onboarding-step5-plan.png";
 
-const steps = [
-  {
-    title: "Подключите Garmin",
-    description: "Зайдите в Настройки и привяжите аккаунт Garmin Connect, чтобы тренировки отправлялись прямо на часы.",
-    image: stepConnect,
-    icon: Settings,
-  },
-  {
-    title: "Заполните профиль",
-    description: "Укажите вид спорта, уровень подготовки, цели и модель часов — AI-тренер будет давать персональные рекомендации.",
-    image: stepProfile,
-    icon: User,
-  },
-  {
-    title: "Опишите тренировку",
-    description: "Напишите тренеру что хотите: «интервалы 5×1км» или «лёгкий бег 40 минут» — он создаст структурированную тренировку.",
-    image: stepChat,
-    icon: MessageSquare,
-  },
-  {
-    title: "Отправьте на часы",
-    description: "Нажмите кнопку «На Garmin» — тренировка появится в Garmin Connect и на ваших часах.",
-    image: stepPush,
-    icon: Watch,
-  },
-  {
-    title: "Запросите план",
-    description: "Попросите план на несколько недель (например, «план на полумарафон 8 недель») — все тренировки отправятся на часы сразу.",
-    image: stepPlan,
-    icon: CalendarDays,
-  },
+const stepImages = [stepConnect, stepProfile, stepChat, stepPush, stepPlan];
+const stepIcons = [Settings, User, MessageSquare, Watch, CalendarDays];
+const stepKeys = [
+  { title: "onboarding.step1Title", desc: "onboarding.step1Desc" },
+  { title: "onboarding.step2Title", desc: "onboarding.step2Desc" },
+  { title: "onboarding.step3Title", desc: "onboarding.step3Desc" },
+  { title: "onboarding.step4Title", desc: "onboarding.step4Desc" },
+  { title: "onboarding.step5Title", desc: "onboarding.step5Desc" },
 ];
 
 interface OnboardingDialogProps {
@@ -52,6 +30,7 @@ interface OnboardingDialogProps {
 export function OnboardingDialog({ open, onClose }: OnboardingDialogProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (open) {
@@ -62,8 +41,9 @@ export function OnboardingDialog({ open, onClose }: OnboardingDialogProps) {
 
   if (!open) return null;
 
-  const step = steps[currentStep];
-  const StepIcon = step.icon;
+  const StepIcon = stepIcons[currentStep];
+  const stepTitle = t(stepKeys[currentStep].title);
+  const stepDescription = t(stepKeys[currentStep].desc);
 
   const handleClose = () => {
     if (dontShowAgain) {
@@ -85,7 +65,7 @@ export function OnboardingDialog({ open, onClose }: OnboardingDialogProps) {
             <div className="flex items-center gap-2">
               <StepIcon className="h-4 w-4 text-primary flex-shrink-0" />
               <span className="font-semibold text-xs text-muted-foreground">
-                {currentStep + 1} / {steps.length}
+                {currentStep + 1} / {stepKeys.length}
               </span>
             </div>
             <Button size="icon" variant="ghost" onClick={handleClose} data-testid="button-close-onboarding">
@@ -93,25 +73,25 @@ export function OnboardingDialog({ open, onClose }: OnboardingDialogProps) {
             </Button>
           </div>
 
-          <h2 className="text-base font-bold mb-1" data-testid="text-onboarding-title">{step.title}</h2>
-          <p className="text-sm text-muted-foreground mb-3" data-testid="text-onboarding-description">{step.description}</p>
+          <h2 className="text-base font-bold mb-1" data-testid="text-onboarding-title">{stepTitle}</h2>
+          <p className="text-sm text-muted-foreground mb-3" data-testid="text-onboarding-description">{stepDescription}</p>
 
           <div className="flex justify-center flex-1 min-h-0 mb-3">
             <img
-              src={step.image}
-              alt={step.title}
+              src={stepImages[currentStep]}
+              alt={stepTitle}
               className="object-contain max-h-[35vh] sm:max-h-[40vh]"
               data-testid={`img-onboarding-step-${currentStep}`}
             />
           </div>
 
-          {currentStep === steps.length - 1 && (
+          {currentStep === stepKeys.length - 1 && (
             <label className="flex items-center gap-2 mb-3 cursor-pointer" data-testid="checkbox-dont-show">
               <Checkbox
                 checked={dontShowAgain}
                 onCheckedChange={(checked) => setDontShowAgain(checked === true)}
               />
-              <span className="text-xs text-muted-foreground">Больше не показывать</span>
+              <span className="text-xs text-muted-foreground">{t("common.dontShowAgain")}</span>
             </label>
           )}
 
@@ -124,11 +104,11 @@ export function OnboardingDialog({ open, onClose }: OnboardingDialogProps) {
               data-testid="button-onboarding-prev"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Назад
+              {t("common.back")}
             </Button>
 
             <div className="flex gap-1">
-              {steps.map((_, i) => (
+              {stepKeys.map((_, i) => (
                 <div
                   key={i}
                   className={`h-1.5 w-3 rounded-full transition-colors ${
@@ -138,18 +118,18 @@ export function OnboardingDialog({ open, onClose }: OnboardingDialogProps) {
               ))}
             </div>
 
-            {currentStep < steps.length - 1 ? (
+            {currentStep < stepKeys.length - 1 ? (
               <Button
                 size="sm"
                 onClick={() => setCurrentStep((s) => s + 1)}
                 data-testid="button-onboarding-next"
               >
-                Далее
+                {t("common.next")}
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             ) : (
               <Button size="sm" onClick={handleClose} data-testid="button-onboarding-done">
-                Понятно!
+                {t("common.gotIt")}
               </Button>
             )}
           </div>

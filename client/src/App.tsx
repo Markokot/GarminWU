@@ -8,6 +8,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { I18nProvider } from "@/i18n/context";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
@@ -59,7 +61,10 @@ function AuthenticatedLayout() {
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           <header className="flex items-center justify-between gap-2 p-2 border-b sticky top-0 z-50 bg-background">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <ThemeToggle />
+            <div className="flex items-center gap-1">
+              <LanguageSwitcher />
+              <ThemeToggle />
+            </div>
           </header>
           <main className="flex-1 overflow-y-auto overflow-x-hidden">
             <Router />
@@ -91,14 +96,16 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
-          <Toaster />
-        </TooltipProvider>
-      </ThemeProvider>
+      <I18nProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }

@@ -35,20 +35,22 @@ import {
   Info,
 } from "lucide-react";
 import type { BugReport, ErrorLog } from "@shared/schema";
-
-const menuItems = [
-  { title: "Дашборд", url: "/", icon: LayoutDashboard },
-  { title: "AI Тренер", url: "/coach", icon: MessageSquare },
-  { title: "Избранное", url: "/favorites", icon: Star },
-  { title: "Настройки", url: "/settings", icon: Settings },
-  { title: "FAQ", url: "/faq", icon: HelpCircle },
-  { title: "Версия", url: "/version", icon: Info },
-];
+import { useTranslation } from "@/i18n/context";
 
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { setOpenMobile, isMobile } = useSidebar();
+  const { t } = useTranslation();
+
+  const menuItems = [
+    { title: t("nav.dashboard"), url: "/", icon: LayoutDashboard },
+    { title: t("nav.coach"), url: "/coach", icon: MessageSquare },
+    { title: t("nav.favorites"), url: "/favorites", icon: Star },
+    { title: t("nav.settings"), url: "/settings", icon: Settings },
+    { title: t("nav.faq"), url: "/faq", icon: HelpCircle },
+    { title: t("nav.version"), url: "/version", icon: Info },
+  ];
 
   const isAdmin = user?.username === "Andrey";
   const { data: bugReports } = useQuery<BugReport[]>({
@@ -78,19 +80,19 @@ export function AppSidebar() {
           </div>
           <div className="flex flex-col min-w-0">
             <span className="font-semibold text-sm truncate">GarminCoach AI</span>
-            <span className="text-xs text-muted-foreground truncate">AI-тренер</span>
+            <span className="text-xs text-muted-foreground truncate">{t("nav.aiCoach")}</span>
           </div>
         </Link>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Навигация</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("nav.navigation")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => {
                 const isActive = location === item.url || (item.url !== "/" && location.startsWith(item.url));
                 return (
-                  <SidebarMenuItem key={item.title}>
+                  <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
@@ -114,7 +116,7 @@ export function AppSidebar() {
                     >
                       <Link href="/admin" onClick={handleNavClick}>
                         <BarChart3 className="w-4 h-4" />
-                        <span>Статистика</span>
+                        <span>{t("nav.admin")}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -126,7 +128,7 @@ export function AppSidebar() {
                     >
                       <Link href="/bug-reports" onClick={handleNavClick} className="relative">
                         <Bug className="w-4 h-4" />
-                        <span>Ошибки</span>
+                        <span>{t("nav.bugs")}</span>
                         {newBugCount > 0 && (
                           <span className="ml-auto flex items-center gap-1.5" data-testid="status-bug-report-count">
                             <span className="relative flex h-2.5 w-2.5">
@@ -149,7 +151,7 @@ export function AppSidebar() {
                     >
                       <Link href="/ai-logs" onClick={handleNavClick}>
                         <ScrollText className="w-4 h-4" />
-                        <span>Логи AI</span>
+                        <span>{t("nav.aiLogs")}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -161,7 +163,7 @@ export function AppSidebar() {
                     >
                       <Link href="/prompt-variants" onClick={handleNavClick}>
                         <Brain className="w-4 h-4" />
-                        <span>A/B промпты</span>
+                        <span>{t("nav.abPrompts")}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -173,7 +175,7 @@ export function AppSidebar() {
                     >
                       <Link href="/test-workouts" onClick={handleNavClick}>
                         <FlaskConical className="w-4 h-4" />
-                        <span>Push-тесты</span>
+                        <span>{t("nav.pushTests")}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -185,7 +187,7 @@ export function AppSidebar() {
                     >
                       <Link href="/auto-tests" onClick={handleNavClick}>
                         <FlaskConical className="w-4 h-4" />
-                        <span>Автотесты</span>
+                        <span>{t("nav.autoTests")}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -197,7 +199,7 @@ export function AppSidebar() {
                     >
                       <Link href="/debug-logs" onClick={handleNavClick}>
                         <Terminal className="w-4 h-4" />
-                        <span>Логи</span>
+                        <span>{t("nav.debugLogs")}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -215,12 +217,12 @@ export function AppSidebar() {
                 {user.garminConnected ? (
                   <Badge variant="secondary" className="text-xs" data-testid="status-garmin-connected">
                     <div className="w-1.5 h-1.5 rounded-full bg-status-online mr-1.5" />
-                    Подключено
+                    {t("common.connected")}
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="text-xs" data-testid="status-garmin-disconnected">
                     <div className="w-1.5 h-1.5 rounded-full bg-status-offline mr-1.5" />
-                    Не подключено
+                    {t("common.disconnected")}
                   </Badge>
                 )}
               </div>
@@ -236,12 +238,12 @@ export function AppSidebar() {
                 {user.intervalsConnected ? (
                   <Badge variant="secondary" className="text-xs" data-testid="status-intervals-connected">
                     <div className="w-1.5 h-1.5 rounded-full bg-status-online mr-1.5" />
-                    Подключено
+                    {t("common.connected")}
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="text-xs" data-testid="status-intervals-disconnected">
                     <div className="w-1.5 h-1.5 rounded-full bg-status-offline mr-1.5" />
-                    Не подключено
+                    {t("common.disconnected")}
                   </Badge>
                 )}
               </div>

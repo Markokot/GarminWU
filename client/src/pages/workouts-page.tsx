@@ -18,8 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Link } from "wouter";
 import type { Workout } from "@shared/schema";
-import { sportTypeLabels, stepTypeLabels } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
+import { useTranslation } from "@/i18n/context";
 import {
   Dumbbell,
   Watch,
@@ -31,24 +31,42 @@ import {
   BarChart3,
 } from "lucide-react";
 
+const LOCALE_MAP: Record<string, string> = {
+  ru: "ru-RU",
+  en: "en-US",
+  zh: "zh-CN",
+  fr: "fr-FR",
+};
+
 function StepSummary({ workout }: { workout: Workout }) {
+  const { t } = useTranslation();
+
+  const stepTypeLabelMap: Record<string, string> = {
+    warmup: t("step.warmup"),
+    interval: t("step.interval"),
+    recovery: t("step.recovery"),
+    rest: t("step.rest"),
+    cooldown: t("step.cooldown"),
+    repeat: t("step.repeat"),
+  };
+
   return (
     <div className="space-y-1">
       {workout.steps.map((step, i) => {
-        const label = stepTypeLabels[step.stepType] || step.stepType;
+        const label = stepTypeLabelMap[step.stepType] || step.stepType;
         let duration = "";
         if (step.durationValue) {
           if (step.durationType === "time") {
             const m = Math.floor(step.durationValue / 60);
             const s = step.durationValue % 60;
-            duration = s > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${m} мин`;
+            duration = s > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${m} ${t("common.min")}`;
           } else if (step.durationType === "distance") {
             duration = step.durationValue >= 1000
-              ? `${(step.durationValue / 1000).toFixed(1)} км`
-              : `${step.durationValue} м`;
+              ? `${(step.durationValue / 1000).toFixed(1)} ${t("common.km")}`
+              : `${step.durationValue} ${t("common.m")}`;
           }
         } else if (step.durationType === "lap.button") {
-          duration = "по кнопке";
+          duration = t("common.lapButton");
         }
 
         return (
@@ -71,6 +89,10 @@ function StepSummary({ workout }: { workout: Workout }) {
 export default function WorkoutsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t, language } = useTranslation();
+  const locale = LOCALE_MAP[language] || "ru-RU";
+
+  const sportLabel = (type: string) => t(`sport.${type}`) !== `sport.${type}` ? t(`sport.${type}`) : type;
 
   const { data: workouts = [], isLoading } = useQuery<Workout[]>({
     queryKey: ["/api/workouts"],
@@ -82,11 +104,11 @@ export default function WorkoutsPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Тренировка отправлена на Garmin" });
+      toast({ title: t("workouts.sentToGarmin") });
       queryClient.invalidateQueries({ queryKey: ["/api/workouts"] });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -96,11 +118,11 @@ export default function WorkoutsPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Тренировка отправлена в Intervals.icu" });
+      toast({ title: t("workouts.sentToIntervals") });
       queryClient.invalidateQueries({ queryKey: ["/api/workouts"] });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -109,11 +131,11 @@ export default function WorkoutsPage() {
       await apiRequest("DELETE", `/api/workouts/${id}`);
     },
     onSuccess: () => {
-      toast({ title: "Тренировка удалена" });
+      toast({ title: t("workouts.workoutDeleted") });
       queryClient.invalidateQueries({ queryKey: ["/api/workouts"] });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -121,15 +143,15 @@ export default function WorkoutsPage() {
     <div className="p-4 sm:p-6 space-y-6 max-w-4xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-workouts-title">Тренировки</h1>
+          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-workouts-title">{t("workouts.title")}</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Управление созданными тренировками
+            {t("workouts.subtitle")}
           </p>
         </div>
         <Link href="/coach">
           <Button data-testid="button-create-workout">
             <MessageSquare className="w-4 h-4 mr-2" />
-            Создать с AI
+            {t("workouts.createWithAI")}
           </Button>
         </Link>
       </div>
@@ -153,14 +175,14 @@ export default function WorkoutsPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <Dumbbell className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Нет тренировок</h2>
+            <h2 className="text-lg font-semibold mb-2">{t("workouts.empty")}</h2>
             <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
-              Попросите AI-тренера создать тренировку, и она появится здесь
+              {t("workouts.emptyDesc")}
             </p>
             <Link href="/coach">
               <Button data-testid="button-go-to-coach">
                 <MessageSquare className="w-4 h-4 mr-2" />
-                Перейти к AI тренеру
+                {t("workouts.goToCoach")}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
@@ -176,7 +198,7 @@ export default function WorkoutsPage() {
                     <div className="flex items-center gap-2 flex-wrap mb-2">
                       <h3 className="font-semibold truncate">{workout.name}</h3>
                       <Badge variant="outline" className="text-xs">
-                        {sportTypeLabels[workout.sportType]}
+                        {sportLabel(workout.sportType)}
                       </Badge>
                       {workout.sentToGarmin && (
                         <Badge variant="secondary" className="text-xs">
@@ -197,7 +219,7 @@ export default function WorkoutsPage() {
                     <StepSummary workout={workout} />
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-3">
                       <Clock className="w-3 h-3" />
-                      {new Date(workout.createdAt).toLocaleDateString("ru-RU", {
+                      {new Date(workout.createdAt).toLocaleDateString(locale, {
                         day: "numeric",
                         month: "short",
                         year: "numeric",
@@ -244,20 +266,20 @@ export default function WorkoutsPage() {
                           data-testid={`button-delete-${workout.id}`}
                         >
                           <Trash2 className="w-3 h-3 mr-1" />
-                          Удалить
+                          {t("common.delete")}
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Удалить тренировку?</AlertDialogTitle>
+                          <AlertDialogTitle>{t("workouts.deleteTitle")}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Тренировка "{workout.name}" будет удалена. Это действие нельзя отменить.
+                            {t("workouts.deleteDesc", { name: workout.name })}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Отмена</AlertDialogCancel>
+                          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                           <AlertDialogAction onClick={() => deleteMutation.mutate(workout.id)}>
-                            Удалить
+                            {t("common.delete")}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>

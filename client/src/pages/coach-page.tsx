@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { ChatMessage, Workout, GarminWatchModel, RescheduleData, WorkoutExplanation } from "@shared/schema";
-import { sportTypeLabels, garminWatchLabels, swimStructuredWatchModels } from "@shared/schema";
+import { garminWatchLabels, swimStructuredWatchModels } from "@shared/schema";
 import {
   Send,
   Bot,
@@ -33,13 +33,22 @@ import {
 } from "lucide-react";
 import { GarminGuideDialog } from "@/components/garmin-guide-dialog";
 import { ReadinessBadge } from "@/components/readiness-card";
+import { useTranslation } from "@/i18n/context";
+import type { Language } from "@/i18n/types";
 
-function formatTime(ts: string) {
-  return new Date(ts).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+const localeMap: Record<Language, string> = {
+  ru: "ru-RU",
+  en: "en-US",
+  zh: "zh-CN",
+  fr: "fr-FR",
+};
+
+function formatTime(ts: string, language: Language) {
+  return new Date(ts).toLocaleTimeString(localeMap[language], { hour: "2-digit", minute: "2-digit" });
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr + "T12:00:00").toLocaleDateString("ru-RU", {
+function formatDate(dateStr: string, language: Language) {
+  return new Date(dateStr + "T12:00:00").toLocaleDateString(localeMap[language], {
     day: "numeric",
     month: "long",
     weekday: "short",
@@ -48,11 +57,12 @@ function formatDate(dateStr: string) {
 
 function WorkoutExplanationBlock({ explanation }: { explanation: WorkoutExplanation }) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
 
   const lines = [
-    explanation.why ? { label: "Цель", value: explanation.why, testId: "text-explanation-why" } : null,
-    explanation.adaptation ? { label: "Адаптация", value: explanation.adaptation, testId: "text-explanation-adaptation" } : null,
-    explanation.successSignal ? { label: "Успех", value: explanation.successSignal, testId: "text-explanation-success" } : null,
+    explanation.why ? { label: t("coach.explanationGoal"), value: explanation.why, testId: "text-explanation-why" } : null,
+    explanation.adaptation ? { label: t("coach.explanationAdaptation"), value: explanation.adaptation, testId: "text-explanation-adaptation" } : null,
+    explanation.successSignal ? { label: t("coach.explanationSuccess"), value: explanation.successSignal, testId: "text-explanation-success" } : null,
   ].filter(Boolean) as { label: string; value: string; testId: string }[];
 
   if (lines.length === 0) return null;
@@ -65,7 +75,7 @@ function WorkoutExplanationBlock({ explanation }: { explanation: WorkoutExplanat
         data-testid="button-toggle-explanation"
       >
         <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
-        <span>Почему эта тренировка</span>
+        <span>{t("coach.whyThisWorkout")}</span>
         {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
       </button>
       {open && (
@@ -94,6 +104,7 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
   swimWarning?: string | null;
   onShowGuide?: () => void;
 }) {
+  const { t, language } = useTranslation();
   return (
     <Card className="mt-3">
       <CardContent className="p-4">
@@ -103,7 +114,7 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
             <span className="font-medium text-sm truncate">{workout.name}</span>
           </div>
           <Badge variant="outline" className="text-xs flex-shrink-0">
-            {sportTypeLabels[workout.sportType]}
+            {t(`sport.${workout.sportType}`)}
           </Badge>
         </div>
         {workout.description && (
@@ -112,7 +123,7 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
         {workout.scheduledDate && (
           <div className="flex items-center gap-1.5 mb-3 text-xs text-muted-foreground">
             <CalendarDays className="w-3 h-3" />
-            <span>{formatDate(workout.scheduledDate)}</span>
+            <span>{formatDate(workout.scheduledDate, language)}</span>
           </div>
         )}
         <div className="space-y-1.5 mb-4">
@@ -127,14 +138,14 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
                   {step.durationType === "time"
                     ? `${Math.floor(step.durationValue / 60)}:${(step.durationValue % 60).toString().padStart(2, "0")}`
                     : step.durationType === "distance"
-                    ? `${step.durationValue}м`
-                    : "по кнопке"}
+                    ? `${step.durationValue}${t("common.m")}`
+                    : t("common.lapButton")}
                 </span>
               )}
               {step.targetType !== "no.target" && step.targetValueLow && step.targetValueHigh && (
                 <Badge variant="secondary" className="text-[10px]">
                   {step.targetType === "heart.rate.zone"
-                    ? `Зона ${step.targetValueLow}`
+                    ? `${t("common.zone")} ${step.targetValueLow}`
                     : step.targetType === "pace.zone"
                     ? `${Math.floor(step.targetValueLow / 60)}:${(step.targetValueLow % 60).toString().padStart(2, "0")} - ${Math.floor(step.targetValueHigh / 60)}:${(step.targetValueHigh % 60).toString().padStart(2, "0")}`
                     : `${step.targetValueLow}-${step.targetValueHigh}`}
@@ -158,7 +169,7 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
         <div className="flex items-center gap-2 flex-wrap">
           <Button size="sm" variant="outline" onClick={onFavorite} disabled={savingFavorite} data-testid="button-save-favorite">
             {savingFavorite ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Star className="w-3 h-3 mr-1" />}
-            В избранное
+            {t("coach.toFavorites")}
           </Button>
           {showGarmin && (
             <Button size="sm" onClick={onPushToGarmin} disabled={pushing} data-testid="button-push-garmin">
@@ -180,7 +191,7 @@ function WorkoutPreview({ workout, onFavorite, onPushToGarmin, onPushToIntervals
             data-testid="link-garmin-guide"
           >
             <HelpCircle className="w-3.5 h-3.5" />
-            <span className="underline underline-offset-2">Как найти тренировку на часах?</span>
+            <span className="underline underline-offset-2">{t("coach.howToFindOnWatch")}</span>
           </button>
         )}
       </CardContent>
@@ -207,6 +218,7 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
   onShowGuide?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const { t, language } = useTranslation();
 
   const dateRange = (() => {
     const dates = workouts.filter(w => w.scheduledDate).map(w => w.scheduledDate!).sort();
@@ -241,10 +253,10 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
           <div className="flex items-center gap-2 min-w-0">
             <ListChecks className="w-4 h-4 text-primary flex-shrink-0" />
             <span className="font-medium text-sm">
-              Тренировочный план
+              {t("coach.trainingPlan")}
             </span>
             <Badge variant="outline" className="text-xs flex-shrink-0">
-              {workouts.length} тренировок
+              {t("coach.workoutsCount", { count: workouts.length })}
             </Badge>
           </div>
         </div>
@@ -252,25 +264,25 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
         {dateRange && (
           <div className="flex items-center gap-1.5 mb-3 text-xs text-muted-foreground">
             <CalendarDays className="w-3 h-3" />
-            <span>{formatDate(dateRange.from)} — {formatDate(dateRange.to)}</span>
+            <span>{formatDate(dateRange.from, language)} — {formatDate(dateRange.to, language)}</span>
           </div>
         )}
 
         <div className="flex items-center gap-2 flex-wrap mb-3">
           <Button size="sm" variant="outline" onClick={onBulkFavorite} disabled={bulkSaving} data-testid="button-plan-save-all">
             {bulkSaving ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Star className="w-3 h-3 mr-1" />}
-            Все в избранное
+            {t("coach.allToFavorites")}
           </Button>
           {showGarmin && (
             <Button size="sm" onClick={onBulkPushGarmin} disabled={bulkPushing} data-testid="button-plan-push-garmin">
               {bulkPushing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Watch className="w-3 h-3 mr-1" />}
-              Все на Garmin
+              {t("coach.allToGarmin")}
             </Button>
           )}
           {showIntervals && (
             <Button size="sm" variant="secondary" onClick={onBulkPushIntervals} disabled={bulkPushingIntervals} data-testid="button-plan-push-intervals">
               {bulkPushingIntervals ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <BarChart3 className="w-3 h-3 mr-1" />}
-              Все в Intervals
+              {t("coach.allToIntervals")}
             </Button>
           )}
         </div>
@@ -281,7 +293,7 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
             data-testid="link-plan-garmin-guide"
           >
             <HelpCircle className="w-3.5 h-3.5" />
-            <span className="underline underline-offset-2">Как найти тренировку на часах?</span>
+            <span className="underline underline-offset-2">{t("coach.howToFindOnWatch")}</span>
           </button>
         )}
 
@@ -292,7 +304,7 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
           className="w-full justify-between text-xs text-muted-foreground"
           data-testid="button-plan-expand"
         >
-          <span>{expanded ? "Свернуть" : "Показать все тренировки"}</span>
+          <span>{expanded ? t("coach.collapse") : t("coach.showAllWorkouts")}</span>
           {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
         </Button>
 
@@ -301,7 +313,7 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
             {weekGroups.map(([weekKey, weekWorkouts]) => (
               <div key={weekKey}>
                 <p className="text-xs font-medium text-muted-foreground mb-2">
-                  {weekKey === "no-date" ? "Без даты" : `Неделя с ${formatDate(weekKey)}`}
+                  {weekKey === "no-date" ? t("coach.noDate") : t("coach.weekFrom", { date: formatDate(weekKey, language) })}
                 </p>
                 <div className="space-y-2">
                   {weekWorkouts.map((w, idx) => (
@@ -313,14 +325,14 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <Badge variant="outline" className="text-[10px]">
-                            {sportTypeLabels[w.sportType]}
+                            {t(`sport.${w.sportType}`)}
                           </Badge>
                         </div>
                       </div>
                       {w.scheduledDate && (
                         <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                           <CalendarDays className="w-2.5 h-2.5" />
-                          <span>{formatDate(w.scheduledDate)}</span>
+                          <span>{formatDate(w.scheduledDate, language)}</span>
                         </div>
                       )}
                       {w.description && (
@@ -338,8 +350,8 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
                                 {step.durationType === "time"
                                   ? `${Math.floor(step.durationValue / 60)}:${(step.durationValue % 60).toString().padStart(2, "0")}`
                                   : step.durationType === "distance"
-                                  ? `${step.durationValue}м`
-                                  : "по кнопке"}
+                                  ? `${step.durationValue}${t("common.m")}`
+                                  : t("common.lapButton")}
                               </span>
                             )}
                             {step.stepType === "repeat" && step.repeatCount && (
@@ -379,13 +391,6 @@ function TrainingPlanPreview({ workouts, showGarmin, showIntervals, onBulkPushGa
   );
 }
 
-const quickPrompts = [
-  "Легкая восстановительная пробежка на 30 минут",
-  "Интервальная тренировка для улучшения скорости",
-  "Длительная тренировка для подготовки к полумарафону",
-  "Велосипедная тренировка на выносливость 1.5 часа",
-  "План на 2 недели для подготовки к забегу на 10 км",
-];
 
 function ReschedulePreview({ data, onConfirm, confirming, confirmed }: {
   data: RescheduleData;
@@ -393,15 +398,16 @@ function ReschedulePreview({ data, onConfirm, confirming, confirmed }: {
   confirming: boolean;
   confirmed: boolean;
 }) {
+  const { t, language } = useTranslation();
   return (
     <Card className="mt-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30" data-testid="reschedule-preview">
       <CardContent className="p-3">
         <div className="flex items-center gap-2 mb-2">
           <CalendarClock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Перенос тренировки</span>
+          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{t("coach.rescheduleTitle")}</span>
         </div>
         <div className="text-xs text-muted-foreground space-y-0.5 mb-2">
-          <p>{data.currentDate ? `${formatDate(data.currentDate)} → ${formatDate(data.newDate)}` : `Новая дата: ${formatDate(data.newDate)}`}</p>
+          <p>{data.currentDate ? `${formatDate(data.currentDate, language)} → ${formatDate(data.newDate, language)}` : `${formatDate(data.newDate, language)}`}</p>
           {data.reason && <p className="italic">{data.reason}</p>}
         </div>
         <Button
@@ -413,11 +419,11 @@ function ReschedulePreview({ data, onConfirm, confirming, confirmed }: {
           data-testid="button-confirm-reschedule"
         >
           {confirming ? (
-            <><Loader2 className="h-3 w-3 animate-spin" /> Переношу...</>
+            <><Loader2 className="h-3 w-3 animate-spin" /> {t("coach.rescheduleRescheduling")}</>
           ) : confirmed ? (
-            <><Check className="h-3 w-3" /> Перенесено</>
+            <><Check className="h-3 w-3" /> {t("coach.rescheduleDone")}</>
           ) : (
-            <><CalendarClock className="h-3 w-3" /> Перенести</>
+            <><CalendarClock className="h-3 w-3" /> {t("coach.rescheduleConfirm")}</>
           )}
         </Button>
       </CardContent>
@@ -428,14 +434,23 @@ function ReschedulePreview({ data, onConfirm, confirming, confirmed }: {
 export default function CoachPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t, language } = useTranslation();
   const [message, setMessage] = useState("");
   const [bulkPushing, setBulkPushing] = useState(false);
+
+  const quickPrompts = [
+    t("coach.quickPrompt1"),
+    t("coach.quickPrompt2"),
+    t("coach.quickPrompt3"),
+    t("coach.quickPrompt4"),
+    t("coach.quickPrompt5"),
+  ];
 
   const swimWarning = (() => {
     if (!user?.garminWatch || user.garminWatch === "other") return null;
     if (swimStructuredWatchModels.includes(user.garminWatch as GarminWatchModel)) return null;
     const watchName = garminWatchLabels[user.garminWatch as GarminWatchModel] || user.garminWatch;
-    return `${watchName} не поддерживает структурированные плавательные тренировки. Тренировка появится в Garmin Connect, но может не синхронизироваться на часы.`;
+    return t("settings.watchSwimWarning", { model: watchName });
   })();
   const [bulkPushingIntervals, setBulkPushingIntervals] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
@@ -521,9 +536,9 @@ export default function CoachPage() {
           if (xhr.status >= 400) {
             try {
               const err = JSON.parse(xhr.responseText);
-              reject(new Error(err.message || "Ошибка сервера"));
+              reject(new Error(err.message || t("common.serverError")));
             } catch {
-              reject(new Error("Ошибка сервера"));
+              reject(new Error(t("common.serverError")));
             }
             return;
           }
@@ -534,8 +549,8 @@ export default function CoachPage() {
           resolve();
         };
 
-        xhr.onerror = () => reject(new Error("Ошибка сети"));
-        xhr.ontimeout = () => reject(new Error("Время ожидания истекло"));
+        xhr.onerror = () => reject(new Error(t("common.networkError")));
+        xhr.ontimeout = () => reject(new Error(t("common.timeoutError")));
         xhr.timeout = 300000;
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       xhr.send(JSON.stringify({ content, timezone }));
@@ -544,7 +559,7 @@ export default function CoachPage() {
       await queryClient.refetchQueries({ queryKey: ["/api/chat/messages"] });
       setStreamingText("");
     } catch (error: any) {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
       setStreamingText("");
     } finally {
       setIsSending(false);
@@ -557,11 +572,11 @@ export default function CoachPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Добавлено в избранное" });
+      toast({ title: t("coach.addedToFavorites") });
       queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка сохранения", description: error.message, variant: "destructive" });
+      toast({ title: t("coach.saveError"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -571,10 +586,10 @@ export default function CoachPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
-      toast({ title: "История чата очищена" });
+      toast({ title: t("coach.chatCleared") });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка очистки", description: error.message, variant: "destructive" });
+      toast({ title: t("coach.clearError"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -585,17 +600,17 @@ export default function CoachPage() {
     },
     onSuccess: (data: any) => {
       if (data.swimIncompatible) {
-        toast({ title: "Плавание не поддерживается", description: data.message, variant: "destructive", duration: 8000 });
+        toast({ title: t("coach.swimNotSupported"), description: data.message, variant: "destructive", duration: 8000 });
         return;
       }
       const desc = data.scheduled && data.scheduledDate
-        ? `Запланирована на ${new Date(String(data.scheduledDate).split("T")[0] + "T12:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long", weekday: "long" })}`
+        ? t("coach.scheduledOn", { date: new Date(String(data.scheduledDate).split("T")[0] + "T12:00:00").toLocaleDateString(localeMap[language], { day: "numeric", month: "long", weekday: "long" }) })
         : undefined;
-      toast({ title: "Тренировка отправлена на Garmin", description: desc });
+      toast({ title: t("coach.workoutSentGarmin"), description: desc });
       triggerGarminGuide();
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка отправки", description: error.message, variant: "destructive" });
+      toast({ title: t("coach.sendError"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -607,18 +622,18 @@ export default function CoachPage() {
     onSuccess: (data: any) => {
       if (data.scheduled && data.scheduledDate) {
         const raw = String(data.scheduledDate).split("T")[0];
-        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString("ru-RU", {
+        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString(localeMap[language], {
           day: "numeric",
           month: "long",
           weekday: "long",
         });
-        toast({ title: "Тренировка отправлена в Intervals.icu", description: `Запланирована на ${dateStr}` });
+        toast({ title: t("coach.workoutSentIntervals"), description: t("coach.scheduledOn", { date: dateStr }) });
       } else {
-        toast({ title: "Тренировка отправлена в Intervals.icu" });
+        toast({ title: t("coach.workoutSentIntervals") });
       }
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка отправки в Intervals.icu", description: error.message, variant: "destructive" });
+      toast({ title: t("coach.sendErrorIntervals"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -645,11 +660,11 @@ export default function CoachPage() {
     setBulkPushing(false);
     queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     if (swimSkipped > 0) {
-      toast({ title: `Garmin: ${success} отправлено, ${swimSkipped} плавательных пропущено (часы не поддерживают)`, variant: "destructive", duration: 8000 });
+      toast({ title: t("coach.garminSentSwim", { success, skipped: swimSkipped }), variant: "destructive", duration: 8000 });
     } else if (failed > 0) {
-      toast({ title: `Garmin: ${success} отправлено, ${failed} с ошибкой`, variant: "destructive" });
+      toast({ title: t("coach.garminSent", { success, failed }), variant: "destructive" });
     } else {
-      toast({ title: `${success} тренировок отправлено на Garmin` });
+      toast({ title: t("coach.workoutsSentGarmin", { count: success }) });
     }
     if (success > 0) triggerGarminGuide();
   };
@@ -670,9 +685,9 @@ export default function CoachPage() {
     setBulkPushingIntervals(false);
     queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     if (failed > 0) {
-      toast({ title: `Intervals.icu: ${success} отправлено, ${failed} с ошибкой`, variant: "destructive" });
+      toast({ title: t("coach.intervalsSent", { success, failed }), variant: "destructive" });
     } else {
-      toast({ title: `${success} тренировок отправлено в Intervals.icu` });
+      toast({ title: t("coach.workoutsSentIntervals", { count: success }) });
     }
   };
 
@@ -693,9 +708,9 @@ export default function CoachPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
     queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     if (failed > 0) {
-      toast({ title: `${success} сохранено, ${failed} с ошибкой`, variant: "destructive" });
+      toast({ title: t("coach.savedCount", { success, failed }), variant: "destructive" });
     } else {
-      toast({ title: `${success} тренировок сохранено в избранное` });
+      toast({ title: t("coach.savedToFavorites", { count: success }) });
     }
   };
 
@@ -705,18 +720,18 @@ export default function CoachPage() {
       const res = await apiRequest("POST", "/api/garmin/push-workout", workout);
       const data = await res.json();
       if (data.swimIncompatible) {
-        toast({ title: "Плавание не поддерживается", description: data.message, variant: "destructive", duration: 8000 });
+        toast({ title: t("coach.swimNotSupported"), description: data.message, variant: "destructive", duration: 8000 });
       } else if (data.scheduled && data.scheduledDate) {
         const raw = String(data.scheduledDate).split("T")[0];
-        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long", weekday: "long" });
-        toast({ title: `${workout.name} → Garmin`, description: `Запланирована на ${dateStr}` });
+        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString(localeMap[language], { day: "numeric", month: "long", weekday: "long" });
+        toast({ title: `${workout.name} → Garmin`, description: t("coach.scheduledOn", { date: dateStr }) });
       } else {
         toast({ title: `${workout.name} → Garmin` });
       }
       if (!data.swimIncompatible) triggerGarminGuide();
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     } catch (error: any) {
-      toast({ title: "Ошибка отправки", description: error.message, variant: "destructive" });
+      toast({ title: t("coach.sendError"), description: error.message, variant: "destructive" });
     } finally {
       setSinglePushIdx(null);
     }
@@ -729,13 +744,13 @@ export default function CoachPage() {
       const data = await res.json();
       if (data.scheduled && data.scheduledDate) {
         const raw = String(data.scheduledDate).split("T")[0];
-        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long", weekday: "long" });
-        toast({ title: `${workout.name} → Intervals.icu`, description: `Запланирована на ${dateStr}` });
+        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString(localeMap[language], { day: "numeric", month: "long", weekday: "long" });
+        toast({ title: `${workout.name} → Intervals.icu`, description: t("coach.scheduledOn", { date: dateStr }) });
       } else {
         toast({ title: `${workout.name} → Intervals.icu` });
       }
     } catch (error: any) {
-      toast({ title: "Ошибка отправки", description: error.message, variant: "destructive" });
+      toast({ title: t("coach.sendError"), description: error.message, variant: "destructive" });
     } finally {
       setSinglePushIntervalsIdx(null);
     }
@@ -745,10 +760,10 @@ export default function CoachPage() {
     setSingleSaveIdx(idx);
     try {
       await apiRequest("POST", "/api/favorites", workout);
-      toast({ title: `${workout.name} → избранное` });
+      toast({ title: `${workout.name} ${t("coach.toFav")}` });
       queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
     } catch (error: any) {
-      toast({ title: "Ошибка сохранения", description: error.message, variant: "destructive" });
+      toast({ title: t("coach.saveError"), description: error.message, variant: "destructive" });
     } finally {
       setSingleSaveIdx(null);
     }
@@ -760,7 +775,7 @@ export default function CoachPage() {
       const garmin = user?.garminConnected;
       const intervals = user?.intervalsConnected;
       if (!garmin && !intervals) {
-        toast({ title: "Нет подключённого аккаунта", description: "Подключите Garmin или Intervals.icu для переноса", variant: "destructive" });
+        toast({ title: t("coach.noConnectedAccount"), description: t("coach.connectForReschedule"), variant: "destructive" });
         return;
       }
 
@@ -800,14 +815,14 @@ export default function CoachPage() {
       }
 
       if (results.length === 0) {
-        throw new Error("Тренировка не найдена ни в Garmin, ни в Intervals.icu");
+        throw new Error(t("coach.workoutNotFound"));
       }
 
       setRescheduledMsgIds(prev => new Set(prev).add(msgId));
-      const dateStr = `${data.currentDate ? formatDate(data.currentDate) + " → " : ""}${formatDate(data.newDate)}`;
-      toast({ title: "Тренировка перенесена", description: `${dateStr} (${results.join(" + ")})` });
+      const dateStr = `${data.currentDate ? formatDate(data.currentDate, language) + " → " : ""}${formatDate(data.newDate, language)}`;
+      toast({ title: t("coach.workoutRescheduled"), description: `${dateStr} (${results.join(" + ")})` });
     } catch (error: any) {
-      toast({ title: "Ошибка переноса", description: error.message, variant: "destructive" });
+      toast({ title: t("coach.rescheduleError"), description: error.message, variant: "destructive" });
     } finally {
       setReschedulingMsgId(null);
     }
@@ -842,9 +857,9 @@ export default function CoachPage() {
               <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-semibold" data-testid="text-coach-title">AI Тренер</h1>
+              <h1 className="text-lg font-semibold" data-testid="text-coach-title">{t("coach.title")}</h1>
               <p className="text-xs text-muted-foreground">
-                Опишите тренировку или попросите план на период — AI создаст и загрузит на часы
+                {t("coach.subtitle")}
               </p>
             </div>
           </div>
@@ -857,13 +872,13 @@ export default function CoachPage() {
                 data-testid="button-clear-chat"
                 disabled={isSending || clearChatMutation.isPending}
                 onClick={() => {
-                  if (window.confirm("Очистить всю историю чата? Это действие нельзя отменить.")) {
+                  if (window.confirm(t("coach.clearConfirm"))) {
                     clearChatMutation.mutate();
                   }
                 }}
               >
                 {clearChatMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                <span className="ml-1">Очистить</span>
+                <span className="ml-1">{t("coach.clearChat")}</span>
               </Button>
             )}
           </div>
@@ -890,9 +905,9 @@ export default function CoachPage() {
                 <Bot className="w-8 h-8 text-accent-foreground" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold mb-1">Ваш персональный тренер</h2>
+                <h2 className="text-lg font-semibold mb-1">{t("coach.personalTrainer")}</h2>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  Опишите тренировку или попросите план на период — AI создаст структурированные тренировки для загрузки на часы
+                  {t("coach.emptyChat")}
                 </p>
               </div>
               <div className="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
@@ -983,7 +998,7 @@ export default function CoachPage() {
                     </>
                   )}
                   <p className={`text-[10px] mt-1 ${msg.role === "user" ? "text-primary-foreground/60 text-right" : "text-muted-foreground"}`}>
-                    {formatTime(msg.timestamp)}
+                    {formatTime(msg.timestamp, language)}
                   </p>
                 </div>
                 {msg.role === "user" && (
@@ -1008,7 +1023,7 @@ export default function CoachPage() {
               ) : (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  AI думает...
+                  {t("coach.thinking")}
                 </div>
               )}
             </div>
@@ -1023,7 +1038,7 @@ export default function CoachPage() {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Опишите тренировку или попросите план: «план на 3 недели для 10 км»"
+            placeholder={t("coach.inputPlaceholder")}
             className="resize-none min-h-[44px] max-h-[120px] text-sm"
             rows={1}
             data-testid="input-chat-message"

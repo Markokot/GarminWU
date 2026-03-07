@@ -18,8 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Link } from "wouter";
 import type { FavoriteWorkout } from "@shared/schema";
-import { sportTypeLabels, stepTypeLabels } from "@shared/schema";
 import { useAuth } from "@/lib/auth";
+import { useTranslation } from "@/i18n/context";
 import {
   Star,
   Watch,
@@ -31,24 +31,42 @@ import {
   BarChart3,
 } from "lucide-react";
 
+const LOCALE_MAP: Record<string, string> = {
+  ru: "ru-RU",
+  en: "en-US",
+  zh: "zh-CN",
+  fr: "fr-FR",
+};
+
 function StepSummary({ steps }: { steps: FavoriteWorkout["steps"] }) {
+  const { t } = useTranslation();
+
+  const stepTypeLabelMap: Record<string, string> = {
+    warmup: t("step.warmup"),
+    interval: t("step.interval"),
+    recovery: t("step.recovery"),
+    rest: t("step.rest"),
+    cooldown: t("step.cooldown"),
+    repeat: t("step.repeat"),
+  };
+
   return (
     <div className="space-y-1">
       {steps.map((step, i) => {
-        const label = stepTypeLabels[step.stepType] || step.stepType;
+        const label = stepTypeLabelMap[step.stepType] || step.stepType;
         let duration = "";
         if (step.durationValue) {
           if (step.durationType === "time") {
             const m = Math.floor(step.durationValue / 60);
             const s = step.durationValue % 60;
-            duration = s > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${m} мин`;
+            duration = s > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${m} ${t("common.min")}`;
           } else if (step.durationType === "distance") {
             duration = step.durationValue >= 1000
-              ? `${(step.durationValue / 1000).toFixed(1)} км`
-              : `${step.durationValue} м`;
+              ? `${(step.durationValue / 1000).toFixed(1)} ${t("common.km")}`
+              : `${step.durationValue} ${t("common.m")}`;
           }
         } else if (step.durationType === "lap.button") {
-          duration = "по кнопке";
+          duration = t("common.lapButton");
         }
 
         return (
@@ -71,6 +89,10 @@ function StepSummary({ steps }: { steps: FavoriteWorkout["steps"] }) {
 export default function FavoritesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t, language } = useTranslation();
+  const locale = LOCALE_MAP[language] || "ru-RU";
+
+  const sportLabel = (type: string) => t(`sport.${type}`) !== `sport.${type}` ? t(`sport.${type}`) : type;
 
   const { data: favorites = [], isLoading } = useQuery<FavoriteWorkout[]>({
     queryKey: ["/api/favorites"],
@@ -84,18 +106,18 @@ export default function FavoritesPage() {
     onSuccess: (data: any) => {
       if (data.scheduled && data.scheduledDate) {
         const raw = String(data.scheduledDate).split("T")[0];
-        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString("ru-RU", {
+        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString(locale, {
           day: "numeric",
           month: "long",
           weekday: "long",
         });
-        toast({ title: "Тренировка отправлена на Garmin", description: `Запланирована на ${dateStr}` });
+        toast({ title: t("favorites.sentToGarmin"), description: t("favorites.scheduledOn", { date: dateStr }) });
       } else {
-        toast({ title: "Тренировка отправлена на Garmin" });
+        toast({ title: t("favorites.sentToGarmin") });
       }
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -107,18 +129,18 @@ export default function FavoritesPage() {
     onSuccess: (data: any) => {
       if (data.scheduled && data.scheduledDate) {
         const raw = String(data.scheduledDate).split("T")[0];
-        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString("ru-RU", {
+        const dateStr = new Date(raw + "T12:00:00").toLocaleDateString(locale, {
           day: "numeric",
           month: "long",
           weekday: "long",
         });
-        toast({ title: "Тренировка отправлена в Intervals.icu", description: `Запланирована на ${dateStr}` });
+        toast({ title: t("favorites.sentToIntervals"), description: t("favorites.scheduledOn", { date: dateStr }) });
       } else {
-        toast({ title: "Тренировка отправлена в Intervals.icu" });
+        toast({ title: t("favorites.sentToIntervals") });
       }
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -127,11 +149,11 @@ export default function FavoritesPage() {
       await apiRequest("DELETE", `/api/favorites/${id}`);
     },
     onSuccess: () => {
-      toast({ title: "Удалено из избранного" });
+      toast({ title: t("favorites.deletedFromFavorites") });
       queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -139,15 +161,15 @@ export default function FavoritesPage() {
     <div className="p-4 sm:p-6 space-y-6 max-w-4xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-favorites-title">Избранное</h1>
+          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-favorites-title">{t("favorites.title")}</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Сохранённые тренировки для быстрой отправки на часы
+            {t("favorites.subtitle")}
           </p>
         </div>
         <Link href="/coach">
           <Button data-testid="button-create-workout">
             <MessageSquare className="w-4 h-4 mr-2" />
-            Создать с AI
+            {t("favorites.createWithAI")}
           </Button>
         </Link>
       </div>
@@ -171,14 +193,14 @@ export default function FavoritesPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <Star className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Нет избранных тренировок</h2>
+            <h2 className="text-lg font-semibold mb-2">{t("favorites.empty")}</h2>
             <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
-              Создайте тренировку в чате с AI-тренером и нажмите "В избранное", чтобы сохранить
+              {t("favorites.emptyDesc")}
             </p>
             <Link href="/coach">
               <Button data-testid="button-go-to-coach">
                 <MessageSquare className="w-4 h-4 mr-2" />
-                Перейти к AI тренеру
+                {t("favorites.goToCoach")}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
@@ -194,7 +216,7 @@ export default function FavoritesPage() {
                     <div className="flex items-center gap-2 flex-wrap mb-2">
                       <h3 className="font-semibold truncate">{fav.name}</h3>
                       <Badge variant="outline" className="text-xs">
-                        {sportTypeLabels[fav.sportType]}
+                        {sportLabel(fav.sportType)}
                       </Badge>
                     </div>
                     {fav.description && (
@@ -203,7 +225,7 @@ export default function FavoritesPage() {
                     <StepSummary steps={fav.steps} />
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-3">
                       <Clock className="w-3 h-3" />
-                      {new Date(fav.savedAt).toLocaleDateString("ru-RU", {
+                      {new Date(fav.savedAt).toLocaleDateString(locale, {
                         day: "numeric",
                         month: "short",
                         year: "numeric",
@@ -250,20 +272,20 @@ export default function FavoritesPage() {
                           data-testid={`button-delete-${fav.id}`}
                         >
                           <Trash2 className="w-3 h-3 mr-1" />
-                          Удалить
+                          {t("common.delete")}
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Удалить из избранного?</AlertDialogTitle>
+                          <AlertDialogTitle>{t("favorites.deleteTitle")}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Тренировка "{fav.name}" будет удалена из избранного.
+                            {t("favorites.deleteDesc", { name: fav.name })}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Отмена</AlertDialogCancel>
+                          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                           <AlertDialogAction onClick={() => deleteMutation.mutate(fav.id)}>
-                            Удалить
+                            {t("common.delete")}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>

@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Sparkles, Bug } from "lucide-react";
+import { useTranslation } from "@/i18n/context";
 
 const CURRENT_VERSION = "1.010";
 
@@ -51,10 +52,12 @@ const changelog: ChangelogEntry[] = [
 ];
 
 export default function VersionPage() {
+  const { t } = useTranslation();
+
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-3xl mx-auto">
       <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-bold" data-testid="text-version-title">История обновлений</h1>
+        <h1 className="text-2xl font-bold" data-testid="text-version-title">{t("versionPage.title")}</h1>
         <Badge variant="secondary" className="text-base px-3 py-1" data-testid="text-version-number">
           v{CURRENT_VERSION}
         </Badge>
@@ -66,9 +69,9 @@ export default function VersionPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  Версия {entry.version}
+                  {t("common.version")} {entry.version}
                   {idx === 0 && (
-                    <Badge variant="default" className="text-xs">Текущая</Badge>
+                    <Badge variant="default" className="text-xs">{t("common.current")}</Badge>
                   )}
                 </CardTitle>
                 <span className="text-sm text-muted-foreground">{entry.date}</span>
